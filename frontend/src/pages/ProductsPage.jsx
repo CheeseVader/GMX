@@ -27,7 +27,7 @@ function ProductThumb({ src, name }) {
   const value = String(src || '').trim();
 
   if (!value || failed) {
-    return <div className="admin-product-thumb"><span>{brandText("Shiny")}</span></div>;
+    return <div className="admin-product-thumb"><span>{brandText("GMX")}</span></div>;
   }
 
   return <div className="admin-product-thumb">
@@ -360,7 +360,7 @@ export default function ProductsPage() {
       a.href = url;a.download = 'Shiny_Plantillas_Importacion_Dinamica.xlsx';
       document.body.appendChild(a);a.click();a.remove();
       URL.revokeObjectURL(url);
-      window.tcg_store_templateNotify?.(brandText("Plantilla generada con el catálogo actual de Shiny."), { type: 'success' });
+      window.tcg_store_templateNotify?.(brandText("Plantilla generada con el catálogo actual de GMX."), { type: 'success' });
     } catch (e) {setMessage(e.message);}
   }
 

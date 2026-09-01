@@ -12,8 +12,8 @@ async function listCategories() {
       TRIM(c.nombre) AS nombre,
       COALESCE(NULLIF(TRIM(c.estado),''),'Activo') AS estado,
       COUNT(p.row_id)::bigint AS total_productos
-    FROM shiny.categorias c
-    LEFT JOIN shiny.productos p
+    FROM gmx.categorias c
+    LEFT JOIN gmx.productos p
       ON LOWER(TRIM(COALESCE(p.categoria,'')))=LOWER(TRIM(COALESCE(c.nombre,'')))
     WHERE NULLIF(TRIM(COALESCE(c.nombre,'')),'') IS NOT NULL
     GROUP BY c.id,c.nombre,c.estado
@@ -26,7 +26,7 @@ router.get('/', async (_req, res) => {
   try {
     res.json({ success: true, data: await listCategories() });
   } catch (error) {
-    console.error(brandText("[Shiny][CATEGORIES][LIST]"), error);
+    console.error(brandText("[GMX][CATEGORIES][LIST]"), error);
     res.status(500).json({ success: false, error: 'CATEGORY_LIST_FAILED', message: 'No fue posible cargar las categorías.' });
   }
 });
@@ -44,7 +44,7 @@ router.post('/', async (req, res) => {
 
   try {
     const duplicate = await query(`
-      SELECT id FROM shiny.categorias
+      SELECT id FROM gmx.categorias
       WHERE LOWER(TRIM(COALESCE(nombre,'')))=LOWER(TRIM($1))
       LIMIT 1
     `, [nombre]);
@@ -55,14 +55,14 @@ router.post('/', async (req, res) => {
 
     const id = `CAT-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
     const created = await query(`
-      INSERT INTO shiny.categorias(id,nombre,estado)
+      INSERT INTO gmx.categorias(id,nombre,estado)
       VALUES($1,$2,$3)
       RETURNING id,TRIM(nombre) nombre,estado
     `, [id, nombre, estado]);
 
     res.status(201).json({ success: true, data: created.rows[0] });
   } catch (error) {
-    console.error(brandText("[Shiny][CATEGORIES][CREATE]"), error);
+    console.error(brandText("[GMX][CATEGORIES][CREATE]"), error);
     res.status(500).json({ success: false, error: 'CATEGORY_CREATE_FAILED', message: 'No fue posible crear la categoría.' });
   }
 });
@@ -85,7 +85,7 @@ router.put('/:id', async (req, res) => {
 
     const current = await client.query(`
       SELECT id,TRIM(nombre) nombre,COALESCE(NULLIF(TRIM(estado),''),'Activo') estado
-      FROM shiny.categorias
+      FROM gmx.categorias
       WHERE id=$1
       FOR UPDATE
     `, [id]);
@@ -96,7 +96,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const duplicate = await client.query(`
-      SELECT id FROM shiny.categorias
+      SELECT id FROM gmx.categorias
       WHERE id<>$1
         AND LOWER(TRIM(COALESCE(nombre,'')))=LOWER(TRIM($2))
       LIMIT 1
@@ -111,14 +111,14 @@ router.put('/:id', async (req, res) => {
 
     if (oldName !== nombre) {
       await client.query(`
-        UPDATE shiny.productos
+        UPDATE gmx.productos
         SET categoria=$1,fecha_actualizacion=NOW()
         WHERE LOWER(TRIM(COALESCE(categoria,'')))=LOWER(TRIM($2))
       `, [nombre, oldName]);
     }
 
     const updated = await client.query(`
-      UPDATE shiny.categorias
+      UPDATE gmx.categorias
       SET nombre=$2,estado=$3
       WHERE id=$1
       RETURNING id,TRIM(nombre) nombre,estado
@@ -128,7 +128,7 @@ router.put('/:id', async (req, res) => {
     res.json({ success: true, data: updated.rows[0] });
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error(brandText("[Shiny][CATEGORIES][UPDATE]"), error);
+    console.error(brandText("[GMX][CATEGORIES][UPDATE]"), error);
     res.status(500).json({ success: false, error: 'CATEGORY_UPDATE_FAILED', message: 'No fue posible actualizar la categoría.' });
   } finally {
     client.release();

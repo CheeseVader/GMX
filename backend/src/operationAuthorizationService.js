@@ -32,7 +32,7 @@ export async function authorizePosReturn({
 
   const orderResult=await query(`
     SELECT id_pedido,id_sucursal,sucursal,estado_pedido
-    FROM shiny.pedidos
+    FROM gmx.pedidos
     WHERE id_pedido=$1
     ORDER BY row_id
     LIMIT 1
@@ -53,7 +53,7 @@ export async function authorizePosReturn({
       password_hash,
       sucursal_principal,
       sucursales_permitidas
-    FROM shiny.administradores
+    FROM gmx.administradores
     WHERE COALESCE(activo,true)=true
       AND ($1='' OR LOWER(email)=$1)
     ORDER BY row_id
@@ -109,7 +109,7 @@ export async function authorizePosReturn({
   const idAuthorization=`AUTH-DEV-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
 
   await query(`
-    INSERT INTO shiny.autorizaciones_operacion(
+    INSERT INTO gmx.autorizaciones_operacion(
       id_autorizacion,
       token_hash,
       accion,
@@ -190,7 +190,7 @@ export async function validatePosReturnAuthorization({
       created_at,
       expires_at,
       used_at
-    FROM shiny.autorizaciones_operacion
+    FROM gmx.autorizaciones_operacion
     WHERE token_hash=$1
       AND accion=$2
       AND id_pedido=$3
@@ -273,7 +273,7 @@ export async function claimPosReturnAuthorization({
 
     const r=await client.query(`
       SELECT *
-      FROM shiny.autorizaciones_operacion
+      FROM gmx.autorizaciones_operacion
       WHERE token_hash=$1
         AND accion=$2
         AND id_pedido=$3
@@ -316,7 +316,7 @@ export async function claimPosReturnAuthorization({
     }
 
     const claimed=await client.query(`
-      UPDATE shiny.autorizaciones_operacion
+      UPDATE gmx.autorizaciones_operacion
       SET used_at=NOW(),
           referencia_uso=$2
       WHERE row_id=$1
@@ -361,7 +361,7 @@ export async function releasePosReturnAuthorization({
   if(!id||!claim)return false;
 
   const r=await query(`
-    UPDATE shiny.autorizaciones_operacion
+    UPDATE gmx.autorizaciones_operacion
     SET used_at=NULL,
         referencia_uso=NULL
     WHERE id_autorizacion=$1
@@ -389,7 +389,7 @@ export async function finalizePosReturnAuthorization({
   }
 
   const r=await query(`
-    UPDATE shiny.autorizaciones_operacion
+    UPDATE gmx.autorizaciones_operacion
     SET referencia_uso=$3
     WHERE id_autorizacion=$1
       AND referencia_uso=$2
@@ -431,7 +431,7 @@ export async function consumePosReturnAuthorization({
 
     const r=await client.query(`
       SELECT *
-      FROM shiny.autorizaciones_operacion
+      FROM gmx.autorizaciones_operacion
       WHERE token_hash=$1
         AND accion=$2
         AND id_pedido=$3
@@ -464,7 +464,7 @@ export async function consumePosReturnAuthorization({
     }
 
     await client.query(`
-      UPDATE shiny.autorizaciones_operacion
+      UPDATE gmx.autorizaciones_operacion
       SET used_at=NOW(),
           referencia_uso=$2
       WHERE row_id=$1

@@ -6,12 +6,12 @@ const readEnv = (key, fallback) => {
 };
 
 export const brand = Object.freeze({
-  name: readEnv('VITE_APP_NAME', brandConfig.name || 'Shiny'),
-  shortName: readEnv('VITE_APP_SHORT_NAME', brandConfig.shortName || brandConfig.name || 'Shiny'),
-  legalName: readEnv('VITE_APP_LEGAL_NAME', brandConfig.legalName || brandConfig.name || 'Shiny'),
+  name: readEnv('VITE_APP_NAME', brandConfig.name || 'GMX'),
+  shortName: readEnv('VITE_APP_SHORT_NAME', brandConfig.shortName || brandConfig.name || 'GMX'),
+  legalName: readEnv('VITE_APP_LEGAL_NAME', brandConfig.legalName || brandConfig.name || 'GMX'),
   description: readEnv('VITE_APP_DESCRIPTION', brandConfig.description || 'Plataforma de administración TCG'),
-  posName: readEnv('VITE_APP_POS_NAME', brandConfig.posName || `${brandConfig.name || 'Shiny'} POS`),
-  visionName: readEnv('VITE_APP_VISION_NAME', brandConfig.visionName || `${brandConfig.name || 'Shiny'} Vision`),
+  posName: readEnv('VITE_APP_POS_NAME', brandConfig.posName || `${brandConfig.name || 'GMX'} POS`),
+  visionName: readEnv('VITE_APP_VISION_NAME', brandConfig.visionName || `${brandConfig.name || 'GMX'} Vision`),
   primaryColor: readEnv('VITE_APP_PRIMARY_COLOR', brandConfig.primaryColor || '#121620'),
   secondaryColor: readEnv('VITE_APP_SECONDARY_COLOR', brandConfig.secondaryColor || '#ffffff'),
   accentColor: readEnv('VITE_APP_ACCENT_COLOR', brandConfig.accentColor || '#d4af37'),

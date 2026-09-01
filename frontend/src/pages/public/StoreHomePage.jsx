@@ -13,7 +13,7 @@ function themeForGame(game = {}) {
   if (key.includes('magic') || key.includes('mtg')) return 'magic';
   if (key.includes('yugioh') || key.includes('yu-gi')) return 'yugioh';
   if (key.includes('riftbound')) return 'riftbound';
-  return 'shiny';
+  return 'gmx';
 }
 
 export default function StoreHomePage() {
@@ -106,7 +106,7 @@ export default function StoreHomePage() {
 
     <section className="public-section shiny-home-section shiny-products-section">
       <div className="public-section-head shiny-products-heading">
-        <div><small>SELECCIÓN Shiny</small><h2>Destacados para ti</h2></div>
+        <div><small>SELECCIÓN GMX</small><h2>Destacados para ti</h2></div>
         <div className="shiny-product-tabs" role="tablist" aria-label="Orden de productos">
           <button className={productTab === 'popular' ? 'active' : ''} onClick={() => setProductTab('popular')}>Más vendidos</button>
           <button className={productTab === 'new' ? 'active' : ''} onClick={() => setProductTab('new')}>Novedades</button>

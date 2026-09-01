@@ -8,7 +8,7 @@ import {
   pool } from
 '../db.js';
 
-const ROOT = brandText("C:\\Users\\igarcia\\Videos\\Shiny\\backend");
+const ROOT = brandText("C:\\Users\\igarcia\\Videos\\GMX\\backend");
 
 
 function section(title) {
@@ -26,7 +26,7 @@ function assert(condition, message) {
 
 try {
 
-  section(brandText("Shiny POS FINAL SMOKE"));
+  section(brandText("GMX POS FINAL SMOKE"));
 
   console.log('POST POS-003 CERTIFICATION');
   console.log('POS-001 / POS-002 / POS-003 / POS-004..POS-012');
@@ -169,7 +169,7 @@ try {
       SELECT
         pos_idempotency_key,
         COUNT(*)::int AS total
-      FROM shiny.pedidos
+      FROM gmx.pedidos
       WHERE pos_idempotency_key IS NOT NULL
         AND BTRIM(pos_idempotency_key)<>''
       GROUP BY pos_idempotency_key
@@ -197,14 +197,14 @@ try {
 
   assert(
     orders.includes(
-      'shiny.inventario_sucursales'
+      'gmx.inventario_sucursales'
     ),
     'PRODUCT_INVENTORY_MISSING'
   );
 
   assert(
     orders.includes(
-      'shiny.movimientos_inventario_sucursales'
+      'gmx.movimientos_inventario_sucursales'
     ),
     'PRODUCT_MOVEMENTS_MISSING'
   );
@@ -225,21 +225,21 @@ try {
 
   assert(
     orders.includes(
-      'shiny.tcg_inventario'
+      'gmx.tcg_inventario'
     ),
     'TCG_GLOBAL_INVENTORY_MISSING'
   );
 
   assert(
     orders.includes(
-      'shiny.tcg_inventario_sucursales'
+      'gmx.tcg_inventario_sucursales'
     ),
     'TCG_BRANCH_INVENTORY_MISSING'
   );
 
   assert(
     orders.includes(
-      'shiny.tcg_movimientos_sucursales'
+      'gmx.tcg_movimientos_sucursales'
     ),
     'TCG_MOVEMENTS_MISSING'
   );
@@ -419,7 +419,7 @@ try {
       SELECT
         provider_payment_id,
         COUNT(*)::int AS total
-      FROM shiny.payment_transactions
+      FROM gmx.payment_transactions
       WHERE provider_payment_id IS NOT NULL
         AND BTRIM(provider_payment_id)<>''
       GROUP BY provider_payment_id
@@ -431,7 +431,7 @@ try {
       SELECT
         idempotency_key,
         COUNT(*)::int AS total
-      FROM shiny.payment_transactions
+      FROM gmx.payment_transactions
       WHERE idempotency_key IS NOT NULL
         AND BTRIM(idempotency_key)<>''
       GROUP BY idempotency_key
@@ -468,7 +468,7 @@ try {
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedidos
+          FROM gmx.pedidos
           WHERE id_pedido LIKE 'PED-LOCAL-%'
             AND (
               notas ILIKE '%POS-003 TEST%'
@@ -479,14 +479,14 @@ try {
 
         (
           SELECT COUNT(*)
-          FROM shiny.payment_transactions
+          FROM gmx.payment_transactions
           WHERE provider_payment_id LIKE 'POS003-MP-%'
              OR idempotency_key LIKE '%POS003%'
         )::int AS transactions,
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedido_pagos
+          FROM gmx.pedido_pagos
           WHERE provider_payment_id LIKE 'POS003-MP-%'
         )::int AS pedido_pagos
     `);
@@ -524,7 +524,7 @@ try {
   await query(`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema='shiny'
+      WHERE table_schema='gmx'
         AND table_name IN (
           'pedidos',
           'detalle_pedidos',

@@ -98,9 +98,9 @@ export default function VisionInternetResultsModal({
       <div className="modal shiny-vision-internet-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div>
-            <div className="eyebrow">{brandText("Shiny VISION - INTERNET DISCOVERY")}</div>
+            <div className="eyebrow">{brandText("GMX VISION - INTERNET DISCOVERY")}</div>
             <h2>Buscar carta en Internet</h2>
-            <p className="section-copy">{brandText("\n              Shiny consulta el proveedor externo. Si OCR no leyo bien la carta,\n              puedes corregir la busqueda aqui.\n            ")}
+            <p className="section-copy">{brandText("\n              GMX consulta el proveedor externo. Si OCR no leyo bien la carta,\n              puedes corregir la busqueda aqui.\n            ")}
 
 
             </p>

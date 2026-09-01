@@ -13,7 +13,7 @@
     "express": "latest",
     "helmet": "latest",
     "mercadopago": "^3.4.0",
-    "nodemailer": "latest",
+    "nodemailer": "^9.1.0",
     "pdfkit": "^0.17.2",
     "pg": "latest",
     "stripe": "latest",

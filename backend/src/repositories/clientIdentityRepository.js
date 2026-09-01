@@ -1,8 +1,8 @@
 import { query } from '../db.js';
 
 export async function normalizeClientIdentity({email='',phone=''}){
-  const r=await query(`SELECT shiny.normalize_email($1) email_normalizado,
-                              shiny.normalize_phone($2) telefono_normalizado`,[email,phone]);
+  const r=await query(`SELECT gmx.normalize_email($1) email_normalizado,
+                              gmx.normalize_phone($2) telefono_normalizado`,[email,phone]);
   return r.rows[0]||{email_normalizado:null,telefono_normalizado:null};
 }
 
@@ -11,12 +11,12 @@ export async function identityOwners({email='',phone=''}){
   let emailOwner=null,phoneOwner=null;
 
   if(normalized.email_normalizado){
-    const r=await query(`SELECT id_cliente FROM shiny.cliente_identidad_unica
+    const r=await query(`SELECT id_cliente FROM gmx.cliente_identidad_unica
       WHERE tipo='EMAIL' AND valor_normalizado=$1 LIMIT 1`,[normalized.email_normalizado]);
     emailOwner=r.rows[0]?.id_cliente||null;
   }
   if(normalized.telefono_normalizado){
-    const r=await query(`SELECT id_cliente FROM shiny.cliente_identidad_unica
+    const r=await query(`SELECT id_cliente FROM gmx.cliente_identidad_unica
       WHERE tipo='PHONE' AND valor_normalizado=$1 LIMIT 1`,[normalized.telefono_normalizado]);
     phoneOwner=r.rows[0]?.id_cliente||null;
   }

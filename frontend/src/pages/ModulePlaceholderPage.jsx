@@ -2,7 +2,7 @@ import { brandText } from "../config/brand.js";export default function ModulePla
   return (
     <section className="content-card placeholder-card">
       <div className="placeholder-symbol">◇</div>
-      <div className="eyebrow">{brandText("Shiny LOCAL")}</div>
+      <div className="eyebrow">{brandText("GMX LOCAL")}</div>
       <h2>{title}</h2>
       <p>
         El módulo todavía conserva su lógica original en

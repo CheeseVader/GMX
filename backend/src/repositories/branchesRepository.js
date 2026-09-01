@@ -9,7 +9,7 @@ const COLUMNS = `
 export async function listBranches({ includeInactive = true } = {}) {
   return query(`
     SELECT ${COLUMNS}
-    FROM shiny.sucursales
+    FROM gmx.sucursales
     ${includeInactive ? '' : 'WHERE COALESCE(activa, true) = true'}
     ORDER BY COALESCE(activa, true) DESC, COALESCE(nombre_sucursal,''), row_id
   `);
@@ -18,7 +18,7 @@ export async function listBranches({ includeInactive = true } = {}) {
 export async function getBranch(rowId) {
   const result = await query(`
     SELECT ${COLUMNS}
-    FROM shiny.sucursales
+    FROM gmx.sucursales
     WHERE row_id = $1
   `, [rowId]);
   return result.rows[0] || null;
@@ -26,7 +26,7 @@ export async function getBranch(rowId) {
 
 export async function createBranch(input) {
   const result = await query(`
-    INSERT INTO shiny.sucursales (
+    INSERT INTO gmx.sucursales (
       nombre_sucursal, codigo, direccion,
       ciudad, municipio, estado, cp, colonia, pais, telefono, email, activa,
       fecha_registro, fecha_actualizacion
@@ -48,7 +48,7 @@ export async function createBranch(input) {
 
 export async function updateBranch(rowId, input) {
   const result = await query(`
-    UPDATE shiny.sucursales
+    UPDATE gmx.sucursales
     SET
       nombre_sucursal = NULLIF($1,''),
       codigo = NULLIF($2,''),
@@ -77,7 +77,7 @@ export async function updateBranch(rowId, input) {
 
 export async function deleteBranch(rowId) {
   const result = await query(`
-    UPDATE shiny.sucursales
+    UPDATE gmx.sucursales
     SET activa = false,
         fecha_actualizacion = NOW()
     WHERE row_id = $1
@@ -89,7 +89,7 @@ export async function deleteBranch(rowId) {
 
 export async function reactivateBranch(rowId) {
   const result = await query(`
-    UPDATE shiny.sucursales
+    UPDATE gmx.sucursales
     SET activa = true,
         fecha_actualizacion = NOW()
     WHERE row_id = $1

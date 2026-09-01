@@ -102,7 +102,7 @@ export default function PromotionsLoyaltyPage(){
 
   return <div className="benefits-admin-page r23-view r23-benefits">
     <header className="benefits-hero">
-      <div><div className="eyebrow">GESTIÓN · BENEFICIOS</div><h1>Promociones</h1><p>Motor maestro utilizado por POS y tienda pública. Las ventas solo consumen estas reglas.</p></div>
+      <div><div className="eyebrow">GESTIÓN · BENEFICIOS</div><h1>Promociones / Fidelidad</h1><p>Motor maestro utilizado por POS y tienda pública. Las ventas solo consumen estas reglas.</p></div>
       <div className="benefit-kpis">
         <span><b>{promotions.length}</b> promociones</span>
         <span><b>{active}</b> activas</span>
@@ -115,7 +115,7 @@ export default function PromotionsLoyaltyPage(){
     <nav className="benefits-tabs">
       <button className={tab==='promotions'?'active':''} onClick={()=>setTab('promotions')}>Promociones / Cupones</button>
       <button className={tab==='redemptions'?'active':''} onClick={()=>setTab('redemptions')}>Redenciones</button>
-      {false ? <button className={tab==='loyalty'?'active':''} onClick={()=>setTab('loyalty')}>Fidelidad / Puntos</button> : null}
+      <button className={tab==='loyalty'?'active':''} onClick={()=>setTab('loyalty')}>Fidelidad / Puntos</button>
     </nav>
 
     {tab==='promotions'?<><section className="r23-visual-grid r23-benefits-overview">
@@ -140,7 +140,7 @@ export default function PromotionsLoyaltyPage(){
           <label>Fin<input type="datetime-local" value={form.fin} onChange={e=>setForm(x=>({...x,fin:e.target.value}))}/></label>
           <label>Canales<select value={form.canales||'TODOS'} onChange={e=>setForm(x=>({...x,canales:e.target.value}))}><option value="TODOS">Todos</option><option value="POS_LOCAL">POS Productos</option><option value="TCG_POS">POS TCG</option><option value="PEDIDOS">Pedidos</option><option value="PUBLIC">Tienda pública</option><option value="POS_LOCAL,TCG_POS">POS Productos + TCG</option><option value="POS_LOCAL,TCG_POS,PEDIDOS,PUBLIC">Todos los canales de venta</option></select></label>
           <label className="check-field"><input type="checkbox" checked={form.visible_publico!==false} onChange={e=>setForm(x=>({...x,visible_publico:e.target.checked}))}/><span>Mostrar en promociones públicas</span></label>
-          {false ? <label className="check-field"><input type="checkbox" checked={form.acumulable_puntos!==false} onChange={e=>setForm(x=>({...x,acumulable_puntos:e.target.checked}))}/><span>Permitir combinar con puntos</span></label> : null}
+          <label className="check-field"><input type="checkbox" checked={form.acumulable_puntos!==false} onChange={e=>setForm(x=>({...x,acumulable_puntos:e.target.checked}))}/><span>Permitir combinar con puntos</span></label>
           <label className="check-field"><input type="checkbox" checked={form.acumulable_otras===true} onChange={e=>setForm(x=>({...x,acumulable_otras:e.target.checked}))}/><span>Reservado para combinación futura entre promociones</span></label>
           <label className="span2">Notas<textarea rows="2" value={form.notas||''} onChange={e=>setForm(x=>({...x,notas:e.target.value}))}/></label>
         </div>
@@ -188,7 +188,7 @@ export default function PromotionsLoyaltyPage(){
       @media(max-width:700px){.promo-modal-backdrop{padding:10px}.promo-modal{width:100%;max-height:calc(100vh - 20px)}.promo-modal .benefits-fields.cols2{grid-template-columns:1fr}.promo-modal .span2{grid-column:auto}}
     `}</style>
 
-    {false ? <section className="benefits-loyalty">
+    {tab==='loyalty'?<section className="benefits-loyalty">
       <div className="benefits-card-head"><div><h2>Fidelidad / Puntos</h2><p>Reglas globales, saldo por cliente y ledger auditable.</p></div></div>
       <LoyaltyManager clients={clients}/>
     </section>:null}

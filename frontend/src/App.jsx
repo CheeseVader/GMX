@@ -24,6 +24,10 @@ import BuylistPage from './pages/BuylistPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import SystemPage from './pages/SystemPage.jsx';
+import MembershipsPage from './pages/MembershipsPage.jsx';
+import TournamentsPage from './pages/TournamentsPage.jsx';
+import StoreMembershipsPage from './pages/public/StoreMembershipsPage.jsx';
+import StoreTournamentsPage from './pages/public/StoreTournamentsPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import GlobalTheme from './components/GlobalTheme.jsx';
 import GlobalFeedback from './components/GlobalFeedback.jsx';
@@ -51,6 +55,8 @@ import StoreTransferPage from './pages/public/StoreTransferPage.jsx';
 import StoreRecoverAccountPage from './pages/public/StoreRecoverAccountPage.jsx';
 
 
+import SalesHistoryPage from './pages/SalesHistoryPage.jsx';
+import TransferPaymentsAdminPage from './pages/TransferPaymentsAdminPage.jsx';
 export default function App(){
   const location=useLocation();
   let currentUser={};
@@ -67,6 +73,8 @@ export default function App(){
       <Route path="/tienda/tcg/item/:rowId" element={<StoreTcgDetailPage/>}/>
       <Route path="/tienda/buscar" element={<StoreSearchPage/>}/>
       <Route path="/tienda/promociones" element={<StorePromotionsPage/>}/>
+      <Route path="/tienda/membresias" element={<StoreMembershipsPage/>}/>
+      <Route path="/tienda/torneos" element={<StoreTournamentsPage/>}/>
       <Route path="/tienda/carrito" element={<StoreCartPage/>}/>
       <Route path="/tienda/checkout" element={<StoreCheckoutPage/>}/>
       <Route path="/tienda/pedido/:token" element={<StoreOrderPage/>}/>
@@ -95,6 +103,8 @@ export default function App(){
         <Route path="sucursales" element={<BranchesPage/>}/>
         <Route path="pos" element={<OrdersPage mode="pos"/>}/>
         <Route path="pedidos" element={<OrdersPage mode="orders"/>}/>
+        <Route path="transferencias" element={<TransferPaymentsAdminPage/>}/>
+        <Route path="historial-ventas" element={<SalesHistoryPage/>}/>
         <Route path="compras" element={<PurchasesCashPage/>}/>
         <Route path="caja" element={<PurchasesCashPage/>}/>
         <Route path="devoluciones" element={<CommercialPage/>}/>
@@ -102,6 +112,8 @@ export default function App(){
         <Route path="comercial" element={<CommercialPage/>}/>
         <Route path="contenido" element={<ContentMarketingPage/>}/>
         <Route path="promociones" element={<PromotionsLoyaltyPage/>}/>
+        <Route path="membresias" element={<MembershipsPage/>}/>
+        <Route path="torneos" element={<TournamentsPage/>}/>
         <Route path="notificaciones" element={<NotificationsPage/>}/>
         <Route path="tcg" element={<TCGPage/>}/>
         <Route path="tcg-operacion" element={<TCGOperationsPage/>}/>

@@ -29,7 +29,7 @@ export default function StoreTcgDetailPage() {
         </div>
         <div className="product-detail-price">{money(item.precio, currency)}</div>
         {Number(item.precio_regular) > Number(item.precio) ? <div className="public-regular-price">Precio regular {money(item.precio_regular, currency)}</div> : null}
-        <p>{item.descripcion || brandText("Variante física disponible en Shiny.")}</p>
+        <p>{item.descripcion || brandText("Variante física disponible en GMX.")}</p>
         <div className={`stock-pill ${stock > 0 ? 'ok' : 'out'}`}>{stock > 0 ? `${stock} disponibles` : 'Agotado'}</div>
         <button disabled={stock <= 0} onClick={() => cart.addItem({
           type: 'TCG', id: item.id_inventario, rowId: item.row_id, name: item.carta, sku: item.sku,

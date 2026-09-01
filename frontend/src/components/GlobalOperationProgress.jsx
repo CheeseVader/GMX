@@ -34,7 +34,7 @@ function inferDetail(url = '') {
   if (u.includes('order') || u.includes('pedido')) return 'Procesando pedido…';
   if (u.includes('inventory') || u.includes('inventario')) return 'Procesando inventario…';
   if (u.includes('content') || u.includes('media')) return 'Procesando contenido…';
-  return brandText("Shiny está procesando la operación…");
+  return brandText("GMX está procesando la operación…");
 }
 
 function friendlyOperationError(error) {
@@ -149,7 +149,84 @@ function friendlyOperationError(error) {
     }
   };
 
-  if (known[baseCode]) return { ...known[baseCode], code: baseCode };
+    // GMX_TOURNAMENT_FRIENDLY_ERRORS_R7E2
+  if(raw.startsWith('TOURNAMENT_ALREADY_REGISTERED|')){
+    const tournament=raw.split('|').slice(1).join('|').trim();
+    return {
+      title:'Jugador ya inscrito',
+      detail:tournament
+        ? `Este jugador ya se encuentra inscrito en el torneo "${tournament}".`
+        : 'Este jugador ya se encuentra inscrito en este torneo.',
+      code:'TOURNAMENT_ALREADY_REGISTERED'
+    };
+  }
+
+  if(
+    baseCode==='TOURNAMENT_ALREADY_REGISTERED' ||
+    baseCode==='PLAYER_ALREADY_REGISTERED' ||
+    baseCode==='TOURNAMENT_REGISTRATION_EXISTS' ||
+    /(?:TOURNAMENT|PLAYER).*ALREADY.*REGISTERED/.test(baseCode)
+  ){
+    return {
+      title:'Jugador ya inscrito',
+      detail:'Este jugador ya se encuentra inscrito en este torneo.',
+      code:baseCode
+    };
+  }
+
+  if(
+    baseCode==='MEMBERSHIP_EXPIRED' ||
+    baseCode==='MEMBERSHIP_INACTIVE' ||
+    baseCode==='MEMBERSHIP_NOT_ACTIVE' ||
+    baseCode==='MEMBERSHIP_NOT_VALID' ||
+    /MEMBERSHIP.*(?:EXPIRED|INACTIVE|NOT_ACTIVE|NOT_VALID)/.test(baseCode)
+  ){
+    return {
+      title:'Membresia no vigente',
+      detail:'La membresia del jugador esta vencida o no se encuentra activa para este torneo.',
+      code:baseCode
+    };
+  }
+
+  if(
+    baseCode==='MEMBERSHIP_NO_ENTRIES' ||
+    baseCode==='MEMBERSHIP_ENTRIES_EXHAUSTED' ||
+    baseCode==='MEMBERSHIP_INSUFFICIENT_ENTRIES' ||
+    baseCode==='INSUFFICIENT_MEMBERSHIP_ENTRIES' ||
+    /MEMBERSHIP.*(?:NO_ENTRIES|ENTRIES_EXHAUSTED|INSUFFICIENT_ENTRIES)/.test(baseCode)
+  ){
+    return {
+      title:'Sin entradas suficientes',
+      detail:'La membresia no cuenta con entradas suficientes para inscribir al jugador en este torneo.',
+      code:baseCode
+    };
+  }
+
+  if(
+    baseCode==='MEMBERSHIP_WEEKLY_LIMIT' ||
+    baseCode==='MEMBERSHIP_WEEKLY_LIMIT_REACHED' ||
+    baseCode==='MEMBERSHIP_WEEKLY_ENTRY_ALREADY_USED' ||
+    baseCode==='WEEKLY_MEMBERSHIP_LIMIT' ||
+    /MEMBERSHIP.*WEEKLY.*(?:LIMIT|USED|REACHED)/.test(baseCode)
+  ){
+    return {
+      title:'Entrada semanal ya utilizada',
+      detail:'El jugador ya utilizo la entrada incluida de su membresia esta semana. No cuenta con otra entrada disponible para este periodo.',
+      code:baseCode
+    };
+  }
+  // GMX_TOURNAMENT_DUPLICATE_FRIENDLY_R7E4
+  if(String(raw||'').startsWith('TOURNAMENT_ALREADY_REGISTERED|')){
+    const tournament=String(raw||'').substring('TOURNAMENT_ALREADY_REGISTERED|'.length).trim();
+    return {
+      title:'Jugador ya inscrito',
+      detail:tournament
+        ? `Este jugador ya se encuentra inscrito en el torneo "${tournament}". No es necesario volver a registrarlo.`
+        : 'Este jugador ya se encuentra inscrito en este torneo. No es necesario volver a registrarlo.',
+      code:'TOURNAMENT_ALREADY_REGISTERED'
+    };
+  }
+if (known[baseCode]) return { ...known[baseCode], code: baseCode };
 
   // No exponer códigos técnicos puros como mensaje principal.
   if (/^[A-Z][A-Z0-9_]+$/.test(raw)) {
@@ -275,7 +352,7 @@ export default function GlobalOperationProgress() {
       const state = {
         id,
         title: options.title || 'Procesando',
-        detail: options.detail || brandText("Shiny está trabajando…"),
+        detail: options.detail || brandText("GMX está trabajando…"),
         progress: Number(options.progress ?? 0),
         mode: 'manual',
         startedAt: Date.now(),
@@ -462,7 +539,7 @@ export default function GlobalOperationProgress() {
       <div className="shiny-operation-head">
         <div>
           <span className="shiny-operation-kicker">
-            {job.status === 'success' ? 'COMPLETADO' : isError ? 'ATENCIÓN' : brandText("Shiny PROCESANDO")}
+            {job.status === 'success' ? 'COMPLETADO' : isError ? 'ATENCIÓN' : brandText("GMX PROCESANDO")}
           </span>
           <h3>{job.title}</h3>
         </div>

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { rateLimit } from '../middleware/rateLimit.js';
-import { confirmStripeSession,saveTransferProof,transferSettings } from '../paymentService.js';
+import { confirmStripeSession,saveTransferProof,transferSettings,saveTransferProofMetadata } from '../paymentService.js';
 import { handleMercadoPagoWebhook } from '../paymentService.js';
 
 const router=Router();
@@ -15,7 +15,11 @@ router.get('/transfer/settings',async(_req,res)=>{
   try{res.json({success:true,data:await transferSettings()});}catch(e){bad(res,e,500);}
 });
 router.post('/transfer/:token/proof',rateLimit({keyPrefix:'TRANSFER_PROOF',max:20}),async(req,res)=>{
-  try{res.json({success:true,data:await saveTransferProof(req.params.token,req.body?.file||{})});}
+  try{
+    const data=await saveTransferProof(req.params.token,req.body?.file||{});
+    await saveTransferProofMetadata(req.params.token,req.body?.transfer||{});
+    res.json({success:true,data});
+  }
   catch(e){bad(res,e);}
 });
 

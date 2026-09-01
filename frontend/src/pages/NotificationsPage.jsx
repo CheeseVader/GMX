@@ -262,7 +262,7 @@ export default function NotificationsPage() {
                 <div className="alert-meta">{x.sucursal ? <span>{x.sucursal}</span> : null}<span>{x.fecha ? new Date(x.fecha).toLocaleString('es-MX') : '—'}</span></div>
               </div>
             </article>)}
-            {!visible.length ? <div className="alerts-empty"><b>Sin alertas para estos filtros.</b><span>{brandText("Shiny continuará revisando las condiciones configuradas.")}</span></div> : null}
+            {!visible.length ? <div className="alerts-empty"><b>Sin alertas para estos filtros.</b><span>{brandText("GMX continuará revisando las condiciones configuradas.")}</span></div> : null}
           </div>
         </div>
 

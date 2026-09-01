@@ -110,7 +110,7 @@ async function q(db, sql, params = []) {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-008 SALES RELATIONS PRECHECK")
+  section(brandText("GMX — CLIENTES-LOYALTY-008 SALES RELATIONS PRECHECK")
 
   );
 
@@ -189,19 +189,19 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.clientes
+          FROM gmx.clientes
         )::bigint
           AS clientes,
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedidos
+          FROM gmx.pedidos
         )::bigint
           AS pedidos,
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedidos
+          FROM gmx.pedidos
           WHERE id_cliente IS NOT NULL
             AND btrim(id_cliente)<>''
         )::bigint
@@ -209,19 +209,19 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_cuentas
+          FROM gmx.fidelidad_cuentas
         )::bigint
           AS cuentas_fidelidad,
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
         )::bigint
           AS movimientos_fidelidad,
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE id_pedido IS NOT NULL
             AND btrim(id_pedido)<>''
         )::bigint
@@ -249,9 +249,9 @@ async function main() {
         p.canal_venta,
         p.fecha
 
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
 
-      LEFT JOIN shiny.clientes c
+      LEFT JOIN gmx.clientes c
         ON c.id_cliente=p.id_cliente
 
       WHERE
@@ -296,9 +296,9 @@ async function main() {
         f.puntos,
         f.fecha
 
-      FROM shiny.fidelidad_movimientos f
+      FROM gmx.fidelidad_movimientos f
 
-      LEFT JOIN shiny.clientes c
+      LEFT JOIN gmx.clientes c
         ON c.id_cliente=f.id_cliente
 
       WHERE
@@ -342,9 +342,9 @@ async function main() {
         f.referencia,
         f.fecha
 
-      FROM shiny.fidelidad_movimientos f
+      FROM gmx.fidelidad_movimientos f
 
-      LEFT JOIN shiny.pedidos p
+      LEFT JOIN gmx.pedidos p
         ON p.id_pedido=f.id_pedido
 
       WHERE
@@ -395,9 +395,9 @@ async function main() {
         f.puntos,
         f.fecha
 
-      FROM shiny.fidelidad_movimientos f
+      FROM gmx.fidelidad_movimientos f
 
-      JOIN shiny.pedidos p
+      JOIN gmx.pedidos p
         ON p.id_pedido=f.id_pedido
 
       WHERE
@@ -474,7 +474,7 @@ async function main() {
             WHERE tipo='DEVOLUCION_RETIRO'
           )::bigint AS return_rows
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
 
         WHERE
           id_pedido IS NOT NULL
@@ -537,7 +537,7 @@ async function main() {
         )::bigint
           AS return_rows
 
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
 
       LEFT JOIN ledger l
         ON l.id_pedido=p.id_pedido
@@ -601,7 +601,7 @@ async function main() {
           0
         )::bigint AS points_sum
 
-      FROM shiny.fidelidad_movimientos
+      FROM gmx.fidelidad_movimientos
 
       WHERE
         id_pedido IS NOT NULL
@@ -643,9 +643,9 @@ async function main() {
         )::bigint
           AS generated_points
 
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
 
-      JOIN shiny.fidelidad_movimientos f
+      JOIN gmx.fidelidad_movimientos f
         ON f.id_pedido=p.id_pedido
         AND f.tipo='GENERACION'
 
@@ -730,7 +730,7 @@ async function main() {
           )::bigint
             AS reversal_rows
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
 
         GROUP BY id_pedido
       )
@@ -760,7 +760,7 @@ async function main() {
         )::bigint
           AS reversal_rows
 
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
 
       LEFT JOIN movement_state m
         ON m.id_pedido=p.id_pedido
@@ -832,9 +832,9 @@ async function main() {
         fc.puntos_redimidos,
         fc.nivel
 
-      FROM shiny.fidelidad_cuentas fc
+      FROM gmx.fidelidad_cuentas fc
 
-      LEFT JOIN shiny.clientes c
+      LEFT JOIN gmx.clientes c
         ON c.id_cliente=fc.id_cliente
 
       WHERE c.id_cliente IS NULL
@@ -875,7 +875,7 @@ async function main() {
           saldo_nuevo,
           row_id
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
 
         ORDER BY
           id_cliente,
@@ -895,7 +895,7 @@ async function main() {
         l.row_id
           AS latest_movement_row
 
-      FROM shiny.fidelidad_cuentas fc
+      FROM gmx.fidelidad_cuentas fc
 
       JOIN latest l
         ON l.id_cliente=fc.id_cliente
@@ -937,7 +937,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedidos
+          FROM gmx.pedidos
           WHERE
             pos_idempotency_key
               LIKE 'LOYALTY007-%'
@@ -945,7 +945,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.clientes
+          FROM gmx.clientes
           WHERE
             nombre LIKE
               'CLIENTES LOYALTY007 TEST %'

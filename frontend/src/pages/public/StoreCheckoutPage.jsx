@@ -20,19 +20,27 @@ export default function StoreCheckoutPage() {
   const [quote, setQuote] = useState(null);
   const [message, setMessage] = useState(searchParams.get('payment_cancelled') ? 'El pago con tarjeta fue cancelado. Tu carrito se conserva.' : '');
   const [saving, setSaving] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('CARD');
+  const [paymentMethod, setPaymentMethod] = useState('TRANSFER');
   const [fulfillmentMethod, setFulfillmentMethod] = useState('DELIVERY');
   const [customer, setCustomer] = useState({
     name: '', email: '', phone: '', address: '', country: 'México', state: '', city: '', zip: '', settlement: ''
   });
   const currency = store?.settings?.['public.store.currency'] || 'MXN';
 
-  useEffect(() => {
-    publicApi('/api/public/branches').then((r) => {
-      setBranches(r.data || []);
-      if (r.data?.length) setBranchId(r.data[0].id_sucursal);
-    }).catch((e) => setMessage(e.message));
-  }, []);
+  useEffect(()=>{
+    const items=cart.items.map(x=>({type:x.type,id:x.id,quantity:Number(x.quantity)}));
+    if(!items.length){setBranches([]);setBranchId('');return;}
+    publicApi('/api/public/branches/availability',{
+      method:'POST',
+      body:JSON.stringify({items})
+    }).then(r=>{
+      const rows=r.data||[];
+      setBranches(rows);
+      setBranchId(current=>rows.some(b=>b.id_sucursal===current)?current:(rows[0]?.id_sucursal||''));
+      if(!rows.length)setMessage('No hay una sucursal con stock suficiente para todos los artÃ­culos del carrito.');
+      else setMessage(current=>current.includes('No hay una sucursal con stock suficiente')?'':current);
+    }).catch(e=>{setBranches([]);setBranchId('');setMessage(e.message);});
+  },[cart.items]);
 
   useEffect(() => {
     if (!clientAuth.user) return;
@@ -82,23 +90,14 @@ export default function StoreCheckoutPage() {
 
   async function submit(e) {
     e.preventDefault();
-    if (!cart.items.length || !branchId) return;
+    if (!cart.items.length || !branchId) {setMessage('No hay stock suficiente en una sola sucursal para completar el pedido.');return;}
     setSaving(true);setMessage('');
     try {
       const r = await publicApi('/api/public/checkout', { method: 'POST', body: JSON.stringify({
           branchId, promoCode, paymentMethod, fulfillmentMethod, customer,
           items: cart.items.map((x) => ({ type: x.type, id: x.id, quantity: x.quantity }))
         }) });
-      const data = r.data;
-
-      if (paymentMethod === 'CARD') {
-        if (!data.paymentUrl) throw new Error('CARD_GATEWAY_NOT_CONFIGURED');
-        sessionStorage.setItem('SHINY_PENDING_CARD_ORDER', JSON.stringify({ token: data.public_token, id: data.id_pedido }));
-        window.location.assign(data.paymentUrl);
-        return;
-      }
-
-      cart.clear();
+      const data = r.data;      cart.clear();
 
       if (paymentMethod === 'TRANSFER') {
         nav(`/tienda/pago/transferencia/${data.public_token}`, { replace: true });
@@ -166,10 +165,10 @@ export default function StoreCheckoutPage() {
           <option value="">Selecciona sucursal</option>
           {branches.map((b) => <option key={b.id_sucursal} value={b.id_sucursal}>{b.nombre_sucursal}{b.ciudad ? ` · ${b.ciudad}` : ''}</option>)}
         </select>
+        {!branches.length?<div className="checkout-message">No hay una sucursal con stock suficiente para todo tu carrito. Ajusta cantidades o productos.</div>:null}
 
         <h2>Método de pago</h2>
         <div className="payment-method-grid">
-          <label className={paymentMethod === 'CARD' ? 'selected' : ''}><input type="radio" name="payment" value="CARD" checked={paymentMethod === 'CARD'} onChange={(e) => setPaymentMethod(e.target.value)} /><span><b>💳 Tarjeta</b><small>{brandText("Abre un portal de pago hospedado por Stripe. Shiny no recibe ni almacena CVV o número de tarjeta.")}</small></span></label>
           <label className={paymentMethod === 'TRANSFER' ? 'selected' : ''}><input type="radio" name="payment" value="TRANSFER" checked={paymentMethod === 'TRANSFER'} onChange={(e) => setPaymentMethod(e.target.value)} /><span><b>🏦 Transferencia</b><small>Después de confirmar mostraremos banco, cuenta, CLABE, referencia y carga de comprobante.</small></span></label>
           <label className={paymentMethod === 'CASH_STORE' ? 'selected' : ''}><input type="radio" name="payment" value="CASH_STORE" checked={paymentMethod === 'CASH_STORE'} onChange={(e) => setPaymentMethod(e.target.value)} /><span><b>🏪 Pago en sucursal</b><small>Selecciona dónde recoger y pagar. El pedido se confirma por correo.</small></span></label>
         </div>
@@ -184,10 +183,10 @@ export default function StoreCheckoutPage() {
         <div className="checkout-line"><span>Subtotal</span><b>{money(cart.subtotal, currency)}</b></div>
         {quote?.discountPromo > 0 ? <div className="checkout-line discount"><span>Promoción</span><b>-{money(quote.discountPromo, currency)}</b></div> : null}
         <div className="checkout-line"><span>Entrega</span><b>{pickup ? 'Recoger en sucursal' : 'Envío'}</b></div>
-        <div className="checkout-line"><span>Pago</span><b>{paymentMethod === 'CARD' ? 'Tarjeta' : paymentMethod === 'TRANSFER' ? 'Transferencia' : 'En sucursal'}</b></div>
+        <div className="checkout-line"><span>Pago</span><b>{paymentMethod === 'TRANSFER' ? 'Transferencia' : 'En sucursal'}</b></div>
         <div className="checkout-grand"><span>Total</span><strong>{money(effective, currency)}</strong></div>
         {String(store?.settings?.['public.store.show_loyalty_estimate'] ?? 'true') === 'true' ? <div className="loyalty-estimate">⭐ Al confirmarse el pago, esta compra podría generar aproximadamente <b>{loyalty.points} puntos</b> con la regla actual de {loyalty.percent}%.</div> : null}
-        <button disabled={saving || !branchId}>{saving ? 'Procesando…' : paymentMethod === 'CARD' ? 'Ir a pagar con tarjeta' : paymentMethod === 'TRANSFER' ? 'Generar instrucciones de transferencia' : 'Confirmar pedido en sucursal'}</button>
+        <button disabled={saving || !branchId}>{saving ? 'Procesando…' : paymentMethod === 'TRANSFER' ? 'Generar instrucciones de transferencia' : 'Confirmar pedido en sucursal'}</button>
       </aside>
     </form>
   </main>;

@@ -16,9 +16,9 @@ export async function optionalClientAuth(req,_res,next){
     const r=await query(`
       SELECT s.id AS session_id,s.id_cuenta,s.id_cliente,s.email,s.expires_at,c.activo,
              cl.nombre,cl.telefono
-      FROM shiny.cliente_sessions s
-      JOIN shiny.cliente_cuentas c ON c.id_cuenta=s.id_cuenta
-      LEFT JOIN shiny.clientes cl ON cl.id_cliente=s.id_cliente
+      FROM gmx.cliente_sessions s
+      JOIN gmx.cliente_cuentas c ON c.id_cuenta=s.id_cuenta
+      LEFT JOIN gmx.clientes cl ON cl.id_cliente=s.id_cliente
       WHERE s.token_hash=$1
         AND s.revoked_at IS NULL
         AND s.expires_at>NOW()
@@ -27,7 +27,7 @@ export async function optionalClientAuth(req,_res,next){
     `,[hashToken(token)]);
     if(r.rowCount){
       req.clientUser=r.rows[0];
-      query(`UPDATE shiny.cliente_sessions SET last_seen_at=NOW() WHERE id=$1`,[r.rows[0].session_id]).catch(()=>{});
+      query(`UPDATE gmx.cliente_sessions SET last_seen_at=NOW() WHERE id=$1`,[r.rows[0].session_id]).catch(()=>{});
     }
   }catch{}
   next();

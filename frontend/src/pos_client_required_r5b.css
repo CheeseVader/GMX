@@ -1,0 +1,18 @@
+
+.gmx-pos-client-required{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 10px;padding:11px 13px;border:1px solid #f1c9c9;border-radius:12px;background:#fff7f7;color:#8f2d2d}
+.gmx-pos-client-required.selected{border-color:#cfe0f5;background:#f7fbff;color:#18314f}
+.gmx-pos-client-main{display:flex;align-items:center;gap:10px;min-width:0}
+.gmx-pos-client-avatar{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:50%;background:#14233b;color:#fff;font-size:11px;font-weight:900}
+.gmx-pos-client-copy{display:grid;gap:2px;min-width:0}
+.gmx-pos-client-copy small{font-size:9px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;opacity:.72}
+.gmx-pos-client-copy strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gmx-pos-client-copy span{font-size:10px;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gmx-pos-client-required button{min-height:34px;padding:0 12px;border:1px solid #cdd8e8;border-radius:9px;background:#fff;color:#172033;font-size:10px;font-weight:850;cursor:pointer;white-space:nowrap}
+.gmx-pos-client-required:not(.selected) button{border-color:#e9b4b4;color:#a12828}
+.tcg_store_template-pos-charge:disabled{cursor:not-allowed;opacity:.55}
+@media(max-width:720px){.gmx-pos-client-required{align-items:flex-start;flex-direction:column}.gmx-pos-client-required button{width:100%}}
+
+.gmx-m5-all-client-caption{display:flex;justify-content:flex-end;gap:4px;margin:8px 1px 5px;font-size:9px;color:#748196}
+.gmx-m5-all-clients{max-height:290px;overflow:auto}
+.gmx-m5-all-clients button.selected{background:#eef6ff;box-shadow:inset 3px 0 0 #2b6cb0}
+.tcg_store_template-pos-client-list{max-height:430px;overflow:auto}

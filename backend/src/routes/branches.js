@@ -182,7 +182,7 @@ router.post(
         );
       }
 
-      console.error(brandText("[Shiny][BRANCH_CREATE]"), error);
+      console.error(brandText("[GMX][BRANCH_CREATE]"), error);
       res.status(500).json(
         payload('BRANCH_CREATE_FAILED', 'No fue posible guardar la sucursal.')
       );
@@ -231,7 +231,7 @@ router.put(
         );
       }
 
-      console.error(brandText("[Shiny][BRANCH_UPDATE]"), error);
+      console.error(brandText("[GMX][BRANCH_UPDATE]"), error);
       res.status(500).json(
         payload('BRANCH_UPDATE_FAILED', 'No fue posible actualizar la sucursal.')
       );
@@ -260,7 +260,7 @@ router.patch(
         message: 'Sucursal reactivada.'
       });
     } catch (error) {
-      console.error(brandText("[Shiny][BRANCH_REACTIVATE]"), error);
+      console.error(brandText("[GMX][BRANCH_REACTIVATE]"), error);
       res.status(500).json(
         payload('BRANCH_REACTIVATE_FAILED', 'No fue posible reactivar la sucursal.')
       );
@@ -288,7 +288,7 @@ router.delete(
         message: 'Sucursal eliminada de la operación activa.'
       });
     } catch (error) {
-      console.error(brandText("[Shiny][BRANCH_DELETE]"), error);
+      console.error(brandText("[GMX][BRANCH_DELETE]"), error);
       res.status(500).json(
         payload('BRANCH_DELETE_FAILED', 'No fue posible eliminar la sucursal.')
       );

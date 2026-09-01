@@ -34,7 +34,7 @@ export default function SystemPage() {
   const [fxBusy, setFxBusy] = useState(false);
   const [smtp, setSmtp] = useState({
     enabled: true, provider: 'GMAIL', host: 'smtp.gmail.com', port: 587, secure: false,
-    user: '', password: '', fromEmail: '', fromName: brandText("Shiny")
+    user: '', password: '', fromEmail: '', fromName: brandText("GMX")
   });
   const [smtpStatus, setSmtpStatus] = useState({ configured: false, passwordConfigured: false });
   const [smtpTestEmail, setSmtpTestEmail] = useState('');
@@ -127,7 +127,7 @@ export default function SystemPage() {
       user: d.user || '',
       password: '',
       fromEmail: d.fromEmail || '',
-      fromName: d.fromName || brandText("Shiny")
+      fromName: d.fromName || brandText("GMX")
     }));
     if (!smtpTestEmail && d.fromEmail) setSmtpTestEmail(d.fromEmail);
   }
@@ -218,6 +218,49 @@ export default function SystemPage() {
     } catch (e) {setMessage(e.message);}
   }
 
+  async function saveStoreContact() {
+    try {
+      const email = String(settings['public.store.contact.email'] || '').trim();
+      const phone = String(settings['public.store.contact.phone'] || '').trim();
+      const whatsapp = String(settings['public.store.contact.whatsapp'] || '').trim();
+      const hours = String(settings['public.store.contact.hours'] || '').trim();
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setMessage('Captura un correo de contacto valido.');
+        return;
+      }
+
+      if (phone && phone.replace(/\D/g, '').length < 10) {
+        setMessage('El telefono de contacto debe contener al menos 10 digitos.');
+        return;
+      }
+
+      if (whatsapp && whatsapp.replace(/\D/g, '').length < 10) {
+        setMessage('El numero de WhatsApp debe contener al menos 10 digitos.');
+        return;
+      }
+
+      const payload = {
+        'public.store.contact.email': email,
+        'public.store.contact.phone': phone,
+        'public.store.contact.whatsapp': whatsapp,
+        'public.store.contact.hours': hours,
+        'public.store.contact.show_email': String(settings['public.store.contact.show_email'] !== 'false'),
+        'public.store.contact.show_phone': String(settings['public.store.contact.show_phone'] !== 'false'),
+        'public.store.contact.show_whatsapp': String(settings['public.store.contact.show_whatsapp'] !== 'false'),
+        'public.store.contact.show_hours': String(settings['public.store.contact.show_hours'] !== 'false')
+      };
+
+      await api('/api/v1/content/settings', {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+
+      setMessage('Datos de contacto de la tienda guardados.');
+    } catch (e) {
+      setMessage(e.message);
+    }
+  }
   async function saveBusinessSettings() {
     setBusinessSaving(true);
     try {
@@ -302,12 +345,96 @@ export default function SystemPage() {
 
     <nav className="system-section-tabs" aria-label="Secciones de configuración">
       <button className={systemSection === 'general' ? 'active' : ''} onClick={() => setSystemSection('general')}>Operación general</button>
+      <button className={systemSection === 'contact' ? 'active' : ''} onClick={() => setSystemSection('contact')}>Contacto / Tienda</button>
       <button className={systemSection === 'payments' ? 'active' : ''} onClick={() => setSystemSection('payments')}>Pagos</button>
       <button className={systemSection === 'email' ? 'active' : ''} onClick={() => setSystemSection('email')}>Correo</button>
       <button className={systemSection === 'fx' ? 'active' : ''} onClick={() => setSystemSection('fx')}>Tipo de cambio</button>
       {isSuperadmin ? <button className={systemSection === 'diagnostic' ? 'active' : ''} onClick={() => setSystemSection('diagnostic')}>Diagnóstico técnico</button> : null}
     </nav>
 
+    {systemSection === 'contact' ? <section className="content-card system-business-settings">
+      <div className="section-head">
+        <div>
+          <div className="eyebrow">DATOS PUBLICOS DE CONTACTO</div>
+          <h2>Contacto de la tienda</h2>
+          <p className="section-copy">Estos datos se muestran en el footer de la tienda publica. Puedes editar, ocultar o dejar vacio cualquier medio de contacto.</p>
+        </div>
+        <button onClick={saveStoreContact}>Guardar contacto</button>
+      </div>
+
+      <div className="system-settings-grid">
+        <label>Correo electronico
+          <input
+            type="email"
+            value={settings['public.store.contact.email'] || ''}
+            onChange={(e) => setSettings((x) => ({...x,'public.store.contact.email':e.target.value}))}
+            placeholder="ventas@dominio.com"
+          />
+        </label>
+
+        <label>Telefono
+          <input
+            value={settings['public.store.contact.phone'] || ''}
+            onChange={(e) => setSettings((x) => ({...x,'public.store.contact.phone':e.target.value}))}
+            placeholder="+52 664 123 4567"
+          />
+        </label>
+
+        <label>WhatsApp
+          <input
+            value={settings['public.store.contact.whatsapp'] || ''}
+            onChange={(e) => setSettings((x) => ({...x,'public.store.contact.whatsapp':e.target.value}))}
+            placeholder="+52 664 123 4567"
+          />
+        </label>
+
+        <label>Horario de atencion
+          <input
+            value={settings['public.store.contact.hours'] || ''}
+            onChange={(e) => setSettings((x) => ({...x,'public.store.contact.hours':e.target.value}))}
+            placeholder="Lun-Sab 10:00-19:00"
+          />
+        </label>
+
+        <label className="system-check-setting">
+          <input
+            type="checkbox"
+            checked={settings['public.store.contact.show_email'] !== 'false'}
+            onChange={(e) => setSettings((x) => ({...x,'public.store.contact.show_email':String(e.target.checked)}))}
+          />
+          <span>Mostrar correo en la tienda</span>
+        </label>
+
+        <label className="system-check-setting">
+          <input
+            type="checkbox"
+            checked={settings['public.store.contact.show_phone'] !== 'false'}
+            onChange={(e) => setSettings((x) => ({...x,'public.store.contact.show_phone':String(e.target.checked)}))}
+          />
+          <span>Mostrar telefono en la tienda</span>
+        </label>
+
+        <label className="system-check-setting">
+          <input
+            type="checkbox"
+            checked={settings['public.store.contact.show_whatsapp'] !== 'false'}
+            onChange={(e) => setSettings((x) => ({...x,'public.store.contact.show_whatsapp':String(e.target.checked)}))}
+          />
+          <span>Mostrar WhatsApp en la tienda</span>
+        </label>
+
+        <label className="system-check-setting">
+          <input
+            type="checkbox"
+            checked={settings['public.store.contact.show_hours'] !== 'false'}
+            onChange={(e) => setSettings((x) => ({...x,'public.store.contact.show_hours':String(e.target.checked)}))}
+          />
+          <span>Mostrar horario en la tienda</span>
+        </label>
+      </div>
+
+      <p className="system-settings-note">WhatsApp abre una conversacion directa; telefono usa enlace de llamada y correo abre el cliente de correo del usuario.</p>
+    </section> : null}
     {systemSection === 'general' ? <section className="content-card system-business-settings">
       <div className="section-head">
         <div>
@@ -354,7 +481,7 @@ export default function SystemPage() {
       {!technical ? <div className="technical-empty">Los datos técnicos se cargan únicamente cuando SUPERADMIN los solicita.</div> : <>
         <div className="technical-kpis">
           <article><span>Base PostgreSQL</span><strong>{technical.database?.database || '—'}</strong><small>{technical.database?.size || '—'}</small></article>
-          <article><span>{brandText("Schema Shiny")}</span><strong>{technical.schema?.size || '—'}</strong><small>tablas + índices</small></article>
+          <article><span>{brandText("Schema GMX")}</span><strong>{technical.schema?.size || '—'}</strong><small>tablas + índices</small></article>
           <article><span>Node</span><strong>{technical.runtime?.node || '—'}</strong><small>{technical.runtime?.platform || '—'}</small></article>
           <article><span>Uptime API</span><strong>{technical.runtime?.uptimeSeconds != null ? `${technical.runtime.uptimeSeconds}s` : '—'}</strong><small>PID {technical.runtime?.pid || '—'}</small></article>
         </div>
@@ -470,7 +597,7 @@ export default function SystemPage() {
         <article className="smtp-card">
           <h3>Remitente</h3>
           <label>Nombre visible
-            <input value={smtp.fromName} onChange={(e) => setSmtp((x) => ({ ...x, fromName: e.target.value }))} placeholder={brandText("Shiny")} />
+            <input value={smtp.fromName} onChange={(e) => setSmtp((x) => ({ ...x, fromName: e.target.value }))} placeholder={brandText("GMX")} />
           </label>
           <label>Correo remitente
             <input type="email" value={smtp.fromEmail} onChange={(e) => setSmtp((x) => ({ ...x, fromEmail: e.target.value }))} placeholder="ventas@dominio.com" />
@@ -579,4 +706,5 @@ export default function SystemPage() {
     </section> : null}
   </div>;
 }
+
 

@@ -18,7 +18,7 @@ async function columnExists(client, table, column) {
   const r = await client.query(
     `SELECT 1
      FROM information_schema.columns
-     WHERE table_schema='shiny'
+     WHERE table_schema='gmx'
        AND table_name=$1
        AND column_name=$2
      LIMIT 1`,
@@ -29,7 +29,7 @@ async function columnExists(client, table, column) {
 
 try {
 
-  section(brandText("Shiny PRODUCT TEST RESIDUE CLEANUP"));
+  section(brandText("GMX PRODUCT TEST RESIDUE CLEANUP"));
 
   console.log('TARGETS=' + IDS.join(','));
   console.log('NO INVENTORY ADJUSTMENT');
@@ -54,7 +54,7 @@ try {
        stock,
        categoria,
        estado
-     FROM shiny.productos
+     FROM gmx.productos
      WHERE id = ANY($1::text[])
      ORDER BY row_id`,
     [IDS]
@@ -120,7 +120,7 @@ try {
 
         const r = await client.query(
           `SELECT COUNT(*)::int AS total
-           FROM shiny.${table}
+           FROM gmx.${table}
            WHERE ${column} = ANY($1::text[])`,
           [IDS]
         );
@@ -169,7 +169,7 @@ try {
 
         const d = await client.query(
           `DELETE
-           FROM shiny.${table}
+           FROM gmx.${table}
            WHERE ${column} = ANY($1::text[])
            RETURNING *`,
           [IDS]
@@ -202,7 +202,7 @@ try {
 
         const r = await client.query(
           `SELECT COUNT(*)::int AS total
-           FROM shiny.${table}
+           FROM gmx.${table}
            WHERE ${column} = ANY($1::text[])`,
           [IDS]
         );
@@ -223,7 +223,7 @@ try {
 
     const deleted = await client.query(
       `DELETE
-       FROM shiny.productos
+       FROM gmx.productos
        WHERE id = ANY($1::text[])
        RETURNING id,sku,nombre`,
       [IDS]
@@ -264,7 +264,7 @@ try {
 
   const remaining = await query(
     `SELECT COUNT(*)::int AS total
-     FROM shiny.productos
+     FROM gmx.productos
      WHERE id = ANY($1::text[])`,
     [IDS]
   );
@@ -277,7 +277,7 @@ try {
 
   const residue = await query(`
     SELECT COUNT(*)::int AS total
-    FROM shiny.productos
+    FROM gmx.productos
     WHERE
          UPPER(COALESCE(nombre,'')) LIKE '%POS-003 TEST%'
       OR UPPER(COALESCE(nombre,'')) LIKE '%PRODUCT TEST%'

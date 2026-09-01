@@ -58,7 +58,7 @@ router.get('/login-appearance',async(_req,res)=>{
       'admin.appearance.login_background_fit'
     ];
     const r=await query(
-      `SELECT parametro,valor FROM shiny.configuracion WHERE parametro = ANY($1::text[])`,
+      `SELECT parametro,valor FROM gmx.configuracion WHERE parametro = ANY($1::text[])`,
       [keys]
     );
     const cfg=Object.fromEntries((r.rows||[]).map((x)=>[x.parametro,x.valor]));
@@ -83,8 +83,8 @@ router.get('/login-background',async(_req,res)=>{
   try{
     const r=await query(`
       SELECT m.ruta,m.mime_type,m.nombre_archivo
-      FROM shiny.configuracion c
-      JOIN shiny.multimedia m ON m.id_media=c.valor
+      FROM gmx.configuracion c
+      JOIN gmx.multimedia m ON m.id_media=c.valor
       WHERE c.parametro='admin.appearance.login_background_media_id'
         AND COALESCE(m.activo,true)=true
       ORDER BY m.row_id DESC
@@ -108,7 +108,7 @@ router.post('/login',rateLimit({keyPrefix:'ADMIN_LOGIN',max:10}),async(req,res)=
     const password=String(req.body?.password||'');
     if(!username||!password)return res.status(400).json({success:false,error:'CREDENTIALS_REQUIRED'});
 
-    const r=await query(`SELECT * FROM shiny.administradores
+    const r=await query(`SELECT * FROM gmx.administradores
       WHERE (
         LOWER(SPLIT_PART(email,'@',1))=LOWER($1)
         OR LOWER(email)=LOWER($1)
@@ -127,7 +127,7 @@ router.post('/login',rateLimit({keyPrefix:'ADMIN_LOGIN',max:10}),async(req,res)=
     const admin=r.rows[0];
     const token=newToken();
     const hours=Math.min(Math.max(Number(process.env.SHINY_SESSION_HOURS||12),1),72);
-    await query(`INSERT INTO shiny.admin_sessions(token_hash,id_admin,email,expires_at,ip_address,user_agent)
+    await query(`INSERT INTO gmx.admin_sessions(token_hash,id_admin,email,expires_at,ip_address,user_agent)
       VALUES($1,$2,$3,NOW()+($4||' hours')::interval,$5,$6)`,
       [hashToken(token),admin.id_admin,admin.email,String(hours),req.ip,String(req.headers['user-agent']||'').slice(0,500)]);
 
@@ -151,7 +151,7 @@ router.post('/verify-password',requireAuth,rateLimit({keyPrefix:'POS_PROTECTED_E
   try{
     const password=String(req.body?.password||'');
     if(!password)return res.status(400).json({success:false,error:'PASSWORD_REQUIRED'});
-    const r=await query(`SELECT password_hash FROM shiny.administradores
+    const r=await query(`SELECT password_hash FROM gmx.administradores
       WHERE id_admin=$1 AND COALESCE(activo,true)=true
       ORDER BY row_id LIMIT 1`,[req.user.id_admin]);
     if(!r.rowCount||!verifyPassword(password,r.rows[0].password_hash)){
@@ -167,7 +167,7 @@ router.post('/verify-password',requireAuth,rateLimit({keyPrefix:'POS_PROTECTED_E
 
 router.post('/logout',requireAuth,async(req,res)=>{
   try{
-    await query(`UPDATE shiny.admin_sessions SET revoked_at=NOW() WHERE id=$1`,[req.user.session_id]);
+    await query(`UPDATE gmx.admin_sessions SET revoked_at=NOW() WHERE id=$1`,[req.user.session_id]);
     await audit(req,'AUTH','LOGOUT',req.user.id_admin,'Cierre de sesión');
     res.json({success:true});
   }catch(e){res.status(500).json({success:false,error:'LOGOUT_FAILED',message:e.message});}

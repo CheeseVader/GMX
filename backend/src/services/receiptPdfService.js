@@ -9,7 +9,7 @@ export async function createOrderReceiptPdf(order) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'LETTER', margin: 46, info: {
       Title: `Comprobante ${text(order.id_pedido)}`,
-      Author: brandText('Shiny'),
+      Author: brandText('GMX'),
       Subject: 'Comprobante comercial de compra'
     }});
     const chunks = [];
@@ -18,7 +18,7 @@ export async function createOrderReceiptPdf(order) {
     doc.on('error', reject);
 
     const pageWidth = doc.page.width - 92;
-    doc.fillColor('#111827').font('Helvetica-Bold').fontSize(22).text(brandText('Shiny'), 46, 44);
+    doc.fillColor('#111827').font('Helvetica-Bold').fontSize(22).text(brandText('GMX'), 46, 44);
     doc.font('Helvetica').fontSize(10).fillColor('#667085').text('COMPROBANTE COMERCIAL DE COMPRA', 46, 72);
     doc.moveTo(46, 94).lineTo(46 + pageWidth, 94).strokeColor('#d0d5dd').stroke();
 

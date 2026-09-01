@@ -9,7 +9,7 @@ const router = Router();
 const wrap = (fn) => async (req, res) => {
   try {res.json({ ok: true, data: await fn(req, res) });}
   catch (error) {
-    console.error(brandText("[Shiny][TCG10.3]"), error);
+    console.error(brandText("[GMX][TCG10.3]"), error);
     res.status(400).json({ ok: false, error: error?.message || String(error) });
   }
 };

@@ -90,8 +90,8 @@ export default function DualAppearanceDesigner({ settings, setSettings, media = 
       if (scope === 'admin') {
         try {
           localStorage.setItem('Shiny_ADMIN_BRAND', JSON.stringify({
-            name: get('admin', 'brand_name', brandText("Shiny")),
-            logoText: get('admin', 'logo_text', 'Shiny'),
+            name: get('admin', 'brand_name', brandText("GMX")),
+            logoText: get('admin', 'logo_text', 'GMX'),
             descriptor: get('admin', 'brand_descriptor', 'LOCAL')
           }));
         /* SHINY_LOGIN_APPEARANCE_R63 */
@@ -281,8 +281,8 @@ function ThemeForm({ title, scope, get, set, media }) {
   return <article className="contentmk-card theme-form">
     <h3>{title}</h3>
     <div className="contentmk-fields cols2">
-      <label>Nombre de marca<input value={get(scope, 'brand_name', brandText("Shiny"))} onChange={(e) => set(scope, 'brand_name', e.target.value)} /></label>
-      <label>Texto/logo<input maxLength="12" value={get(scope, 'logo_text', client ? 'S' : 'Shiny')} onChange={(e) => set(scope, 'logo_text', e.target.value)} /></label>
+      <label>Nombre de marca<input value={get(scope, 'brand_name', brandText("GMX"))} onChange={(e) => set(scope, 'brand_name', e.target.value)} /></label>
+      <label>Texto/logo<input maxLength="12" value={get(scope, 'logo_text', client ? 'S' : 'GMX')} onChange={(e) => set(scope, 'logo_text', e.target.value)} /></label>
       {!client ? <>
         <label>Fondo del login
           <select value={get(scope, 'login_background_design', 'network4')} onChange={(e) => set(scope, 'login_background_design', e.target.value)}>
@@ -403,7 +403,7 @@ function StorePreview({ device, style, get, runtime, heroOnly = false, onOpenFul
       <div className="store-overlay" style={{ opacity: Number(get('client', 'background_overlay', '.38')) }} />
 
       {!heroOnly ? <header className={`store-header ${get('client', 'header_style', 'floating')}`}>
-        <div className="store-brand"><b>{get('client', 'logo_text', 'G')}</b><strong>{get('client', 'brand_name', brandText("Shiny"))}</strong></div>
+        <div className="store-brand"><b>{get('client', 'logo_text', 'G')}</b><strong>{get('client', 'brand_name', brandText("GMX"))}</strong></div>
         <div className="store-search">🔎 Buscar cartas, productos, sets...</div>
         <nav><span>Magic</span><span>Yu-Gi-Oh!</span><span>Pokémon</span><span>One Piece</span><span>Más</span><span>👤</span><span>🛒 3</span></nav>
       </header> : null}
@@ -511,8 +511,8 @@ function AdminPreview({ device, get }) {
     <div className={`admin-preview device-${device}`} style={{ maxWidth: width, background: get('admin', 'background', '#f2f4f7'), borderRadius: Number(get('admin', 'radius', '14')) }}>
       {bgId ? <AuthenticatedMediaPreview mediaId={bgId} className="admin-preview-background" alt="Fondo del administrador" /> : null}
       <div className="admin-preview-overlay" style={{ opacity: Number(get('admin', 'background_overlay', '.30')) }} />
-      <aside style={{ background: get('admin', 'primary', '#101828') }}><div className="preview-dynamic-brand"><strong>{get('admin', 'brand_name', brandText("Shiny"))}</strong><small>{get('admin', 'brand_descriptor', 'LOCAL')}</small></div><span>Dashboard</span><span>Productos</span><span>Pedidos</span><span>TCG</span></aside>
-      <main><small>{brandText("Shiny ADMIN")}</small><h2>Dashboard</h2><div className="admin-metrics"><div>Productos<br /><b>128</b></div><div>Pedidos<br /><b>37</b></div></div><div className="admin-table-mock">Vista del servidor / backoffice</div></main>
+      <aside style={{ background: get('admin', 'primary', '#101828') }}><div className="preview-dynamic-brand"><strong>{get('admin', 'brand_name', brandText("GMX"))}</strong><small>{get('admin', 'brand_descriptor', 'LOCAL')}</small></div><span>Dashboard</span><span>Productos</span><span>Pedidos</span><span>TCG</span></aside>
+      <main><small>{brandText("GMX ADMIN")}</small><h2>Dashboard</h2><div className="admin-metrics"><div>Productos<br /><b>128</b></div><div>Pedidos<br /><b>37</b></div></div><div className="admin-table-mock">Vista del servidor / backoffice</div></main>
     </div>
   </article>;
 }

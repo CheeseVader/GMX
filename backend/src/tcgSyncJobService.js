@@ -103,7 +103,7 @@ export function startTcgAddJob(gameCode, { setCodes = [], downloadImages = false
 
       setJob(id, {
         progress: 100, status: 'completed', phase: 'completed',
-        message: brandText("Las expansiones ya están disponibles en Shiny."),
+        message: brandText("Las expansiones ya están disponibles en GMX."),
         etaSeconds: 0,
         result: {
           sync: syncResult,

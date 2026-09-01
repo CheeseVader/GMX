@@ -113,7 +113,7 @@ export default function ClientModal({
         
         <div className="modal-head">
           <div>
-            <div className="eyebrow">{brandText("Shiny CLIENTES")}</div>
+            <div className="eyebrow">{brandText("GMX CLIENTES")}</div>
             <h2>
               {client ?
               `Editar ${client.nombre || client.id_cliente}` :

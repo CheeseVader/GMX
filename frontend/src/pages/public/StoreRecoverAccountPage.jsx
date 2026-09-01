@@ -20,10 +20,10 @@ export default function StoreRecoverAccountPage() {
         method: 'POST',
         body: JSON.stringify({ email })
       });
-      setMessage(brandText("Si el correo está asociado a una cuenta Shiny verificada, recibirás un enlace para recuperar tu contraseña."));
+      setMessage(brandText("Si el correo está asociado a una cuenta GMX verificada, recibirás un enlace para recuperar tu contraseña."));
       if (r.data?.development_reset_url) setDevelopmentUrl(r.data.development_reset_url);
     } catch {
-      setMessage(brandText("Si el correo está asociado a una cuenta Shiny verificada, recibirás un enlace para recuperar tu contraseña."));
+      setMessage(brandText("Si el correo está asociado a una cuenta GMX verificada, recibirás un enlace para recuperar tu contraseña."));
     } finally {setSaving(false);}
   }
 
@@ -55,7 +55,7 @@ export default function StoreRecoverAccountPage() {
     <div className="recovery-shell">
       {!token ? <>
         <div className="verification-icon">↻</div>
-        <small>{brandText("CUENTA Shiny")}</small>
+        <small>{brandText("CUENTA GMX")}</small>
         <h1>Recuperar cuenta</h1>
         <p>Escribe el correo utilizado en tu cuenta. Si existe una cuenta verificada, te enviaremos un enlace temporal.</p>
         {message ? <div className="checkout-message">{message}</div> : null}
@@ -69,7 +69,7 @@ export default function StoreRecoverAccountPage() {
         <div className="verification-icon">🔑</div>
         <small>SEGURIDAD</small>
         <h1>Nueva contraseña</h1>
-        <p>{brandText("Al cambiarla, Shiny cerrará todas las sesiones anteriores de tu cuenta.")}</p>
+        <p>{brandText("Al cambiarla, GMX cerrará todas las sesiones anteriores de tu cuenta.")}</p>
         {message ? <div className="checkout-message">{message}</div> : null}
         <form className="recovery-form" onSubmit={reset}>
           <label>Nueva contraseña<input required minLength="8" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><small>Mínimo 8 caracteres, con letras y números.</small></label>

@@ -40,3 +40,235 @@
 .recovery-shell h1{margin:0}.recovery-shell>p{max-width:520px;margin:0 0 8px;color:var(--ps-muted);line-height:1.55}
 .recovery-form{width:100%;display:grid;gap:12px;text-align:left}.recovery-form label{display:grid;gap:6px;font-size:12px;font-weight:850}.recovery-form input{height:46px;padding:0 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.07);color:var(--ps-text)}.recovery-form small{color:var(--ps-muted);font-weight:500}.recovery-form button{height:46px;border:0;border-radius:10px;background:var(--ps-secondary);color:#111827;font-weight:950;cursor:pointer}.recovery-form button:disabled{opacity:.55;cursor:wait}
 .recovery-back,.forgot-password-link{color:var(--ps-secondary)!important;font-size:13px;font-weight:850}.forgot-password-link{text-align:center;margin-top:2px}
+
+/* GMX_TRANSFER_LAYOUT_R15A */
+.transfer-layout{
+  grid-template-columns:minmax(0,1fr) minmax(440px,500px)!important;
+  align-items:start;
+}
+.bank-card,.transfer-order{min-width:0}
+.transfer-order{
+  padding:24px!important;
+  gap:16px!important;
+}
+.transfer-order h2{
+  margin:0;
+  font-size:22px;
+  line-height:1.25;
+  overflow-wrap:anywhere;
+}
+.transfer-order .checkout-grand{
+  margin:0;
+  padding:8px 0 14px;
+}
+.transfer-proof-fields{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:14px 12px!important;
+  margin:0 0 14px!important;
+}
+.transfer-proof-fields label{
+  display:grid;
+  gap:6px;
+  min-width:0;
+  font-size:13px;
+  font-weight:700;
+}
+.transfer-proof-fields label>span{
+  display:block;
+}
+.transfer-proof-fields input,
+.transfer-proof-fields select{
+  width:100%;
+  min-width:0;
+  height:44px;
+  box-sizing:border-box;
+  padding:0 12px;
+  border-radius:9px;
+}
+.transfer-proof-fields select{cursor:pointer}
+.transfer-order .proof-upload{
+  width:100%;
+  box-sizing:border-box;
+  margin-top:2px;
+}
+.transfer-order>small{
+  display:block;
+  line-height:1.45;
+}
+.transfer-order .secondary-public.full{
+  box-sizing:border-box;
+  min-height:46px;
+}
+.bank-card>div b,
+.bank-card>div strong{
+  text-align:right;
+  overflow-wrap:anywhere;
+}
+@media(max-width:1100px){
+  .transfer-layout{grid-template-columns:1fr!important}
+  .transfer-order{width:100%;box-sizing:border-box}
+}
+@media(max-width:620px){
+  .transfer-proof-fields{grid-template-columns:1fr!important}
+  .transfer-order{padding:18px!important}
+}
+/* =========================================================
+   GMX_TRANSFER_UX_R17D
+   ========================================================= */
+
+/* El texto "Generar instrucciones de transferencia" ya no
+   queda recortado por la altura fija global de 42px. */
+.checkout-summary>button{
+  width:100%;
+  height:auto!important;
+  min-height:56px!important;
+  padding:12px 18px!important;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  white-space:normal;
+  overflow:visible;
+  line-height:1.25;
+  font-size:15px;
+}
+
+/* El botÃ³n de carga tambiÃ©n admite texto largo sin cortarse. */
+.transfer-order .proof-upload{
+  min-height:60px!important;
+  height:auto!important;
+  padding:12px 16px!important;
+  line-height:1.3;
+  white-space:normal;
+  text-align:center;
+}
+
+/* ConfirmaciÃ³n visual despuÃ©s de recibir el comprobante. */
+.gmx-transfer-success-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:2147483550;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:rgba(2,6,23,.68);
+  backdrop-filter:blur(5px);
+}
+
+.gmx-transfer-success-dialog{
+  width:min(610px,calc(100vw - 40px));
+  box-sizing:border-box;
+  padding:26px;
+  border-radius:18px;
+  background:#fff;
+  color:#101828;
+  box-shadow:0 30px 90px rgba(0,0,0,.38);
+}
+
+.gmx-transfer-success-icon{
+  display:grid;
+  place-items:center;
+  width:52px;
+  height:52px;
+  margin-bottom:14px;
+  border-radius:999px;
+  background:#ecfdf3;
+  border:1px solid #abefc6;
+  color:#039855;
+  font-size:28px;
+  font-weight:950;
+}
+
+.gmx-transfer-success-copy small{
+  color:#039855;
+  font-size:11px;
+  font-weight:950;
+  letter-spacing:.11em;
+}
+
+.gmx-transfer-success-copy h2{
+  margin:5px 0 8px;
+  color:#101828;
+  font-size:25px;
+}
+
+.gmx-transfer-success-copy p{
+  margin:0;
+  color:#475467;
+  line-height:1.55;
+}
+
+.gmx-transfer-success-data{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:20px;
+}
+
+.gmx-transfer-success-data>div{
+  min-width:0;
+  padding:12px 14px;
+  border:1px solid #eaecf0;
+  border-radius:11px;
+  background:#f9fafb;
+}
+
+.gmx-transfer-success-data span{
+  display:block;
+  margin-bottom:4px;
+  color:#667085;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+
+.gmx-transfer-success-data b{
+  display:block;
+  color:#101828;
+  overflow-wrap:anywhere;
+}
+
+.gmx-transfer-success-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:22px;
+}
+
+.gmx-transfer-success-actions>a,
+.gmx-transfer-success-actions>button{
+  min-height:44px;
+  box-sizing:border-box;
+  padding:10px 15px;
+  border-radius:10px;
+  font-weight:900;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  text-decoration:none;
+}
+
+.gmx-transfer-success-actions>button{
+  border:0;
+  background:#101828;
+  color:#fff;
+  cursor:pointer;
+}
+
+@media(max-width:620px){
+  .gmx-transfer-success-data{
+    grid-template-columns:1fr;
+  }
+
+  .gmx-transfer-success-actions{
+    flex-direction:column;
+  }
+
+  .gmx-transfer-success-actions>a,
+  .gmx-transfer-success-actions>button{
+    width:100%;
+  }
+}

@@ -98,7 +98,7 @@ router.post('/pos', async (req, res) => {
       payments: Array.isArray(req.body.payments)?req.body.payments:[],
       notes: String(req.body.notes || '').trim(),
       promoCode: String(req.body.promoCode || '').trim(),
-      pointsToRedeem: 0,
+      pointsToRedeem: Number(req.body.pointsToRedeem || 0),
       manualDiscountType: String(req.body.manualDiscountType || '').trim(),
       manualDiscountValue: Number(req.body.manualDiscountValue || 0),
       manualDiscountReason: String(req.body.manualDiscountReason || '').trim(),
@@ -117,7 +117,15 @@ router.post('/pos', async (req, res) => {
   } catch (error) {
     const code=String(error.message||error);
     let message=code;
-    if(code==='SALE_REQUEST_ID_REQUIRED'){
+    if(code==='MEMBERSHIP_TCG_ALREADY_ACTIVE'){
+      message='El cliente ya cuenta con una membresia activa o programada para ese TCG.';
+    }else if(code==='POS_CLIENT_REQUIRED'){
+      message='Selecciona un cliente GMX existente antes de cobrar en POS.';
+    }else if(code==='MEMBERSHIP_CLIENT_REQUIRED'){
+      message='La venta de una membresia requiere seleccionar un cliente GMX existente.';
+    }else if(code==='MEMBERSHIP_QUANTITY_ONE_REQUIRED'){
+      message='Cada SKU de membresia debe venderse con cantidad 1.';
+    }else if(code==='SALE_REQUEST_ID_REQUIRED'){
       message='No fue posible identificar este intento de venta. Vuelve a intentarlo.';
     }else if(code==='INVALID_SALE_REQUEST_ID'){
       message='El identificador del intento de venta no es válido.';

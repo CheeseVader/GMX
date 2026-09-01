@@ -5,7 +5,7 @@ import TopBar from '../components/TopBar.jsx';
 import { api } from '../services/api.js';
 
 const pageMeta = {
-  '/admin/dashboard': ['Dashboard', brandText("Shiny LOCAL")],
+  '/admin/dashboard': ['Dashboard', brandText("GMX LOCAL")],
   '/admin/productos': ['Productos', 'CATÁLOGO'],
 
 
@@ -15,13 +15,14 @@ const pageMeta = {
   '/admin/inventario': ['Inventario', 'OPERACIÓN'],
   '/admin/sucursales': ['Sucursales', 'MULTISUCURSAL'],
   '/admin/pos': ['POS', 'VENTAS'],
+  '/admin/historial-ventas': ['Historial de ventas', 'VENTAS - COBROS Y PAGOS'],
   '/admin/pedidos': ['Pedidos', 'VENTAS'],
   '/admin/compras': ['Compras / Recepción', 'OPERACIÓN'],
   '/admin/caja': ['Caja / Arqueo', 'EFECTIVO'],
   '/admin/devoluciones': ['Devoluciones', 'OPERACIÓN'],
   '/admin/generar-codigo': ['Generar código', 'AUTORIZACIÓN POS'],
   '/admin/comercial': ['Gestión Comercial', 'OPERACIÓN'],
-  '/admin/promociones': ['Promociones', 'BENEFICIOS'],
+  '/admin/promociones': ['Promociones / Fidelidad', 'BENEFICIOS'],
   '/admin/notificaciones': ['Notificaciones / Alertas', 'CONTROL OPERATIVO'],
   '/admin/contenido': ['Contenido / Marketing', 'MARKETING'],
   '/admin/tcg': ['TCG', 'TRADING CARD GAME'],
@@ -42,7 +43,7 @@ export default function AppShell() {
   const [alertChecking, setAlertChecking] = useState(false);
   const [alertDockExpanded, setAlertDockExpanded] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [title, staticSubtitle] = pageMeta[location.pathname] || [brandText("Shiny"), 'LOCAL'];
+  const [title, staticSubtitle] = pageMeta[location.pathname] || [brandText("GMX"), 'LOCAL'];
   const [dashboardBranchLabelR54D,setDashboardBranchLabelR54D]=useState(
     localStorage.getItem('SHINY_DASHBOARD_BRANCH_NAME') || 'Todas las sucursales'
   ); // SHINY_DASHBOARD_BRANCH_ID_R54D
@@ -279,7 +280,7 @@ export default function AppShell() {
         <div className="global-unread-alert-body">
           <div className="global-unread-alert-top">
             <span>ALERTA {activeGlobalAlert.prioridad || 'MEDIA'}</span>
-            <small>{activeGlobalAlert.sucursal || activeGlobalAlert.modulo || brandText("Shiny")}</small>
+            <small>{activeGlobalAlert.sucursal || activeGlobalAlert.modulo || brandText("GMX")}</small>
           </div>
           <h3>{activeGlobalAlert.titulo}</h3>
           <p>{activeGlobalAlert.mensaje}</p>

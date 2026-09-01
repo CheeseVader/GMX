@@ -391,7 +391,7 @@ export async function enrichProduct(product, { mode = 'preview' } = {}) {
 
   const saved = await downloadProductImage(product, discovery.best);
   await query(`
-    UPDATE shiny.productos
+    UPDATE gmx.productos
     SET imagen=$2,fecha_actualizacion=NOW()
     WHERE row_id=$1 AND COALESCE(BTRIM(imagen),'')=''
   `, [product.row_id, saved.publicPath]);
@@ -402,7 +402,7 @@ export async function enrichMissingProductImages({ mode = 'preview', limit = 100
   const n = Math.min(Math.max(Number(limit) || 100, 1), 500);
   const r = await query(`
     SELECT row_id,id,sku,nombre,descripcion,categoria,imagen,estado
-    FROM shiny.productos
+    FROM gmx.productos
     WHERE COALESCE(BTRIM(imagen),'')=''
       AND COALESCE(estado,'Activo')='Activo'
     ORDER BY row_id
@@ -427,7 +427,7 @@ export function startProductImageEnrichmentScheduler() {
   if (scheduler) return scheduler;
   const enabled = String(process.env.SHINY_PRODUCT_IMAGE_AUTO ?? '1') !== '0';
   if (!enabled) {
-    console.log(brandText("[Shiny][IMG-002] auto enrichment disabled."));
+    console.log(brandText("[GMX][IMG-002] auto enrichment disabled."));
     return null;
   }
   const interval = Math.max(Number(process.env.SHINY_PRODUCT_IMAGE_INTERVAL_MS || 15 * 60 * 1000), 60 * 1000);
@@ -437,8 +437,8 @@ export function startProductImageEnrichmentScheduler() {
     running = true;
     try {
       const result = await enrichMissingProductImages({ mode: 'apply', limit: batch });
-      console.log(brandText("[Shiny][IMG-002]"), JSON.stringify(result.summary));
-    } catch (e) {console.error(brandText("[Shiny][IMG-002]"), String(e?.message || e));} finally
+      console.log(brandText("[GMX][IMG-002]"), JSON.stringify(result.summary));
+    } catch (e) {console.error(brandText("[GMX][IMG-002]"), String(e?.message || e));} finally
     {running = false;}
   };
   setTimeout(tick, 8000);

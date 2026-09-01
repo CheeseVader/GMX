@@ -95,7 +95,7 @@ export default function ProductLocalImageManager({ sku = '', image = '', onChang
   return <div className="wide" style={{ border: '1px solid rgba(148,163,184,.28)', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
     <div>
       <strong>Imagen local</strong>
-      <div style={{ fontSize: 12, opacity: .72, marginTop: 2 }}>{brandText("Se guarda en el servidor Shiny para funcionar sin Internet.")}</div>
+      <div style={{ fontSize: 12, opacity: .72, marginTop: 2 }}>{brandText("Se guarda en el servidor GMX para funcionar sin Internet.")}</div>
     </div>
 
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

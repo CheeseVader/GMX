@@ -13,14 +13,14 @@ function clamp(v, min, max) {return Math.max(min, Math.min(max, v));}
 function roundMoney(v) {return Math.round((Number(v) || 0) * 100) / 100;}
 
 export async function listRules() {
-  return query(`SELECT * FROM shiny.tcg_buylist_reglas
+  return query(`SELECT * FROM gmx.tcg_buylist_reglas
     ORDER BY COALESCE(NULLIF(prioridad,'')::numeric,999999),row_id`);
 }
 
 export async function saveRule(input) {
   const id = String(input.id_regla || '').trim() || `REG-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
   const r = await query(`
-    INSERT INTO shiny.tcg_buylist_reglas(
+    INSERT INTO gmx.tcg_buylist_reglas(
       id_regla,activa,prioridad,codigo_juego,rareza,condicion,precio_min,precio_max,
       stock_min,stock_max,ajuste_puntos,porcentaje_fijo,margen_minimo_pct,descripcion)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
@@ -35,7 +35,7 @@ export async function saveRule(input) {
 }
 
 export async function toggleRule(rowId, active) {
-  const r = await query(`UPDATE shiny.tcg_buylist_reglas SET activa=$2 WHERE row_id=$1 RETURNING *`, [rowId, active]);
+  const r = await query(`UPDATE gmx.tcg_buylist_reglas SET activa=$2 WHERE row_id=$1 RETURNING *`, [rowId, active]);
   if (!r.rowCount) throw new Error('RULE_NOT_FOUND');
   return r.rows[0];
 }
@@ -43,9 +43,9 @@ export async function toggleRule(rowId, active) {
 async function cardContext(client, cardId, branchId = '') {
   const c = await client.query(`
     SELECT c.*,j.codigo AS codigo_juego,j.nombre AS juego,s.nombre AS set_nombre
-    FROM shiny.tcg_cartas c
-    LEFT JOIN shiny.tcg_juegos j ON j.id_juego=c.id_juego
-    LEFT JOIN shiny.tcg_sets s ON s.id_set=c.id_set
+    FROM gmx.tcg_cartas c
+    LEFT JOIN gmx.tcg_juegos j ON j.id_juego=c.id_juego
+    LEFT JOIN gmx.tcg_sets s ON s.id_set=c.id_set
     WHERE c.id_carta=$1 ORDER BY c.row_id LIMIT 1
   `, [cardId]);
   if (!c.rowCount) throw new Error(`CARD_NOT_FOUND:${cardId}`);
@@ -53,14 +53,14 @@ async function cardContext(client, cardId, branchId = '') {
 
   const stock = await client.query(`
     SELECT COALESCE(SUM(COALESCE(stock,0)),0)::bigint AS stock
-    FROM shiny.tcg_inventario_sucursales
+    FROM gmx.tcg_inventario_sucursales
     WHERE id_carta=$1 ${branchId ? 'AND id_sucursal=$2' : ''}
   `, branchId ? [cardId, branchId] : [cardId]);
 
   const store = await client.query(`
     SELECT MIN(NULLIF(i.precio,0)) AS precio_tienda
-    FROM shiny.tcg_inventario i
-    ${branchId ? `JOIN shiny.tcg_inventario_sucursales bs
+    FROM gmx.tcg_inventario i
+    ${branchId ? `JOIN gmx.tcg_inventario_sucursales bs
       ON bs.id_inventario=i.id_inventario AND bs.id_sucursal=$2` : ''}
     WHERE i.id_carta=$1
       AND COALESCE(i.precio,0)>0
@@ -74,7 +74,7 @@ async function cardContext(client, cardId, branchId = '') {
         price_provider,variant,currency,
         COALESCE(NULLIF(market,0),NULLIF(trend,0),NULLIF(mid,0),NULLIF(low,0)) AS market_price,
         fetched_at,provider_updated_at
-      FROM shiny.tcg_card_price_current
+      FROM gmx.tcg_card_price_current
       WHERE master_card_id=$1
         AND COALESCE(NULLIF(market,0),NULLIF(trend,0),NULLIF(mid,0),NULLIF(low,0)) IS NOT NULL
       ORDER BY
@@ -99,7 +99,7 @@ async function cardContext(client, cardId, branchId = '') {
 }
 
 async function rulesFor(client) {
-  const r = await client.query(`SELECT * FROM shiny.tcg_buylist_reglas WHERE COALESCE(activa,true)=true ORDER BY COALESCE(NULLIF(prioridad,'')::numeric,999999),row_id`);
+  const r = await client.query(`SELECT * FROM gmx.tcg_buylist_reglas WHERE COALESCE(activa,true)=true ORDER BY COALESCE(NULLIF(prioridad,'')::numeric,999999),row_id`);
   return r.rows;
 }
 
@@ -212,24 +212,24 @@ export async function listBuylists({ search = '', status = '', limit = 200 } = {
   if (search) {vals.push(`%${search}%`);f.push(`(COALESCE(b.id_buylist,'') ILIKE $${vals.length} OR COALESCE(b.cliente,'') ILIKE $${vals.length} OR COALESCE(b.telefono,'') ILIKE $${vals.length} OR COALESCE(b.email,'') ILIKE $${vals.length})`);}
   if (status) {vals.push(status);f.push(`b.estado=$${vals.length}`);}
   vals.push(Math.min(Math.max(Number(limit) || 200, 1), 500));
-  return query(`SELECT b.* FROM shiny.tcg_buylist b ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
+  return query(`SELECT b.* FROM gmx.tcg_buylist b ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
     ORDER BY b.fecha DESC NULLS LAST,b.row_id DESC LIMIT $${vals.length}`, vals);
 }
 
 export async function getBuylist(rowId) {
-  const h = await query(`SELECT * FROM shiny.tcg_buylist WHERE row_id=$1`, [rowId]);
+  const h = await query(`SELECT * FROM gmx.tcg_buylist WHERE row_id=$1`, [rowId]);
   if (!h.rowCount) return null;
   const id = h.rows[0].id_buylist;
   const [d, p, a] = await Promise.all([
-  query(`SELECT * FROM shiny.tcg_buylist_detalle WHERE id_buylist=$1 ORDER BY linea,row_id`, [id]),
-  query(`SELECT * FROM shiny.tcg_buylist_pagos WHERE id_buylist=$1 ORDER BY fecha,row_id`, [id]),
-  query(`SELECT * FROM shiny.tcg_buylist_auditoria WHERE id_buylist=$1 ORDER BY fecha,row_id`, [id])]
+  query(`SELECT * FROM gmx.tcg_buylist_detalle WHERE id_buylist=$1 ORDER BY linea,row_id`, [id]),
+  query(`SELECT * FROM gmx.tcg_buylist_pagos WHERE id_buylist=$1 ORDER BY fecha,row_id`, [id]),
+  query(`SELECT * FROM gmx.tcg_buylist_auditoria WHERE id_buylist=$1 ORDER BY fecha,row_id`, [id])]
   );
   return { ...h.rows[0], detalles: d.rows, pagos: p.rows, auditoria: a.rows };
 }
 
 async function audit(client, id, action, from, to, detail = '') {
-  await client.query(`INSERT INTO shiny.tcg_buylist_auditoria(
+  await client.query(`INSERT INTO gmx.tcg_buylist_auditoria(
     id_auditoria,fecha,id_buylist,accion,estado_anterior,estado_nuevo,detalle,id_admin,administrador)
     VALUES('BLAUD-'||floor(extract(epoch from clock_timestamp())*1000)::text||'-'||substr(md5(random()::text),1,5),
     NOW(),$1,$2,$3,$4,$5,'LOCAL','APP Local')`, [id, action, from || null, to || null, detail || null]);
@@ -239,11 +239,11 @@ export async function createDraft({ clientId = '', branchId, items = [], notes =
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const br = await client.query(`SELECT id_sucursal,nombre_sucursal FROM shiny.sucursales WHERE id_sucursal=$1 AND COALESCE(activa,true)=true ORDER BY row_id LIMIT 1`, [branchId]);
+    const br = await client.query(`SELECT id_sucursal,nombre_sucursal FROM gmx.sucursales WHERE id_sucursal=$1 AND COALESCE(activa,true)=true ORDER BY row_id LIMIT 1`, [branchId]);
     if (!br.rowCount) throw new Error('BRANCH_NOT_FOUND');
     let customer = null;
     if (clientId) {
-      const c = await client.query(`SELECT id_cliente,nombre,telefono,email FROM shiny.clientes WHERE id_cliente=$1 ORDER BY row_id LIMIT 1`, [clientId]);
+      const c = await client.query(`SELECT id_cliente,nombre,telefono,email FROM gmx.clientes WHERE id_cliente=$1 ORDER BY row_id LIMIT 1`, [clientId]);
       if (!c.rowCount) throw new Error('CLIENT_NOT_FOUND');
       customer = c.rows[0];
     }
@@ -259,7 +259,7 @@ export async function createDraft({ clientId = '', branchId, items = [], notes =
     const total = roundMoney(valued.reduce((s, x) => s + x.oferta_linea, 0));
     const refs = roundMoney(valued.reduce((s, x) => s + Number(x.precio_referencia || 0) * Number(x.cantidad || 1), 0));
     const units = valued.reduce((s, x) => s + Number(x.cantidad || 1), 0);
-    const h = await client.query(`INSERT INTO shiny.tcg_buylist(
+    const h = await client.query(`INSERT INTO gmx.tcg_buylist(
       id_buylist,fecha,id_cliente,cliente,telefono,email,metodo_pago,referencia_pago,
       id_sucursal,sucursal,lineas,unidades,valor_referencia,oferta_total,estado,id_admin,
       administrador,notas,fecha_actualizacion,estado_pago,version_registro,cancelacion_inventario,cancelacion_pago)
@@ -270,7 +270,7 @@ export async function createDraft({ clientId = '', branchId, items = [], notes =
     );
     for (let i = 0; i < valued.length; i++) {
       const x = valued[i];
-      await client.query(`INSERT INTO shiny.tcg_buylist_detalle(
+      await client.query(`INSERT INTO gmx.tcg_buylist_detalle(
         id_buylist,linea,id_inventario_origen,id_carta,id_juego,id_set,carta,sku,rareza,idioma,
         condicion,edicion,graded,empresa_grading,grado,certificado,cantidad,precio_referencia,
         precio_mercado,moneda_mercado,proveedor_mercado,precio_mercado_mxn,tipo_cambio_mercado,fuente_tipo_cambio,fecha_tipo_cambio,
@@ -299,13 +299,13 @@ export async function decide(rowId, { decision, paymentMethod = 'EFECTIVO', refe
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const r = await client.query(`SELECT * FROM shiny.tcg_buylist WHERE row_id=$1 FOR UPDATE`, [rowId]);
+    const r = await client.query(`SELECT * FROM gmx.tcg_buylist WHERE row_id=$1 FOR UPDATE`, [rowId]);
     if (!r.rowCount) throw new Error('BUYLIST_NOT_FOUND');
     const b = r.rows[0],state = String(b.estado || '').toUpperCase();
     if (decision === 'REJECT') {
       if (state === 'CONVERTIDA') throw new Error('BUYLIST_ALREADY_CONVERTED');
       if (state === 'RECHAZADA') {await client.query('COMMIT');return getBuylist(rowId);}
-      await client.query(`UPDATE shiny.tcg_buylist SET estado='RECHAZADA',estado_pago='NO_APLICA',
+      await client.query(`UPDATE gmx.tcg_buylist SET estado='RECHAZADA',estado_pago='NO_APLICA',
         notas=CONCAT_WS(' | ',NULLIF(notas,''),NULLIF($2,'')),fecha_actualizacion=NOW(),fecha_cierre=NOW()
         WHERE row_id=$1`, [rowId, reason ? `RECHAZADA: ${reason}` : 'Cliente rechazó oferta']);
       await audit(client, b.id_buylist, 'RECHAZAR', state, 'RECHAZADA', reason);
@@ -314,7 +314,7 @@ export async function decide(rowId, { decision, paymentMethod = 'EFECTIVO', refe
     if (!['BORRADOR', 'ACEPTADA'].includes(state)) throw new Error('BUYLIST_NOT_ACCEPTABLE');
     const method = String(paymentMethod || 'EFECTIVO').toUpperCase();
     if (['TRANSFERENCIA', 'TARJETA'].includes(method) && !reference) throw new Error('PAYMENT_REFERENCE_REQUIRED');
-    await client.query(`UPDATE shiny.tcg_buylist SET estado='ACEPTADA',estado_pago='PENDIENTE',
+    await client.query(`UPDATE gmx.tcg_buylist SET estado='ACEPTADA',estado_pago='PENDIENTE',
       metodo_pago=$2,referencia_pago=NULLIF($3,''),fecha_aceptacion=COALESCE(fecha_aceptacion,NOW()),
       fecha_actualizacion=NOW() WHERE row_id=$1`, [rowId, method, reference]);
     if (state !== 'ACEPTADA') await audit(client, b.id_buylist, 'ACEPTAR', state, 'ACEPTADA', 'Oferta aceptada. Pago pendiente.');
@@ -323,7 +323,7 @@ export async function decide(rowId, { decision, paymentMethod = 'EFECTIVO', refe
 }
 
 async function openCashForUpdate(client, branchId) {
-  const r = await client.query(`SELECT * FROM shiny.caja_sesiones WHERE id_sucursal=$1 AND UPPER(COALESCE(estado,''))='ABIERTA'
+  const r = await client.query(`SELECT * FROM gmx.caja_sesiones WHERE id_sucursal=$1 AND UPPER(COALESCE(estado,''))='ABIERTA'
     ORDER BY fecha_apertura DESC,row_id DESC LIMIT 1 FOR UPDATE`, [branchId]);
   return r.rows[0] || null;
 }
@@ -332,7 +332,7 @@ export async function pay(rowId) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const r = await client.query(`SELECT * FROM shiny.tcg_buylist WHERE row_id=$1 FOR UPDATE`, [rowId]);
+    const r = await client.query(`SELECT * FROM gmx.tcg_buylist WHERE row_id=$1 FOR UPDATE`, [rowId]);
     if (!r.rowCount) throw new Error('BUYLIST_NOT_FOUND');
     const b = r.rows[0];
     if (String(b.estado || '').toUpperCase() !== 'ACEPTADA') throw new Error('BUYLIST_NOT_ACCEPTED');
@@ -343,7 +343,7 @@ export async function pay(rowId) {
     if (['TRANSFERENCIA', 'TARJETA'].includes(method) && !b.referencia_pago) throw new Error('PAYMENT_REFERENCE_REQUIRED');
 
     const paymentId = `BLPAY-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
-    await client.query(`INSERT INTO shiny.tcg_buylist_pagos(
+    await client.query(`INSERT INTO gmx.tcg_buylist_pagos(
       id_pago,fecha,id_buylist,id_cliente,cliente,metodo_pago,monto,referencia,estado,id_operacion_pos,id_admin,administrador)
       VALUES($1,NOW(),$2,$3,$4,$5,$6,$7,'PAGADO',$8,'LOCAL','APP Local')`, [
     paymentId, b.id_buylist, b.id_cliente, b.cliente, method, amount, b.referencia_pago || null, paymentId]
@@ -352,18 +352,18 @@ export async function pay(rowId) {
     if (method === 'EFECTIVO') {
       const cash = await openCashForUpdate(client, b.id_sucursal);
       if (!cash) throw new Error('NO_OPEN_CASH_FOR_CASH_PAYMENT');
-      await client.query(`INSERT INTO shiny.caja_movimientos(
+      await client.query(`INSERT INTO gmx.caja_movimientos(
         id_movimiento,id_caja,fecha,id_sucursal,sucursal,tipo,categoria,metodo_pago,
         importe,impacto_efectivo,referencia,descripcion,origen_modulo,id_origen,id_admin,administrador,anulado)
         VALUES($1,$2,NOW(),$3,$4,'EGRESO','BUYLIST','EFECTIVO',$5,$6,$7,'Pago Buylist','TCG_BUYLIST',$8,'LOCAL','APP Local',false)`, [
       `CAJBL-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`, cash.id_caja, b.id_sucursal, b.sucursal, amount, -amount, paymentId, b.id_buylist]
       );
-      await client.query(`UPDATE shiny.caja_sesiones SET egresos_efectivo=COALESCE(egresos_efectivo,0)+$2,
+      await client.query(`UPDATE gmx.caja_sesiones SET egresos_efectivo=COALESCE(egresos_efectivo,0)+$2,
         saldo_esperado=COALESCE(saldo_esperado,COALESCE(fondo_inicial,0))-$2,fecha_actualizacion=NOW()
         WHERE id_caja=$1`, [cash.id_caja, amount]);
     }
 
-    await client.query(`UPDATE shiny.tcg_buylist SET estado_pago='PAGADO',id_operacion_pos=$2,
+    await client.query(`UPDATE gmx.tcg_buylist SET estado_pago='PAGADO',id_operacion_pos=$2,
       fecha_actualizacion=NOW() WHERE row_id=$1`, [rowId, paymentId]);
     await audit(client, b.id_buylist, 'PAGAR', 'ACEPTADA', 'ACEPTADA', `${method} ${amount}`);
     await client.query('COMMIT');return getBuylist(rowId);
@@ -373,7 +373,7 @@ export async function pay(rowId) {
 async function ensureVariant(client, d, b) {
   const idioma = String(d.idioma || 'ES').toUpperCase(),cond = String(d.condicion || 'NM').toUpperCase();
   const ed = String(d.edicion || ''),graded = d.graded === true,company = String(d.empresa_grading || ''),cert = String(d.certificado || '');
-  let inv = await client.query(`SELECT * FROM shiny.tcg_inventario WHERE id_carta=$1 AND COALESCE(idioma,'')=$2
+  let inv = await client.query(`SELECT * FROM gmx.tcg_inventario WHERE id_carta=$1 AND COALESCE(idioma,'')=$2
     AND COALESCE(condicion,'')=$3 AND COALESCE(edicion,'')=$4 AND COALESCE(graded,false)=$5
     AND COALESCE(empresa_grading,'')=$6 AND COALESCE(grado,-1)=COALESCE($7::numeric,-1)
     AND COALESCE(certificado,'')=$8 ORDER BY row_id LIMIT 1 FOR UPDATE`, [
@@ -382,7 +382,7 @@ async function ensureVariant(client, d, b) {
   if (!inv.rowCount) {
     const id = `TCGI-BL-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
     const sku = `BL-${String(d.id_carta).replace(/[^A-Za-z0-9]/g, '').slice(-8)}-${cond}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
-    inv = await client.query(`INSERT INTO shiny.tcg_inventario(
+    inv = await client.query(`INSERT INTO gmx.tcg_inventario(
       id_inventario,id_carta,sku,idioma,condicion,acabado,edicion,graded,empresa_grading,grado,
       certificado,costo,precio,precio_oferta,stock,stock_reservado,ubicacion,sucursal,estado_venta,
       fecha_entrada,ultima_actualizacion,rareza)
@@ -399,30 +399,30 @@ export async function convert(rowId) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const h = await client.query(`SELECT * FROM shiny.tcg_buylist WHERE row_id=$1 FOR UPDATE`, [rowId]);
+    const h = await client.query(`SELECT * FROM gmx.tcg_buylist WHERE row_id=$1 FOR UPDATE`, [rowId]);
     if (!h.rowCount) throw new Error('BUYLIST_NOT_FOUND');
     const b = h.rows[0],state = String(b.estado || '').toUpperCase(),paid = String(b.estado_pago || '').toUpperCase();
     if (state === 'CONVERTIDA') {await client.query('COMMIT');return getBuylist(rowId);}
     if (state !== 'ACEPTADA' || paid !== 'PAGADO') throw new Error('PAYMENT_REQUIRED_BEFORE_INVENTORY');
 
-    const details = await client.query(`SELECT * FROM shiny.tcg_buylist_detalle WHERE id_buylist=$1 ORDER BY linea,row_id FOR UPDATE`, [b.id_buylist]);
+    const details = await client.query(`SELECT * FROM gmx.tcg_buylist_detalle WHERE id_buylist=$1 ORDER BY linea,row_id FOR UPDATE`, [b.id_buylist]);
     const lot = `BLLOT-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
     for (const d of details.rows) {
       const qty = Number(d.cantidad || 0);if (qty <= 0) continue;
       const inv = await ensureVariant(client, d, b);
       const gb = Number(inv.stock || 0),ga = gb + qty;
-      await client.query(`UPDATE shiny.tcg_inventario SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`, [inv.row_id, ga]);
-      let loc = await client.query(`SELECT * FROM shiny.tcg_inventario_sucursales WHERE id_sucursal=$1 AND id_inventario=$2 ORDER BY row_id LIMIT 1 FOR UPDATE`, [b.id_sucursal, inv.id_inventario]);
+      await client.query(`UPDATE gmx.tcg_inventario SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`, [inv.row_id, ga]);
+      let loc = await client.query(`SELECT * FROM gmx.tcg_inventario_sucursales WHERE id_sucursal=$1 AND id_inventario=$2 ORDER BY row_id LIMIT 1 FOR UPDATE`, [b.id_sucursal, inv.id_inventario]);
       if (!loc.rowCount) {
-        loc = await client.query(`INSERT INTO shiny.tcg_inventario_sucursales(
+        loc = await client.query(`INSERT INTO gmx.tcg_inventario_sucursales(
           id_registro,id_inventario,id_carta,sku,id_sucursal,sucursal,stock,stock_reservado,ultima_actualizacion)
           VALUES('TCGIS-BL-'||floor(extract(epoch from clock_timestamp())*1000)::text||'-'||substr(md5(random()::text),1,5),
           $1,$2,$3,$4,$5,0,0,NOW()) RETURNING *`, [inv.id_inventario, d.id_carta, inv.sku, b.id_sucursal, b.sucursal]);
       }
       const lb = Number(loc.rows[0].stock || 0),la = lb + qty;
-      await client.query(`UPDATE shiny.tcg_inventario_sucursales SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`, [loc.rows[0].row_id, la]);
+      await client.query(`UPDATE gmx.tcg_inventario_sucursales SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`, [loc.rows[0].row_id, la]);
       const acq = `TCGA-BL-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
-      await client.query(`INSERT INTO shiny.tcg_adquisiciones(
+      await client.query(`INSERT INTO gmx.tcg_adquisiciones(
         id_adquisicion,fecha,tipo_entrada,origen_nombre,origen_referencia,id_juego,id_set,id_carta,
         id_inventario,sku,carta,rareza,idioma,condicion,edicion,graded,empresa_grading,grado,certificado,
         id_sucursal,sucursal,cantidad,costo_unitario,costo_total,precio_venta,precio_oferta,
@@ -436,7 +436,7 @@ export async function convert(rowId) {
       Number(d.oferta_unitario || 0) > 0 ? roundMoney((Number(d.precio_venta_estimado || 0) - Number(d.oferta_unitario || 0)) / Number(d.oferta_unitario || 0) * 100) : 0,
       `Buylist ${b.id_buylist}`]
       );
-      await client.query(`INSERT INTO shiny.tcg_movimientos_sucursales(
+      await client.query(`INSERT INTO gmx.tcg_movimientos_sucursales(
         id_movimiento,fecha,tipo,id_inventario,id_carta,sku,id_sucursal_destino,sucursal_destino,
         cantidad,stock_destino_anterior,stock_destino_nuevo,stock_global_anterior,stock_global_nuevo,
         referencia,motivo,id_admin,administrador)
@@ -444,10 +444,10 @@ export async function convert(rowId) {
         NOW(),'BUYLIST_ENTRADA',$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'Conversión Buylist','LOCAL','APP Local')`, [
       inv.id_inventario, d.id_carta, inv.sku, b.id_sucursal, b.sucursal, qty, lb, la, gb, ga, b.id_buylist]
       );
-      await client.query(`UPDATE shiny.tcg_buylist_detalle SET id_inventario_ingreso=$2,id_adquisicion=$3,
+      await client.query(`UPDATE gmx.tcg_buylist_detalle SET id_inventario_ingreso=$2,id_adquisicion=$3,
         fecha_conversion=NOW(),estado_linea='CONVERTIDA',sku=$4 WHERE row_id=$1`, [d.row_id, inv.id_inventario, acq, inv.sku]);
     }
-    await client.query(`UPDATE shiny.tcg_buylist SET estado='CONVERTIDA',id_lote_entrada=$2,
+    await client.query(`UPDATE gmx.tcg_buylist SET estado='CONVERTIDA',id_lote_entrada=$2,
       fecha_conversion=NOW(),fecha_cierre=NOW(),fecha_actualizacion=NOW() WHERE row_id=$1`, [rowId, lot]);
     await audit(client, b.id_buylist, 'CONVERTIR_INVENTARIO', 'ACEPTADA', 'CONVERTIDA', `Lote ${lot}`);
     await client.query('COMMIT');return getBuylist(rowId);
@@ -459,23 +459,23 @@ export async function cancelBuylist(rowId, reason = '') {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const h = await client.query(`SELECT * FROM shiny.tcg_buylist WHERE row_id=$1 FOR UPDATE`, [rowId]);
+    const h = await client.query(`SELECT * FROM gmx.tcg_buylist WHERE row_id=$1 FOR UPDATE`, [rowId]);
     if (!h.rowCount) throw new Error('BUYLIST_NOT_FOUND');
     const b = h.rows[0],state = String(b.estado || '').toUpperCase();
     if (['CANCELADA', 'RECHAZADA'].includes(state)) {await client.query('COMMIT');return getBuylist(rowId);}
     if (state === 'CONVERTIDA') {
-      const d = await client.query(`SELECT * FROM shiny.tcg_buylist_detalle WHERE id_buylist=$1 ORDER BY row_id FOR UPDATE`, [b.id_buylist]);
+      const d = await client.query(`SELECT * FROM gmx.tcg_buylist_detalle WHERE id_buylist=$1 ORDER BY row_id FOR UPDATE`, [b.id_buylist]);
       for (const x of d.rows) {
         if (!x.id_inventario_ingreso) continue;
-        const inv = await client.query(`SELECT * FROM shiny.tcg_inventario WHERE id_inventario=$1 ORDER BY row_id LIMIT 1 FOR UPDATE`, [x.id_inventario_ingreso]);
-        const loc = await client.query(`SELECT * FROM shiny.tcg_inventario_sucursales WHERE id_sucursal=$1 AND id_inventario=$2 ORDER BY row_id LIMIT 1 FOR UPDATE`, [b.id_sucursal, x.id_inventario_ingreso]);
+        const inv = await client.query(`SELECT * FROM gmx.tcg_inventario WHERE id_inventario=$1 ORDER BY row_id LIMIT 1 FOR UPDATE`, [x.id_inventario_ingreso]);
+        const loc = await client.query(`SELECT * FROM gmx.tcg_inventario_sucursales WHERE id_sucursal=$1 AND id_inventario=$2 ORDER BY row_id LIMIT 1 FOR UPDATE`, [b.id_sucursal, x.id_inventario_ingreso]);
         const qty = Number(x.cantidad || 0);
         if (!inv.rowCount || !loc.rowCount) throw new Error('INVENTORY_REVERSAL_NOT_FOUND');
         const gb = Number(inv.rows[0].stock || 0),lb = Number(loc.rows[0].stock || 0);
         if (gb < qty || lb < qty) throw new Error('INSUFFICIENT_STOCK_FOR_REVERSAL');
-        await client.query(`UPDATE shiny.tcg_inventario SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`, [inv.rows[0].row_id, gb - qty]);
-        await client.query(`UPDATE shiny.tcg_inventario_sucursales SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`, [loc.rows[0].row_id, lb - qty]);
-        await client.query(`INSERT INTO shiny.tcg_movimientos_sucursales(
+        await client.query(`UPDATE gmx.tcg_inventario SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`, [inv.rows[0].row_id, gb - qty]);
+        await client.query(`UPDATE gmx.tcg_inventario_sucursales SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`, [loc.rows[0].row_id, lb - qty]);
+        await client.query(`INSERT INTO gmx.tcg_movimientos_sucursales(
           id_movimiento,fecha,tipo,id_inventario,id_carta,sku,id_sucursal_origen,sucursal_origen,cantidad,
           stock_origen_anterior,stock_origen_nuevo,stock_global_anterior,stock_global_nuevo,referencia,motivo,id_admin,administrador)
           VALUES('TCGMOV-BLC-'||floor(extract(epoch from clock_timestamp())*1000)::text||'-'||substr(md5(random()::text),1,5),
@@ -483,14 +483,14 @@ export async function cancelBuylist(rowId, reason = '') {
         x.id_inventario_ingreso, x.id_carta, x.sku, b.id_sucursal, b.sucursal, qty, lb, lb - qty, gb, gb - qty, b.id_buylist, reason || 'Cancelación Buylist']
         );
       }
-      await client.query(`UPDATE shiny.tcg_buylist SET cancelacion_inventario=true WHERE row_id=$1`, [rowId]);
+      await client.query(`UPDATE gmx.tcg_buylist SET cancelacion_inventario=true WHERE row_id=$1`, [rowId]);
     }
 
     if (String(b.estado_pago || '').toUpperCase() === 'PAGADO') {
-      const payments = await client.query(`SELECT * FROM shiny.tcg_buylist_pagos WHERE id_buylist=$1 AND estado='PAGADO' ORDER BY fecha DESC`, [b.id_buylist]);
+      const payments = await client.query(`SELECT * FROM gmx.tcg_buylist_pagos WHERE id_buylist=$1 AND estado='PAGADO' ORDER BY fecha DESC`, [b.id_buylist]);
       for (const pay of payments.rows) {
         const rev = `BLREV-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
-        await client.query(`INSERT INTO shiny.tcg_buylist_pagos(
+        await client.query(`INSERT INTO gmx.tcg_buylist_pagos(
           id_pago,fecha,id_buylist,id_cliente,cliente,metodo_pago,monto,referencia,estado,id_operacion_pos,id_admin,administrador)
           VALUES($1,NOW(),$2,$3,$4,$5,$6,$7,'REVERSION',$8,'LOCAL','APP Local')`, [
         rev, b.id_buylist, b.id_cliente, b.cliente, pay.metodo_pago, -Number(pay.monto || 0), pay.id_pago, rev]
@@ -499,22 +499,22 @@ export async function cancelBuylist(rowId, reason = '') {
           const cash = await openCashForUpdate(client, b.id_sucursal);
           if (!cash) throw new Error('NO_OPEN_CASH_FOR_CASH_REVERSAL');
           const amount = Number(pay.monto || 0);
-          await client.query(`INSERT INTO shiny.caja_movimientos(
+          await client.query(`INSERT INTO gmx.caja_movimientos(
             id_movimiento,id_caja,fecha,id_sucursal,sucursal,tipo,categoria,metodo_pago,importe,impacto_efectivo,
             referencia,descripcion,origen_modulo,id_origen,id_admin,administrador,anulado)
             VALUES($1,$2,NOW(),$3,$4,'INGRESO','BUYLIST_REVERSION','EFECTIVO',$5,$5,$6,'Reversión pago Buylist',
             'TCG_BUYLIST',$7,'LOCAL','APP Local',false)`, [
           `CAJBLREV-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`, cash.id_caja, b.id_sucursal, b.sucursal, amount, rev, b.id_buylist]
           );
-          await client.query(`UPDATE shiny.caja_sesiones SET ingresos_efectivo=COALESCE(ingresos_efectivo,0)+$2,
+          await client.query(`UPDATE gmx.caja_sesiones SET ingresos_efectivo=COALESCE(ingresos_efectivo,0)+$2,
             saldo_esperado=COALESCE(saldo_esperado,COALESCE(fondo_inicial,0))+$2,fecha_actualizacion=NOW()
             WHERE id_caja=$1`, [cash.id_caja, amount]);
         }
       }
-      await client.query(`UPDATE shiny.tcg_buylist SET cancelacion_pago=true WHERE row_id=$1`, [rowId]);
+      await client.query(`UPDATE gmx.tcg_buylist SET cancelacion_pago=true WHERE row_id=$1`, [rowId]);
     }
 
-    await client.query(`UPDATE shiny.tcg_buylist SET estado='CANCELADA',fecha_cancelacion=NOW(),
+    await client.query(`UPDATE gmx.tcg_buylist SET estado='CANCELADA',fecha_cancelacion=NOW(),
       motivo_cancelacion=$2,fecha_cierre=NOW(),fecha_actualizacion=NOW() WHERE row_id=$1`, [rowId, reason || null]);
     await audit(client, b.id_buylist, 'CANCELAR', state, 'CANCELADA', reason);
     await client.query('COMMIT');return getBuylist(rowId);

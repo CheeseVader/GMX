@@ -89,7 +89,7 @@ after = 35)
   return line;
 }
 
-section(brandText("Shiny — LOYALTY-007 PAYMENT CONTRACT PRECHECK")
+section(brandText("GMX — LOYALTY-007 PAYMENT CONTRACT PRECHECK")
 
 );
 

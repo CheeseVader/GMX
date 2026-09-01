@@ -37,14 +37,14 @@ async function cleanup() {
 
     if (selected?.type === 'PRODUCT') {
       await client.query(
-        `UPDATE shiny.inventario_sucursales
+        `UPDATE gmx.inventario_sucursales
          SET stock=$2, fecha_actualizacion=NOW()
          WHERE row_id=$1`,
         [selected.row_id, selected.stock_before]
       );
 
       await client.query(
-        `DELETE FROM shiny.movimientos_inventario_sucursales
+        `DELETE FROM gmx.movimientos_inventario_sucursales
          WHERE referencia=$1`,
         [orderId]
       ).catch(() => {});
@@ -54,21 +54,21 @@ async function cleanup() {
 
     if (selected?.type === 'TCG') {
       await client.query(
-        `UPDATE shiny.tcg_inventario_sucursales
+        `UPDATE gmx.tcg_inventario_sucursales
          SET stock=$2
          WHERE row_id=$1`,
         [selected.branch_row_id, selected.branch_stock_before]
       );
 
       await client.query(
-        `UPDATE shiny.tcg_inventario
+        `UPDATE gmx.tcg_inventario
          SET stock=$2
          WHERE row_id=$1`,
         [selected.global_row_id, selected.global_stock_before]
       );
 
       const tcgMov = await client.query(
-        `DELETE FROM shiny.tcg_movimientos_sucursales
+        `DELETE FROM gmx.tcg_movimientos_sucursales
          WHERE referencia=$1
          RETURNING id_movimiento`,
         [orderId]
@@ -79,33 +79,33 @@ async function cleanup() {
     }
 
     await client.query(
-      `DELETE FROM shiny.auditoria WHERE referencia=$1`,
+      `DELETE FROM gmx.auditoria WHERE referencia=$1`,
       [orderId]
     ).catch(() => {});
 
     const tx = await client.query(
-      `DELETE FROM shiny.payment_transactions
+      `DELETE FROM gmx.payment_transactions
        WHERE id_pedido=$1 RETURNING id_transaccion`,
       [orderId]
     );
     console.log(`CLEANUP=PAYMENT_TRANSACTIONS ${tx.rowCount} ELIMINADAS`);
 
     const pp = await client.query(
-      `DELETE FROM shiny.pedido_pagos
+      `DELETE FROM gmx.pedido_pagos
        WHERE id_pedido=$1 RETURNING *`,
       [orderId]
     ).catch(() => ({ rowCount: 0 }));
     console.log(`CLEANUP=PEDIDO_PAGOS ${pp.rowCount} ELIMINADOS`);
 
     const det = await client.query(
-      `DELETE FROM shiny.detalle_pedidos
+      `DELETE FROM gmx.detalle_pedidos
        WHERE id_pedido=$1 RETURNING id_detalle`,
       [orderId]
     );
     console.log(`CLEANUP=DETALLES ${det.rowCount} ELIMINADOS`);
 
     const ord = await client.query(
-      `DELETE FROM shiny.pedidos
+      `DELETE FROM gmx.pedidos
        WHERE id_pedido=$1 RETURNING id_pedido`,
       [orderId]
     );
@@ -121,9 +121,9 @@ async function cleanup() {
 
   const verify = await query(
     `SELECT
-      (SELECT COUNT(*) FROM shiny.pedidos WHERE id_pedido=$1)::int AS pedidos,
-      (SELECT COUNT(*) FROM shiny.payment_transactions WHERE id_pedido=$1)::int AS payments,
-      (SELECT COUNT(*) FROM shiny.detalle_pedidos WHERE id_pedido=$1)::int AS detalles`,
+      (SELECT COUNT(*) FROM gmx.pedidos WHERE id_pedido=$1)::int AS pedidos,
+      (SELECT COUNT(*) FROM gmx.payment_transactions WHERE id_pedido=$1)::int AS payments,
+      (SELECT COUNT(*) FROM gmx.detalle_pedidos WHERE id_pedido=$1)::int AS detalles`,
     [orderId]
   );
 
@@ -133,7 +133,7 @@ async function cleanup() {
 }
 
 try {
-  section(brandText("Shiny POS-003-TEST1-R5"));
+  section(brandText("GMX POS-003-TEST1-R5"));
   console.log('VENTA TARJETA / MERCADO PAGO');
   console.log('FLUJO REAL createSale()');
   console.log('PROVIDER SIMULADO');
@@ -151,8 +151,8 @@ try {
        i.stock,
        i.precio_venta,
        p.nombre
-     FROM shiny.inventario_sucursales i
-     JOIN shiny.productos p ON p.id_producto=i.id_producto
+     FROM gmx.inventario_sucursales i
+     JOIN gmx.productos p ON p.id_producto=i.id_producto
      WHERE COALESCE(i.stock,0)>=2
        AND COALESCE(i.precio_venta,0)>0
      ORDER BY i.stock DESC
@@ -186,8 +186,8 @@ try {
         g.stock AS global_stock,
         g.precio,
         g.precio_oferta
-       FROM shiny.tcg_inventario_sucursales s
-       JOIN shiny.tcg_inventario g
+       FROM gmx.tcg_inventario_sucursales s
+       JOIN gmx.tcg_inventario g
          ON g.id_inventario=s.id_inventario
        WHERE COALESCE(s.stock,0)>=1
          AND COALESCE(g.stock,0)>=1
@@ -285,7 +285,7 @@ try {
     paymentProviderInput: {
       token: `TEST-TOKEN-${RUN_ID}`,
       paymentMethodId: 'visa',
-      email: 'pos003-test@shiny.local',
+      email: 'pos003-test@gmx.local',
       installments: 1,
       providerCall
     },
@@ -293,7 +293,7 @@ try {
     user: {
       id_admin: 'LOCAL',
       nombre: 'POS-003 TEST',
-      email: 'pos003-test@shiny.local'
+      email: 'pos003-test@gmx.local'
     },
     items: [item]
   });
@@ -308,7 +308,7 @@ try {
   section('4. ORDER VERIFY');
 
   const orderResult = await query(
-    `SELECT * FROM shiny.pedidos WHERE id_pedido=$1`,
+    `SELECT * FROM gmx.pedidos WHERE id_pedido=$1`,
     [orderId]
   );
 
@@ -330,7 +330,7 @@ try {
   section('5. PAYMENT TRANSACTION');
 
   const tx = await query(
-    `SELECT * FROM shiny.payment_transactions
+    `SELECT * FROM gmx.payment_transactions
      WHERE id_pedido=$1 ORDER BY row_id`,
     [orderId]
   );
@@ -351,7 +351,7 @@ try {
   section('6. PEDIDO PAGOS');
 
   const pedidoPagos = await query(
-    `SELECT * FROM shiny.pedido_pagos
+    `SELECT * FROM gmx.pedido_pagos
      WHERE id_pedido=$1 ORDER BY linea`,
     [orderId]
   );
@@ -371,7 +371,7 @@ try {
 
   if (selected.type === 'PRODUCT') {
     const stock = await query(
-      `SELECT stock FROM shiny.inventario_sucursales WHERE row_id=$1`,
+      `SELECT stock FROM gmx.inventario_sucursales WHERE row_id=$1`,
       [selected.row_id]
     );
     const after = Number(stock.rows[0].stock);
@@ -379,11 +379,11 @@ try {
     assert(after === selected.stock_before - 1, 'PRODUCT_STOCK_NOT_DECREMENTED_ONCE');
   } else {
     const branch = await query(
-      `SELECT stock FROM shiny.tcg_inventario_sucursales WHERE row_id=$1`,
+      `SELECT stock FROM gmx.tcg_inventario_sucursales WHERE row_id=$1`,
       [selected.branch_row_id]
     );
     const global = await query(
-      `SELECT stock FROM shiny.tcg_inventario WHERE row_id=$1`,
+      `SELECT stock FROM gmx.tcg_inventario WHERE row_id=$1`,
       [selected.global_row_id]
     );
 
@@ -414,7 +414,7 @@ try {
     paymentProviderInput: {
       token: `TEST-TOKEN-${RUN_ID}`,
       paymentMethodId: 'visa',
-      email: 'pos003-test@shiny.local',
+      email: 'pos003-test@gmx.local',
       providerCall: async () => {
         providerCalls++;
         throw new Error('REPLAY_PROVIDER_CALL_FORBIDDEN');
@@ -423,7 +423,7 @@ try {
     user: {
       id_admin: 'LOCAL',
       nombre: 'POS-003 TEST',
-      email: 'pos003-test@shiny.local'
+      email: 'pos003-test@gmx.local'
     },
     items: [item]
   });
@@ -436,13 +436,13 @@ try {
 
   const orderCount = await query(
     `SELECT COUNT(*)::int AS total
-     FROM shiny.pedidos WHERE pos_idempotency_key=$1`,
+     FROM gmx.pedidos WHERE pos_idempotency_key=$1`,
     [SALE_REQUEST_ID]
   );
 
   const txCount = await query(
     `SELECT COUNT(*)::int AS total
-     FROM shiny.payment_transactions WHERE id_pedido=$1`,
+     FROM gmx.payment_transactions WHERE id_pedido=$1`,
     [orderId]
   );
 
@@ -458,17 +458,17 @@ try {
 
   if (selected.type === 'PRODUCT') {
     const stock = await query(
-      `SELECT stock FROM shiny.inventario_sucursales WHERE row_id=$1`,
+      `SELECT stock FROM gmx.inventario_sucursales WHERE row_id=$1`,
       [selected.row_id]
     );
     assert(Number(stock.rows[0].stock) === selected.stock_before - 1, 'REPLAY_DOUBLE_STOCK_DECREMENT');
   } else {
     const branch = await query(
-      `SELECT stock FROM shiny.tcg_inventario_sucursales WHERE row_id=$1`,
+      `SELECT stock FROM gmx.tcg_inventario_sucursales WHERE row_id=$1`,
       [selected.branch_row_id]
     );
     const global = await query(
-      `SELECT stock FROM shiny.tcg_inventario WHERE row_id=$1`,
+      `SELECT stock FROM gmx.tcg_inventario WHERE row_id=$1`,
       [selected.global_row_id]
     );
 
@@ -482,7 +482,7 @@ try {
 
   const audits = await query(
     `SELECT row_id,modulo,accion,referencia,detalle,usuario
-     FROM shiny.auditoria
+     FROM gmx.auditoria
      WHERE referencia=$1
      ORDER BY row_id`,
     [orderId]

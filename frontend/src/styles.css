@@ -1064,17 +1064,3 @@ body:has(.operator-pos-page .shiny-pos-exit-lock){
   .shiny-user-modal-form{grid-template-columns:1fr}
   .shiny-modal-wide{grid-column:auto}
 }
-
-/* SHINY_FEATURES_OFF_R1 */
-/* Client does not use Visual Beta, External Beta or Loyalty. */
-.account-loyalty-card,
-.loyalty-public-ledger,
-.loyalty-estimate,
-.benefits-loyalty {
-  display:none !important;
-}
-.client-account-metrics > div:nth-child(1),
-.client-account-metrics > div:nth-child(2) {
-  display:none !important;
-}
-/* SHINY_FEATURES_OFF_R1_END */

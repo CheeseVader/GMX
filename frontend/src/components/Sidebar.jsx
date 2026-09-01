@@ -9,14 +9,15 @@ const groups = [
   ['/admin/sucursales', 'Sucursales', 'branches', 'SUCURSALES']]
 },
 { label: 'OPERACIÓN', items: [
-  ['/admin/pos', 'POS', 'orders', 'PEDIDOS'], ['/admin/pedidos', 'Pedidos', 'orders', 'PEDIDOS'], ['/admin/devoluciones', 'Devoluciones', 'buylist', 'COMERCIAL'], ['/admin/generar-codigo', 'Generar código', 'system', 'COMERCIAL'], ['/admin/compras', 'Compras / Recepción', 'purchases', 'COMPRAS'],
+  ['/admin/pos', 'POS', 'orders', 'PEDIDOS'], ['/admin/historial-ventas', 'Historial de ventas', 'reports', 'PEDIDOS'], ['/admin/pedidos', 'Pedidos', 'orders', 'PEDIDOS'], ['/admin/transferencias', 'Transferencias', 'orders', 'PEDIDOS'], ['/admin/devoluciones', 'Devoluciones', 'buylist', 'COMERCIAL'], ['/admin/generar-codigo', 'Generar código', 'system', 'COMERCIAL'], ['/admin/compras', 'Compras / Recepción', 'purchases', 'COMPRAS'],
   ['/admin/caja', 'Caja / Arqueo', 'inventory', 'CAJA'], ['/admin/comercial', 'Gestión Comercial', 'clients', 'COMERCIAL']]
 },
 { label: 'TCG', items: [
-  ['/admin/tcg', 'Catálogo TCG', 'tcg', 'TCG'], ['/admin/tcg-operacion', 'Operación TCG', 'inventory', 'TCG'], ['/admin/buylist', 'Buylist', 'buylist', 'BUYLIST']]
+  ['/admin/tcg', 'Catálogo TCG', 'tcg', 'TCG'], ['/admin/tcg-operacion', 'Operación TCG', 'inventory', 'TCG'], ['/admin/buylist', 'Buylist', 'buylist', 'BUYLIST'],
+  ['/admin/membresias', 'Membresías', 'reports', 'COMERCIAL'], ['/admin/torneos', 'Torneos', 'tcg', 'COMERCIAL']]
 },
 { label: 'GESTIÓN', items: [
-  ['/admin/promociones', 'Promociones', 'reports', 'CONTENIDO'], ['/admin/contenido', 'Contenido / Marketing', 'reports', 'CONTENIDO'],
+  ['/admin/promociones', 'Promociones / Fidelidad', 'reports', 'CONTENIDO'], ['/admin/contenido', 'Contenido / Marketing', 'reports', 'CONTENIDO'],
   ['/admin/notificaciones', 'Notificaciones / Alertas', 'reports', 'NOTIFICACIONES'], ['/admin/reportes', 'Reportes', 'reports', 'REPORTES'], ['/admin/administracion', 'Usuarios / Permisos', 'system', 'ADMIN'], ['/admin/sistema', 'Sistema', 'system', 'SISTEMA']]
 }];
 

@@ -181,7 +181,7 @@ async function q(db, sql, params = []) {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-006 POS IDEMPOTENCY INTEGRATION PRECHECK")
+  section(brandText("GMX — CLIENTES-LOYALTY-006 POS IDEMPOTENCY INTEGRATION PRECHECK")
 
   );
 
@@ -319,7 +319,7 @@ async function main() {
         indexdef
       FROM pg_indexes
       WHERE
-        schemaname='shiny'
+        schemaname='gmx'
         AND tablename='pedidos'
         AND (
           indexname ILIKE '%idempot%'
@@ -341,7 +341,7 @@ async function main() {
         column_default
       FROM information_schema.columns
       WHERE
-        table_schema='shiny'
+        table_schema='gmx'
         AND table_name='pedidos'
       ORDER BY ordinal_position
     `);
@@ -359,7 +359,7 @@ async function main() {
         column_default
       FROM information_schema.columns
       WHERE
-        table_schema='shiny'
+        table_schema='gmx'
         AND table_name='detalle_pedidos'
       ORDER BY ordinal_position
     `);
@@ -374,7 +374,7 @@ async function main() {
         table_name
       FROM information_schema.columns
       WHERE
-        table_schema='shiny'
+        table_schema='gmx'
         AND (
           lower(table_name) LIKE '%inventario%'
           OR lower(table_name) LIKE '%stock%'
@@ -397,7 +397,7 @@ async function main() {
         puntos_generados,
         puntos_redimidos,
         pos_idempotency_key
-      FROM shiny.pedidos
+      FROM gmx.pedidos
       WHERE
         pos_idempotency_key IS NOT NULL
         AND btrim(pos_idempotency_key)<>''
@@ -426,9 +426,9 @@ async function main() {
           WHERE f.tipo='REDENCION'
         )::bigint AS redemption_rows
 
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
 
-      LEFT JOIN shiny.fidelidad_movimientos f
+      LEFT JOIN gmx.fidelidad_movimientos f
         ON f.id_pedido=p.id_pedido
 
       WHERE
@@ -462,7 +462,7 @@ async function main() {
         column_name
       FROM information_schema.columns
       WHERE
-        table_schema='shiny'
+        table_schema='gmx'
         AND (
           lower(table_name) LIKE '%inventario%'
           OR lower(table_name) LIKE '%stock%'

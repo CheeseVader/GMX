@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { optionalClientAuth } from '../middleware/clientAuth.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import {
-  getPublicStorefront,listPublicBranches,listPublicProducts,getPublicProduct,listPublicCategories,
+  getPublicStorefront,listPublicBranches,listPublicBranchesForItems,listPublicProducts,getPublicProduct,listPublicCategories,
   listPublicTcgGames,listPublicTcg,getPublicTcgItem,publicUnifiedSearch,publicBenefitQuote,createPublicOrder,getPublicOrder,getPublicMedia
 } from '../repositories/publicStoreRepository.js';
 import { publicCountries,publicStates,publicCities,publicPostalCodes,publicSettlements } from '../repositories/publicGeoRepository.js';
@@ -34,7 +34,23 @@ router.get('/geo/postal-codes',async(req,res)=>{try{res.json({success:true,data:
 router.get('/geo/settlements',async(req,res)=>{try{res.json({success:true,data:await publicSettlements(String(req.query.cp||''))});}catch(e){bad(res,e,500);}});
 
 router.get('/storefront',async(_req,res)=>{try{res.json({success:true,data:await getPublicStorefront()});}catch(e){bad(res,e,500);}});
-router.get('/branches',async(_req,res)=>{try{const r=await listPublicBranches();res.json({success:true,data:r.rows});}catch(e){bad(res,e,500);}});
+router.get('/branches',async(_req,res)=>{
+  try{
+    const r=await listPublicBranches();
+    res.json({success:true,data:r.rows});
+  }catch(e){
+    bad(res,e,500);
+  }
+});
+
+router.post('/branches/availability',async(req,res)=>{
+  try{
+    const data=await listPublicBranchesForItems(req.body?.items||[]);
+    res.json({success:true,data});
+  }catch(e){
+    bad(res,e);
+  }
+});
 router.get('/categories',async(_req,res)=>{try{const r=await listPublicCategories();res.json({success:true,data:r.rows});}catch(e){bad(res,e,500);}});
 router.get('/products',async(req,res)=>{try{
   const r=await listPublicProducts(req.query);res.json({success:true,data:r.rows,count:r.rowCount});

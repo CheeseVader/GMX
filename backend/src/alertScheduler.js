@@ -7,7 +7,7 @@ let pendingImmediate = null;
 let rerunRequested = false;
 
 async function settings() {
-  const r = await query(`SELECT parametro,valor FROM shiny.configuracion
+  const r = await query(`SELECT parametro,valor FROM gmx.configuracion
     WHERE parametro IN ('alerts.auto_generate_enabled','alerts.auto_generate_minutes')`);
   return Object.fromEntries(r.rows.map((x) => [x.parametro, x.valor]));
 }

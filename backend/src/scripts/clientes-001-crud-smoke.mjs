@@ -327,7 +327,7 @@ async function dbCount(client, marker) {
     `
     SELECT
       COUNT(*)::bigint AS total
-    FROM shiny.clientes
+    FROM gmx.clientes
     WHERE
       COALESCE(nombre,'') LIKE $1
       OR COALESCE(email,'') LIKE $2
@@ -357,7 +357,7 @@ rowId)
       telefono_normalizado,
       fecha_registro,
       fecha_actualizacion
-    FROM shiny.clientes
+    FROM gmx.clientes
     WHERE row_id=$1
     `,
     [rowId]
@@ -379,7 +379,7 @@ idCliente)
       tipo,
       valor_normalizado,
       id_cliente
-    FROM shiny.cliente_identidad_unica
+    FROM gmx.cliente_identidad_unica
     WHERE id_cliente=$1
     ORDER BY row_id
     `,
@@ -390,7 +390,7 @@ idCliente)
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-001 CONTROLLED CRUD SMOKE")
+  section(brandText("GMX — CLIENTES-001 CONTROLLED CRUD SMOKE")
 
   );
 
@@ -1000,7 +1000,7 @@ async function main() {
           nombre,
           telefono,
           email
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE
           COALESCE(nombre,'')
             LIKE 'CLIENTES001 TEST%'
@@ -1024,7 +1024,7 @@ async function main() {
           tipo,
           valor_normalizado,
           id_cliente
-        FROM shiny.cliente_identidad_unica
+        FROM gmx.cliente_identidad_unica
         WHERE id_cliente=$1
         ORDER BY row_id
         `,

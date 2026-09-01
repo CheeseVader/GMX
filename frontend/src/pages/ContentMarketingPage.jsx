@@ -6,8 +6,9 @@ import SecureMedia from '../components/SecureMedia.jsx';
 import '../phase_shiny_exact_views_r23.css';
 import '../content_marketing_option3.css';
 
+import useAdminBrand from '../hooks/useAdminBrand.js';
 const DEFAULT_APPEARANCE = {
-  'appearance.brand_name': brandText("Shiny"), 'appearance.logo_text': 'G', 'appearance.primary': '#101828',
+  'appearance.brand_name': brandText("GMX"), 'appearance.logo_text': 'G', 'appearance.primary': '#101828',
   'appearance.surface': '#ffffff', 'appearance.background': '#f2f4f7', 'appearance.radius': '14',
   'appearance.density': 'comfortable', 'appearance.sidebar_compact': 'false'
 };
@@ -47,6 +48,8 @@ function AuthenticatedMediaImage({ mediaId, className = '', alt = '' }) {
 }
 
 export default function ContentMarketingPage() {
+  // GMX_CONTENT_ADMIN_BRAND_R1
+  const adminBrand = useAdminBrand();
   const [tab, setTab] = useState('appearance');
   const [settings, setSettings] = useState({ ...DEFAULT_APPEARANCE });
   const [media, setMedia] = useState([]);
@@ -206,14 +209,14 @@ export default function ContentMarketingPage() {
     <header className="contentmk-hero">
       <div>
         <div className="eyebrow">CONTENIDO · MARKETING</div>
-        <h1>Shiny Content Center</h1>
+        <h1>{adminBrand.name} Content Center</h1>
         <p>Apariencia de la tienda/backoffice y biblioteca multimedia. Hero y slideshow se administran dentro de Apariencia.</p>
       </div>
       <div className="contentmk-kpis"><span><b>{media.length}</b> multimedia</span></div>
     </header>
 
     <section className="contentmk-overview-kpis" aria-label="Resumen de contenido y marca">
-      <article><span>Marca activa</span><strong>{settings['appearance.brand_name'] || brandText("Shiny")}</strong><small>Identidad de tienda y administración</small></article>
+      <article><span>Marca activa</span><strong>{adminBrand.name}</strong><small>Identidad de tienda y administración</small></article>
       <article><span>Recursos activos</span><strong>{contentOverview.active}</strong><small>de {media.length} archivos</small></article>
       <article><span>Imágenes</span><strong>{contentOverview.images}</strong><small>Biblioteca visual disponible</small></article>
       <article className={contentOverview.hero ? '' : 'attention'}><span>Hero / slideshow</span><strong>{contentOverview.hero}</strong><small>{contentOverview.hero ? 'Recursos listos' : 'Conviene agregar una portada'}</small></article>
@@ -254,7 +257,7 @@ export default function ContentMarketingPage() {
         <summary><div><h3>Importar imágenes desde URL</h3><p>Descarga recursos externos y guárdalos localmente en la biblioteca.</p></div><span>＋ Importar URL</span></summary>
         <div className="media-import-body">
         <div><h3>Importar imágenes desde URL</h3>
-          <p>{brandText("Pega una o varias URLs, una por línea. Shiny las descarga y guarda localmente, por lo que el portal deja de depender del servidor externo.")}</p></div>
+          <p>{brandText("Pega una o varias URLs, una por línea. GMX las descarga y guarda localmente, por lo que el portal deja de depender del servidor externo.")}</p></div>
         <textarea rows="5" value={urlText} onChange={(e) => setUrlText(e.target.value)}
         placeholder={"https://sitio.com/imagen1.jpg\nhttps://sitio.com/imagen2.webp"} />
         <div className="media-import-actions">
@@ -308,7 +311,7 @@ export default function ContentMarketingPage() {
           {!checkingImpact && !impact?.error && Number(impact?.totalReferences || 0) > 0 ? <div className="impact-warning">
             <strong>Actualmente está en uso en {impact.totalReferences} referencia(s):</strong>
             <ul>{(impact.references || []).map((x, i) => <li key={`${x.source}-${x.reference}-${i}`}>{x.label}</li>)}</ul>
-            <p>{brandText("Si continúas, Shiny retirará automáticamente el archivo de estas configuraciones y después lo eliminará.")}</p>
+            <p>{brandText("Si continúas, GMX retirará automáticamente el archivo de estas configuraciones y después lo eliminará.")}</p>
           </div> : null}
           {!checkingImpact && !impact?.error && Number(impact?.totalReferences || 0) === 0 ? <div className="impact-safe">No hay configuraciones activas que dependan de este archivo.</div> : null}
 

@@ -252,7 +252,7 @@ export default function MixedPaymentsPanel({
 
             {row.method === 'TARJETA' ?
             <div style={{ fontSize: '.86rem', lineHeight: 1.35 }}>
-                {brandText("Tarjeta queda preparada para Mercado Pago. Shiny no marcará esta porción como autorizada hasta validar la integración de Mercado Pago.")}
+                {brandText("Tarjeta queda preparada para Mercado Pago. GMX no marcará esta porción como autorizada hasta validar la integración de Mercado Pago.")}
               </div> :
             null}
           </div>);

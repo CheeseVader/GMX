@@ -8,7 +8,7 @@ import {
   pool } from
 '../db.js';
 
-const ROOT = brandText("C:\\Users\\igarcia\\Videos\\Shiny\\backend");
+const ROOT = brandText("C:\\Users\\igarcia\\Videos\\GMX\\backend");
 
 
 function section(title) {
@@ -26,7 +26,7 @@ function assert(condition, message) {
 
 try {
 
-  section(brandText("Shiny PRODUCTOS CATALOGO FINAL SMOKE"));
+  section(brandText("GMX PRODUCTOS CATALOGO FINAL SMOKE"));
 
   console.log('PRODUCTOS / CATALOGO GENERAL');
   console.log('NO DATABASE MUTATION');
@@ -45,7 +45,7 @@ try {
         column_name,
         data_type
       FROM information_schema.columns
-      WHERE table_schema='shiny'
+      WHERE table_schema='gmx'
         AND table_name='productos'
       ORDER BY ordinal_position
     `);
@@ -108,7 +108,7 @@ try {
           WHERE nombre IS NULL
              OR BTRIM(nombre)=''
         )::int AS nombre_vacio
-      FROM shiny.productos
+      FROM gmx.productos
     `);
 
   console.table(counts.rows);
@@ -133,7 +133,7 @@ try {
       SELECT
         sku,
         COUNT(*)::int AS total
-      FROM shiny.productos
+      FROM gmx.productos
       WHERE sku IS NOT NULL
         AND BTRIM(sku)<>''
       GROUP BY sku
@@ -165,7 +165,7 @@ try {
       SELECT
         codigo_barras,
         COUNT(*)::int AS total
-      FROM shiny.productos
+      FROM gmx.productos
       WHERE codigo_barras IS NOT NULL
         AND BTRIM(codigo_barras)<>''
       GROUP BY codigo_barras
@@ -200,7 +200,7 @@ try {
         nombre,
         precio,
         costo
-      FROM shiny.productos
+      FROM gmx.productos
       WHERE COALESCE(precio,0)<0
          OR COALESCE(costo,0)<0
       LIMIT 20
@@ -237,7 +237,7 @@ try {
         nombre,
         stock,
         stock_minimo
-      FROM shiny.productos
+      FROM gmx.productos
       WHERE COALESCE(stock,0)<0
          OR COALESCE(stock_minimo,0)<0
       LIMIT 20
@@ -267,7 +267,7 @@ try {
       SELECT
         COALESCE(NULLIF(BTRIM(categoria),''),'[SIN CATEGORIA]') AS categoria,
         COUNT(*)::int AS total
-      FROM shiny.productos
+      FROM gmx.productos
       GROUP BY 1
       ORDER BY total DESC
       LIMIT 50
@@ -296,7 +296,7 @@ try {
       SELECT
         COALESCE(NULLIF(BTRIM(estado),''),'[VACIO]') AS estado,
         COUNT(*)::int AS total
-      FROM shiny.productos
+      FROM gmx.productos
       GROUP BY 1
       ORDER BY total DESC
     `);
@@ -322,8 +322,8 @@ try {
         i.id_producto,
         i.id_sucursal,
         i.stock
-      FROM shiny.inventario_sucursales i
-      LEFT JOIN shiny.productos p
+      FROM gmx.inventario_sucursales i
+      LEFT JOIN gmx.productos p
         ON p.id=i.id_producto
       WHERE p.id IS NULL
       LIMIT 20
@@ -354,7 +354,7 @@ try {
         id_producto,
         id_sucursal,
         COUNT(*)::int AS total
-      FROM shiny.inventario_sucursales
+      FROM gmx.inventario_sucursales
       GROUP BY id_producto,id_sucursal
       HAVING COUNT(*)>1
       LIMIT 20
@@ -614,7 +614,7 @@ try {
         sku,
         nombre,
         descripcion
-      FROM shiny.productos
+      FROM gmx.productos
       WHERE
            COALESCE(nombre,'') LIKE '%�%'
         OR COALESCE(descripcion,'') LIKE '%�%'
@@ -652,7 +652,7 @@ try {
           WHERE codigo_barras IS NULL
              OR BTRIM(codigo_barras)=''
         )::int AS sin_codigo_barras
-      FROM shiny.productos
+      FROM gmx.productos
     `);
 
   console.table(
@@ -718,7 +718,7 @@ try {
   await query(`
       SELECT
         COUNT(*)::int AS total
-      FROM shiny.productos
+      FROM gmx.productos
       WHERE
            UPPER(COALESCE(nombre,'')) LIKE '%POS-003 TEST%'
         OR UPPER(COALESCE(nombre,'')) LIKE '%PRODUCT TEST%'

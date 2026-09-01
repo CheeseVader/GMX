@@ -4,7 +4,7 @@ import { query, pool } from '../db.js';
 try {
 
   console.log('============================================================');
-  console.log(brandText("Shiny DEV TEST RESIDUE DETAIL"));
+  console.log(brandText("GMX DEV TEST RESIDUE DETAIL"));
   console.log('NO MUTATION');
   console.log('============================================================');
 
@@ -21,7 +21,7 @@ try {
       estado,
       reintegra_stock,
       notas
-    FROM shiny.devoluciones
+    FROM gmx.devoluciones
     WHERE id LIKE 'DEV-%'
       AND (
         notas ILIKE '%TEST%'

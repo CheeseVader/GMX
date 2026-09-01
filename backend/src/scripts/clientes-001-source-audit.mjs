@@ -244,7 +244,7 @@ function inspectFile(relative) {
 }
 
 function main() {
-  section(brandText("Shiny — CLIENTES-001 SOURCE AUDIT"));
+  section(brandText("GMX — CLIENTES-001 SOURCE AUDIT"));
 
   console.log("MODE=READ_ONLY");
   console.log(`ROOT=${ROOT}`);

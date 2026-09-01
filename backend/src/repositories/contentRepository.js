@@ -18,7 +18,7 @@ const num = (v) => Number(v || 0);
 export async function getSettings(prefix = '') {
   const values = [],where = [];
   if (prefix) {values.push(`${prefix}%`);where.push(`parametro LIKE $1`);}
-  return query(`SELECT parametro,valor FROM shiny.configuracion
+  return query(`SELECT parametro,valor FROM gmx.configuracion
     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     ORDER BY parametro`, values);
 }
@@ -30,14 +30,14 @@ export async function saveSettings(items, user) {
     await client.query('BEGIN');
     for (const [key, value] of Object.entries(items)) {
       if (!/^[a-zA-Z0-9_.-]{1,120}$/.test(key)) throw new Error(`INVALID_SETTING_KEY:${key}`);
-      await client.query(`INSERT INTO shiny.configuracion(parametro,valor)
+      await client.query(`INSERT INTO gmx.configuracion(parametro,valor)
         VALUES($1,$2)
         ON CONFLICT(parametro) DO UPDATE SET valor=EXCLUDED.valor`,
       [key, String(value ?? '')]);
     }
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'CONFIGURACION','ACTUALIZAR','SETTINGS',$1,$2)`,
-    [`${Object.keys(items).length} parámetro(s)`, user?.email || brandText("Shiny Local")]);
+    [`${Object.keys(items).length} parámetro(s)`, user?.email || brandText("GMX Local")]);
     await client.query('COMMIT');
     return getSettings();
   } catch (e) {await client.query('ROLLBACK');throw e;} finally {client.release();}
@@ -48,14 +48,14 @@ export async function listPromotions({ search = '', status = '' } = {}) {
   if (search) {vals.push(`%${search}%`);f.push(`(COALESCE(nombre,'') ILIKE $${vals.length}
     OR COALESCE(codigo,'') ILIKE $${vals.length} OR COALESCE(tipo,'') ILIKE $${vals.length})`);}
   if (status) {vals.push(status.toUpperCase());f.push(`UPPER(COALESCE(estado,''))=$${vals.length}`);}
-  return query(`SELECT * FROM shiny.promociones ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
+  return query(`SELECT * FROM gmx.promociones ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
     ORDER BY actualizacion DESC NULLS LAST,row_id DESC`, vals);
 }
 
 export async function listPromotionRedemptions({ limit = 500 } = {}) {
   const safeLimit = Math.max(1, Math.min(2000, Number(limit) || 500));
   return query(`SELECT *
-    FROM shiny.promociones_redenciones
+    FROM gmx.promociones_redenciones
     ORDER BY row_id DESC
     LIMIT $1`, [safeLimit]);
 }
@@ -96,7 +96,7 @@ export async function savePromotion(rowId, b, user) {
   if (!data.nombre) throw new Error('PROMOTION_NAME_REQUIRED');
 
   if (rowId) {
-    const r = await query(`UPDATE shiny.promociones SET
+    const r = await query(`UPDATE gmx.promociones SET
       nombre=$2,
       tipo=$3,
       valor=$4,
@@ -144,7 +144,7 @@ export async function savePromotion(rowId, b, user) {
     return r.rows[0];
   }
 
-  const r = await query(`INSERT INTO shiny.promociones(
+  const r = await query(`INSERT INTO gmx.promociones(
     id,
     nombre,
     tipo,
@@ -200,13 +200,13 @@ export async function listNotifications({ unread = '', priority = '' } = {}) {
   const vals = [],f = [];
   if (unread !== '') {vals.push(String(unread).toLowerCase() === 'true');f.push(`COALESCE(leida,false)<>$${vals.length}`);}
   if (priority) {vals.push(priority.toUpperCase());f.push(`UPPER(COALESCE(prioridad,''))=$${vals.length}`);}
-  return query(`SELECT * FROM shiny.notificaciones_admin ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
+  return query(`SELECT * FROM gmx.notificaciones_admin ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
     ORDER BY COALESCE(leida,false),CASE UPPER(COALESCE(prioridad,'')) WHEN 'CRITICA' THEN 0 WHEN 'ALTA' THEN 1 WHEN 'MEDIA' THEN 2 ELSE 3 END,
     fecha DESC NULLS LAST,row_id DESC`, vals);
 }
 
 export async function markNotification(rowId, read = true) {
-  const r = await query(`UPDATE shiny.notificaciones_admin SET leida=$2,actualizacion=NOW()
+  const r = await query(`UPDATE gmx.notificaciones_admin SET leida=$2,actualizacion=NOW()
     WHERE row_id=$1 RETURNING *`, [rowId, !!read]);
   if (!r.rowCount) throw new Error('NOTIFICATION_NOT_FOUND');
   return r.rows[0];
@@ -216,7 +216,7 @@ export async function generateAlerts(user) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const cfg = await client.query(`SELECT parametro,valor FROM shiny.configuracion
+    const cfg = await client.query(`SELECT parametro,valor FROM gmx.configuracion
       WHERE parametro IN ('alerts.low_stock_enabled','alerts.low_stock_threshold')`);
     const m = Object.fromEntries(cfg.rows.map((x) => [x.parametro, x.valor]));
     if (String(m['alerts.low_stock_enabled'] || 'true').toLowerCase() !== 'true') {
@@ -224,17 +224,17 @@ export async function generateAlerts(user) {
     }
     const threshold = Math.max(0, Math.trunc(Number(m['alerts.low_stock_threshold'] || 5)));
     const rows = await client.query(`SELECT s.id_sucursal,s.sucursal,s.id_producto,s.sku,s.producto,s.stock,s.stock_minimo
-      FROM shiny.inventario_sucursales s
+      FROM gmx.inventario_sucursales s
       WHERE COALESCE(s.stock,0) <= GREATEST(COALESCE(s.stock_minimo,0),$1)
       ORDER BY s.sucursal,s.producto`, [threshold]);
     let created = 0;
     for (const x of rows.rows) {
       const reference = `LOWSTOCK:${x.id_sucursal}:${x.id_producto}`;
-      const exists = await client.query(`SELECT 1 FROM shiny.notificaciones_admin
+      const exists = await client.query(`SELECT 1 FROM gmx.notificaciones_admin
         WHERE modulo='INVENTARIO' AND mensaje LIKE $1 AND COALESCE(leida,false)=false LIMIT 1`,
       [`%${reference}%`]);
       if (exists.rowCount) continue;
-      await client.query(`INSERT INTO shiny.notificaciones_admin(
+      await client.query(`INSERT INTO gmx.notificaciones_admin(
         id,fecha,tipo,titulo,mensaje,modulo,prioridad,leida,actualizacion)
         VALUES($1,NOW(),'STOCK_BAJO',$2,$3,'INVENTARIO',$4,false,NOW())`, [
       uid('ALERTA'), `Stock bajo · ${x.producto}`,
@@ -243,9 +243,9 @@ export async function generateAlerts(user) {
       );
       created++;
     }
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'ALERTAS','GENERAR','STOCK_BAJO',$1,$2)`,
-    [`${created} alerta(s) nuevas`, user?.email || brandText("Shiny Local")]);
+    [`${created} alerta(s) nuevas`, user?.email || brandText("GMX Local")]);
     await client.query('COMMIT');
     return { created, checked: rows.rowCount, threshold };
   } catch (e) {await client.query('ROLLBACK');throw e;} finally {client.release();}
@@ -257,7 +257,7 @@ export async function listMedia({ search = '', category = '', active = '' } = {}
     OR COALESCE(nombre_archivo,'') ILIKE $${vals.length} OR COALESCE(categoria,'') ILIKE $${vals.length})`);}
   if (category) {vals.push(category);f.push(`categoria=$${vals.length}`);}
   if (active !== '') {vals.push(String(active).toLowerCase() === 'true');f.push(`COALESCE(activo,true)=$${vals.length}`);}
-  return query(`SELECT * FROM shiny.multimedia ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
+  return query(`SELECT * FROM gmx.multimedia ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
     ORDER BY fecha DESC NULLS LAST,row_id DESC`, vals);
 }
 
@@ -267,7 +267,7 @@ export async function saveMediaFile({ buffer, name, mime, category, user }) {
   const hash = crypto.createHash('sha256').update(buffer).digest('hex');
 
   // Evita volver a registrar exactamente el mismo contenido.
-  const existing = await query(`SELECT * FROM shiny.multimedia WHERE hash=$1 ORDER BY activo DESC,fecha DESC NULLS LAST,row_id DESC LIMIT 1`, [hash]);
+  const existing = await query(`SELECT * FROM gmx.multimedia WHERE hash=$1 ORDER BY activo DESC,fecha DESC NULLS LAST,row_id DESC LIMIT 1`, [hash]);
   if (existing.rowCount) return { ...existing.rows[0], duplicate: true };
 
   const id = uid('MEDIA');
@@ -280,13 +280,13 @@ export async function saveMediaFile({ buffer, name, mime, category, user }) {
   await fs.writeFile(diskPath, buffer);
   const type = String(mime || 'application/octet-stream').split('/')[0].toUpperCase();
   try {
-    const r = await query(`INSERT INTO shiny.multimedia(
+    const r = await query(`INSERT INTO gmx.multimedia(
       id_media,nombre,nombre_archivo,tipo,mime_type,categoria,proveedor,ruta,file_id,url,url_drive,
       tamano_bytes,hash,activo,fecha,actualizacion,admin)
       VALUES($1,$2,$3,$4,$5,$6,'LOCAL',$7,$8,$9,NULL,$10,$11,true,NOW(),NOW(),$12)
       RETURNING *`, [
     id, safeName, safeName, type, mime || 'application/octet-stream', category || 'GENERAL',
-    diskPath, diskName, `/api/v1/content/media/${id}/file`, buffer.length, hash, user?.email || brandText("Shiny Local")]
+    diskPath, diskName, `/api/v1/content/media/${id}/file`, buffer.length, hash, user?.email || brandText("GMX Local")]
     );
     return r.rows[0];
   } catch (e) {
@@ -376,7 +376,7 @@ export async function importMediaFromUrl({ url, name = '', category = 'GENERAL',
   if (!safeName) safeName = `imagen-remota${ext || '.img'}`;
   if (ext && !safeName.toLowerCase().endsWith(ext)) safeName += ext;
   const media = await saveMediaFile({ buffer: d.buffer, name: safeName, mime: d.mime, category, user });
-  await query(`UPDATE shiny.multimedia SET url_origen=$2,actualizacion=NOW() WHERE id_media=$1`, [media.id_media, d.finalUrl]);
+  await query(`UPDATE gmx.multimedia SET url_origen=$2,actualizacion=NOW() WHERE id_media=$1`, [media.id_media, d.finalUrl]);
   return { ...media, url_origen: d.finalUrl, storedLocally: true };
 }
 export async function importManyMediaFromUrls({ urls = [], category = 'GENERAL', user }) {
@@ -390,12 +390,12 @@ export async function importManyMediaFromUrls({ urls = [], category = 'GENERAL',
 }
 
 export async function mediaMeta(id) {
-  const r = await query(`SELECT * FROM shiny.multimedia WHERE id_media=$1 ORDER BY row_id LIMIT 1`, [id]);
+  const r = await query(`SELECT * FROM gmx.multimedia WHERE id_media=$1 ORDER BY row_id LIMIT 1`, [id]);
   return r.rows[0] || null;
 }
 
 export async function setMediaActive(id, active) {
-  const r = await query(`UPDATE shiny.multimedia SET activo=$2,actualizacion=NOW()
+  const r = await query(`UPDATE gmx.multimedia SET activo=$2,actualizacion=NOW()
     WHERE id_media=$1 RETURNING *`, [id, !!active]);
   if (!r.rowCount) throw new Error('MEDIA_NOT_FOUND');
   return r.rows[0];
@@ -409,14 +409,14 @@ export async function mediaImpact(id) {
   const refs = await query(`
     SELECT 'SLIDESHOW_DESKTOP' source,row_id::text reference,
       COALESCE(titulo,'Slide '||row_id::text) label
-    FROM shiny.cms_banners WHERE id_media_desktop=$1
+    FROM gmx.cms_banners WHERE id_media_desktop=$1
     UNION ALL
     SELECT 'SLIDESHOW_MOBILE',row_id::text,
       COALESCE(titulo,'Slide '||row_id::text)||' (móvil)'
-    FROM shiny.cms_banners WHERE id_media_mobile=$1
+    FROM gmx.cms_banners WHERE id_media_mobile=$1
     UNION ALL
     SELECT 'BACKGROUND',parametro,parametro
-    FROM shiny.configuracion
+    FROM gmx.configuracion
     WHERE parametro IN (
       'appearance.background_media_id',
       'admin.appearance.background_media_id',
@@ -439,15 +439,15 @@ export async function deleteMediaSafe(id, user, { detach = false } = {}) {
   let media = null,detachedReferences = 0;
   try {
     await client.query('BEGIN');
-    const m = await client.query(`SELECT * FROM shiny.multimedia WHERE id_media=$1 FOR UPDATE`, [id]);
+    const m = await client.query(`SELECT * FROM gmx.multimedia WHERE id_media=$1 FOR UPDATE`, [id]);
     if (!m.rowCount) throw new Error('MEDIA_NOT_FOUND');
     media = m.rows[0];
 
     const refs = await client.query(`
       SELECT
-        (SELECT COUNT(*) FROM shiny.cms_banners WHERE id_media_desktop=$1)::int desktop,
-        (SELECT COUNT(*) FROM shiny.cms_banners WHERE id_media_mobile=$1)::int mobile,
-        (SELECT COUNT(*) FROM shiny.configuracion WHERE parametro IN (
+        (SELECT COUNT(*) FROM gmx.cms_banners WHERE id_media_desktop=$1)::int desktop,
+        (SELECT COUNT(*) FROM gmx.cms_banners WHERE id_media_mobile=$1)::int mobile,
+        (SELECT COUNT(*) FROM gmx.configuracion WHERE parametro IN (
           'appearance.background_media_id','admin.appearance.background_media_id','public.appearance.background_media_id'
         ) AND valor=$1)::int backgrounds
     `, [id]);
@@ -459,23 +459,23 @@ export async function deleteMediaSafe(id, user, { detach = false } = {}) {
     }
 
     if (detach) {
-      await client.query(`UPDATE shiny.cms_banners SET
+      await client.query(`UPDATE gmx.cms_banners SET
         id_media_desktop=CASE WHEN id_media_desktop=$1 THEN NULL ELSE id_media_desktop END,
         id_media_mobile=CASE WHEN id_media_mobile=$1 THEN NULL ELSE id_media_mobile END,
         actualizacion=NOW()
         WHERE id_media_desktop=$1 OR id_media_mobile=$1`, [id]);
-      await client.query(`UPDATE shiny.configuracion SET valor=''
+      await client.query(`UPDATE gmx.configuracion SET valor=''
         WHERE parametro IN (
           'appearance.background_media_id','admin.appearance.background_media_id','public.appearance.background_media_id'
         ) AND valor=$1`, [id]);
     }
 
-    await client.query(`DELETE FROM shiny.multimedia WHERE id_media=$1`, [id]);
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await client.query(`DELETE FROM gmx.multimedia WHERE id_media=$1`, [id]);
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'MULTIMEDIA','ELIMINAR',$1,$2,$3)`, [
     id,
     `${media.nombre_archivo || media.nombre || 'archivo'} · referencias retiradas: ${detachedReferences}`,
-    user?.email || brandText("Shiny Local")]
+    user?.email || brandText("GMX Local")]
     );
     await client.query('COMMIT');
   } catch (e) {

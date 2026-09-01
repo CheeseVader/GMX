@@ -268,7 +268,7 @@ export default function TCGMasterCatalogBrowser({ onNavigate }) {
       const game = operationalGames.find((g) =>
       String(g.catalogo_codigo || g.codigo || '').toUpperCase() === String(selectedCard.game_code || '').toUpperCase()
       );
-      if (!game) throw new Error(brandText("Primero agrega este TCG a Shiny desde Publicación y mantenimiento."));
+      if (!game) throw new Error(brandText("Primero agrega este TCG a GMX desde Publicación y mantenimiento."));
 
       const sets = await api('/api/v1/tcg/sets');
       const operationalSets = sets.data || [];
@@ -276,7 +276,7 @@ export default function TCGMasterCatalogBrowser({ onNavigate }) {
       s.id_juego === game.id_juego &&
       [s.catalogo_codigo, s.codigo, s.id_set].some((v) => String(v || '').toUpperCase() === String(selectedCard.set_code || '').toUpperCase())
       );
-      if (!set) throw new Error(brandText("La expansión todavía no está habilitada en Shiny. Sincroniza el TCG desde Publicación y mantenimiento."));
+      if (!set) throw new Error(brandText("La expansión todavía no está habilitada en GMX. Sincroniza el TCG desde Publicación y mantenimiento."));
 
       const existing = await api(`/api/v1/tcg/cards?limit=1000`);
       const already = (existing.data || []).find((c) =>
@@ -286,7 +286,7 @@ export default function TCGMasterCatalogBrowser({ onNavigate }) {
       );
       if (already) {
         setMessage(brandText(`"${selectedCard.name}" ya está habilitada en Shiny.`));
-        window.shinyNotify?.(brandText("La carta ya estaba habilitada en Shiny."), { type: 'info' });
+        window.shinyNotify?.(brandText("La carta ya estaba habilitada en GMX."), { type: 'info' });
         return;
       }
 
@@ -305,7 +305,7 @@ export default function TCGMasterCatalogBrowser({ onNavigate }) {
         })
       });
       setMessage(brandText(`"${selectedCard.name}" agregada a Shiny. Ya puede recibirse en inventario.`));
-      window.shinyNotify?.(brandText("Carta habilitada en Shiny."), { type: 'success' });
+      window.shinyNotify?.(brandText("Carta habilitada en GMX."), { type: 'success' });
     } catch (e) {
       setMessage(e.message);
       window.shinyNotify?.(e.message, { type: 'error' });
@@ -378,7 +378,7 @@ export default function TCGMasterCatalogBrowser({ onNavigate }) {
             <p>#{selectedCard.collector_number || selectedCard.number || '—'} · {selectedCard.rarity || 'Sin rareza'} · {selectedCard.card_type || '—'}</p>
             <div className="master-card-shiny-actions">
               <button type="button" onClick={addSelectedCardToTemplate} disabled={addingToTemplate}>
-                {addingToTemplate ? 'Agregando…' : brandText("Agregar a Shiny")}
+                {addingToTemplate ? 'Agregando…' : brandText("Agregar a GMX")}
               </button>
               <small>Habilita esta carta para recepción, inventario y operación local. No crea existencias.</small>
             </div>

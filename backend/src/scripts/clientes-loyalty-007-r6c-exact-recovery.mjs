@@ -98,7 +98,7 @@ const TARGET_ORDER =
 "PED-LOCAL-1787235298184-1f88ce";
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-007 R6C EXACT RECOVERY")
+  section(brandText("GMX — CLIENTES-LOYALTY-007 R6C EXACT RECOVERY")
 
   );
 
@@ -129,7 +129,7 @@ async function main() {
         inventario_liberado,
         pos_idempotency_key,
         id_sucursal
-      FROM shiny.pedidos
+      FROM gmx.pedidos
       WHERE id_pedido=$1
       `,
       [TARGET_ORDER]
@@ -179,7 +179,7 @@ async function main() {
         tipo,
         id_inventario,
         cantidad
-      FROM shiny.detalle_pedidos
+      FROM gmx.detalle_pedidos
       WHERE id_pedido=$1
       ORDER BY row_id
       `,
@@ -216,9 +216,9 @@ async function main() {
           s.id_sucursal,
           s.stock AS branch_stock
 
-        FROM shiny.tcg_inventario i
+        FROM gmx.tcg_inventario i
 
-        JOIN shiny.tcg_inventario_sucursales s
+        JOIN gmx.tcg_inventario_sucursales s
           ON s.id_inventario=i.id_inventario
 
         WHERE
@@ -329,7 +329,7 @@ async function main() {
         estado_pedido,
         inventario_liberado,
         beneficios_revertidos
-      FROM shiny.pedidos
+      FROM gmx.pedidos
       WHERE id_pedido=$1
       `,
       [TARGET_ORDER]
@@ -388,9 +388,9 @@ async function main() {
           i.stock AS global_stock,
           s.stock AS branch_stock
 
-        FROM shiny.tcg_inventario i
+        FROM gmx.tcg_inventario i
 
-        JOIN shiny.tcg_inventario_sucursales s
+        JOIN gmx.tcg_inventario_sucursales s
           ON s.id_inventario=i.id_inventario
 
         WHERE
@@ -476,7 +476,7 @@ async function main() {
         data_type
       FROM information_schema.columns
       WHERE
-        table_schema='shiny'
+        table_schema='gmx'
         AND table_name='caja_movimientos'
       ORDER BY ordinal_position
       `

@@ -69,7 +69,7 @@ function statusLabel(status) {
   if (status === 'INTERNET_IDENTIFIED') return 'Identificada en Internet';
   if (status === 'MATCHED') return 'Relacionado localmente';
   if (status === 'AMBIGUOUS') return 'Revisar identidad';
-  if (status === 'NOT_FOUND') return 'Fuera del catálogo Shiny';
+  if (status === 'NOT_FOUND') return 'Fuera del catálogo GMX';
   if (status === 'ERROR') return 'Error de enriquecimiento';
   return 'En cola';
 }
@@ -107,13 +107,13 @@ function PricePanel({ resolution }) {
     <p className="visual-r2-cache-note">
       {resolution.tcgplayer_prices?.length ? `TCGplayer por proveedor de Internet · ${resolution.tcgplayer_prices.length} variante(s)` :
         'El proveedor de Internet no entregó precio TCGplayer; se muestra otra fuente cuando existe.'}
-      {' · '}Origen {cache.origin === 'INTERNET' ? 'Internet consultado ahora' : 'caché Shiny'}.
+      {' · '}Origen {cache.origin === 'INTERNET' ? 'Internet consultado ahora' : 'caché GMX'}.
     </p>
     <div className="visual-r2-id-grid">
       <div><span>Master Card ID local</span><strong>{resolution.master?.row_id || 'No existe localmente'}</strong></div>
       <div><span>TCGplayer productId</span><strong>{resolution.tcgplayer?.product_id || 'No guardado'}</strong></div>
       <div><span>TCGplayer SKU</span><strong>{resolution.tcgplayer?.sku || 'No guardado'}</strong></div>
-      <div><span>Producto Shiny</span><strong>{resolution.operational?.card?.id_carta || 'Aún no creado'}</strong></div>
+      <div><span>Producto GMX</span><strong>{resolution.operational?.card?.id_carta || 'Aún no creado'}</strong></div>
     </div>
   </div>;
 }
@@ -217,7 +217,7 @@ export default function ExternalCardLookupBetaPage() {
       await videoRef.current.play();
       setCameraActive(true);
     } catch (error) {
-      console.error(brandText('[Shiny Visual TCG Camera]'), error);
+      console.error(brandText('[GMX Visual TCG Camera]'), error);
       setMessage(error?.name === 'NotAllowedError' ? 'Permiso de cámara denegado.' : 'No fue posible abrir la cámara.');
     } finally {
       setCameraBusy(false);
@@ -1472,7 +1472,7 @@ async function readYugiohDedicatedCodeR26E(worker, sourceImage) {
 
       return candidate;
     } catch (error) {
-      console.error(brandText('[Shiny Visual TCG OCR R17]'), error);
+      console.error(brandText('[GMX Visual TCG OCR R17]'), error);
       if (!silent) setMessage('No fue posible obtener consenso OCR. Vuelve a encuadrar la carta.');
       return '';
     } finally {
@@ -1848,7 +1848,7 @@ async function readYugiohDedicatedCodeR26E(worker, sourceImage) {
       }
     };
 
-    const key='shiny.externalReferenceTests.v1';
+    const key='gmx.externalReferenceTests.v1';
     let current=[];
     try{
       current=JSON.parse(localStorage.getItem(key)||'[]');
@@ -1879,7 +1879,7 @@ async function readYugiohDedicatedCodeR26E(worker, sourceImage) {
   return <div className="shiny-external-parity visual-r2">
     <section className="content-card visual-r2-hero">
       <div><div className="eyebrow">BÚSQUEDA VISUAL · INTERNET PRIMERO</div><h2>Alta Externa Beta R3</h2>
-        <p>Identifica la carta en Internet aunque no exista en Shiny; después comprueba producto, precio e inventario local.</p></div>
+        <p>Identifica la carta en Internet aunque no exista en GMX; después comprueba producto, precio e inventario local.</p></div>
       <div className="visual-r2-mode"><button className={mode === 'individual' ? 'active' : ''} onClick={() => setMode('individual')}>Individual</button>
         <button className={mode === 'bulk' ? 'active' : ''} onClick={() => setMode('bulk')}>Bulk</button></div>
     </section>
@@ -1908,7 +1908,7 @@ async function readYugiohDedicatedCodeR26E(worker, sourceImage) {
     </section>
 
     <section className="content-card visual-r2-results">
-      <div className="visual-r2-section-head"><div><h3>Identidad desde Internet</h3><p>{rows.length ? `${rows.length} candidato(s) en ${source}` : 'Sin candidatos todavía.'}</p></div>{resolveBusy ? <span className="visual-r2-working">Comprobando existencia en Shiny…</span> : null}</div>
+      <div className="visual-r2-section-head"><div><h3>Identidad desde Internet</h3><p>{rows.length ? `${rows.length} candidato(s) en ${source}` : 'Sin candidatos todavía.'}</p></div>{resolveBusy ? <span className="visual-r2-working">Comprobando existencia en GMX…</span> : null}</div>
       <div className="visual-r2-result-grid"><div className="external-parity-match-list">{rows.slice(0, 10).map((item, index) => {
         const key = `${identityKey(item)}|${index}`; const src = imageSrc(item.image);
         return <article key={key} className={`external-parity-match ${selected === item ? 'selected' : ''}`} onClick={() => choose(item)}>
@@ -2019,7 +2019,7 @@ async function readYugiohDedicatedCodeR26E(worker, sourceImage) {
         </div>
 
         <div className="shiny-ref-r13e-save">
-          <button type="button" onClick={shinySaveReferenceTest}>Guardar prueba en Shiny</button>
+          <button type="button" onClick={shinySaveReferenceTest}>Guardar prueba en GMX</button>
           <span>Se guarda sólo en localStorage de este navegador. No toca BD, producto ni stock.</span>
         </div>
 

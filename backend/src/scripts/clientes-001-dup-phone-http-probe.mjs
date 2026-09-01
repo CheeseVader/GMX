@@ -198,7 +198,7 @@ async function login() {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-001 DUPLICATE PHONE HTTP PROBE")
+  section(brandText("GMX — CLIENTES-001 DUPLICATE PHONE HTTP PROBE")
 
   );
 
@@ -276,7 +276,7 @@ async function main() {
           nombre,
           telefono,
           email
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE
           telefono=$1
           OR email IN ($2,$3)
@@ -454,7 +454,7 @@ async function main() {
           telefono,
           email,
           telefono_normalizado
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE
           telefono=$1
           OR email IN ($2,$3)
@@ -576,7 +576,7 @@ async function main() {
               nombre,
               telefono,
               email
-            FROM shiny.clientes
+            FROM gmx.clientes
             WHERE
               telefono=$1
               AND email=$2
@@ -603,7 +603,7 @@ async function main() {
         if (target.rowCount === 1) {
           await db.query(
             `
-            DELETE FROM shiny.clientes
+            DELETE FROM gmx.clientes
             WHERE
               row_id=$1
               AND telefono=$2
@@ -623,7 +623,7 @@ async function main() {
         await db.query(
           `
             SELECT COUNT(*)::bigint AS total
-            FROM shiny.clientes
+            FROM gmx.clientes
             WHERE
               telefono=$1
               OR email IN ($2,$3)
@@ -678,7 +678,7 @@ async function main() {
           nombre,
           telefono,
           email
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE
           telefono=$1
           OR email IN ($2,$3)
@@ -707,7 +707,7 @@ async function main() {
           tipo,
           valor_normalizado,
           id_cliente
-        FROM shiny.cliente_identidad_unica
+        FROM gmx.cliente_identidad_unica
         WHERE id_cliente=$1
         `,
       [createdIdCliente || "__NONE__"]

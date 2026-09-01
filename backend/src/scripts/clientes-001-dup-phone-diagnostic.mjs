@@ -89,7 +89,7 @@ function dbConfig() {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-001 DUPLICATE PHONE DIAGNOSTIC"));
+  section(brandText("GMX — CLIENTES-001 DUPLICATE PHONE DIAGNOSTIC"));
 
   console.log("MODE=CONTROLLED_TRANSACTION");
   console.log("PERSISTENT_MUTATION_ALLOWED=NO");
@@ -139,7 +139,7 @@ async function main() {
       JOIN pg_namespace n
         ON n.oid=c.relnamespace
       WHERE
-        n.nspname='shiny'
+        n.nspname='gmx'
         AND c.relname='clientes'
         AND NOT t.tgisinternal
       ORDER BY t.tgname
@@ -181,7 +181,7 @@ async function main() {
         indexname,
         indexdef
       FROM pg_indexes
-      WHERE schemaname='shiny'
+      WHERE schemaname='gmx'
         AND tablename IN (
           'clientes',
           'cliente_identidad_unica'
@@ -202,7 +202,7 @@ async function main() {
     const baseline = await db.query(
       `
       SELECT COUNT(*)::bigint AS total
-      FROM shiny.clientes
+      FROM gmx.clientes
       WHERE telefono=$1
          OR email IN ($2,$3)
       `,
@@ -228,7 +228,7 @@ async function main() {
 
     const a = await db.query(
       `
-      INSERT INTO shiny.clientes(
+      INSERT INTO gmx.clientes(
         nombre,
         telefono,
         email,
@@ -285,7 +285,7 @@ async function main() {
         tipo,
         valor_normalizado,
         id_cliente
-      FROM shiny.cliente_identidad_unica
+      FROM gmx.cliente_identidad_unica
       WHERE id_cliente=$1
       ORDER BY row_id
       `,
@@ -312,7 +312,7 @@ async function main() {
     try {
       const b = await db.query(
         `
-        INSERT INTO shiny.clientes(
+        INSERT INTO gmx.clientes(
           nombre,
           telefono,
           email,
@@ -401,7 +401,7 @@ async function main() {
         telefono,
         email,
         telefono_normalizado
-      FROM shiny.clientes
+      FROM gmx.clientes
       WHERE telefono=$1
          OR email IN ($2,$3)
       ORDER BY row_id
@@ -422,7 +422,7 @@ async function main() {
         tipo,
         valor_normalizado,
         id_cliente
-      FROM shiny.cliente_identidad_unica
+      FROM gmx.cliente_identidad_unica
       WHERE id_cliente=$1
       ORDER BY row_id
       `,
@@ -464,7 +464,7 @@ async function main() {
         nombre,
         telefono,
         email
-      FROM shiny.clientes
+      FROM gmx.clientes
       WHERE telefono=$1
          OR email IN ($2,$3)
          OR nombre LIKE $4
@@ -491,9 +491,9 @@ async function main() {
         tipo,
         valor_normalizado,
         id_cliente
-      FROM shiny.cliente_identidad_unica
+      FROM gmx.cliente_identidad_unica
       WHERE valor_normalizado IN (
-        shiny.normalize_phone_digits($1),
+        gmx.normalize_phone_digits($1),
         lower($2),
         lower($3)
       )

@@ -96,7 +96,7 @@ export default function StoreCatalogPage() {
   }
 
   return <main className="public-page shiny-catalog-page">
-    <section className="shiny-catalog-hero" data-game-theme="shiny">
+    <section className="shiny-catalog-hero" data-game-theme="gmx">
       <div className="shiny-catalog-hero-copy">
         <span className="shiny-breadcrumb"><Link to="/tienda">Inicio</Link> / Productos</span>
         <h1>Productos</h1>

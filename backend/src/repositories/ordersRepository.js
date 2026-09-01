@@ -42,8 +42,8 @@ export async function listOrders({ search = '', branchId = '', status = '', limi
       p.canal_venta, p.venta_confirmada,
       COUNT(d.row_id)::bigint AS lineas,
       COALESCE(SUM(d.cantidad),0)::bigint AS unidades
-    FROM shiny.pedidos p
-    LEFT JOIN shiny.detalle_pedidos d ON d.id_pedido = p.id_pedido
+    FROM gmx.pedidos p
+    LEFT JOIN gmx.detalle_pedidos d ON d.id_pedido = p.id_pedido
     ${filters.length ? 'WHERE ' + filters.join(' AND ') : ''}
     GROUP BY p.row_id
     ORDER BY p.fecha DESC NULLS LAST, p.row_id DESC
@@ -55,7 +55,7 @@ export async function listOrders({ search = '', branchId = '', status = '', limi
 export async function getOrder(rowId) {
   const header = await query(`
     SELECT *
-    FROM shiny.pedidos
+    FROM gmx.pedidos
     WHERE row_id = $1
   `, [rowId]);
 
@@ -68,7 +68,7 @@ export async function getOrder(rowId) {
       row_id, id_pedido, id_producto, producto, cantidad,
       precio, subtotal, id_detalle, sku, precio_unitario,
       tipo, id_inventario, detalle
-    FROM shiny.detalle_pedidos
+    FROM gmx.detalle_pedidos
     WHERE id_pedido = $1
     ORDER BY row_id
   `, [order.id_pedido]);
@@ -78,7 +78,7 @@ export async function getOrder(rowId) {
       row_id,id_pago,id_pedido,linea,metodo,importe_aplicado,
       efectivo_recibido,cambio_entregado,referencia,proveedor,
       provider_payment_id,estado,id_admin,administrador,fecha
-    FROM shiny.pedido_pagos
+    FROM gmx.pedido_pagos
     WHERE id_pedido=$1
     ORDER BY linea,row_id
   `, [order.id_pedido]);
@@ -93,7 +93,7 @@ export async function getOrder(rowId) {
 async function fetchBranch(client, branchId, { requireActive = true } = {}) {
   const result = await client.query(`
     SELECT id_sucursal, nombre_sucursal, activa
-    FROM shiny.sucursales
+    FROM gmx.sucursales
     WHERE id_sucursal = $1
       ${requireActive ? 'AND COALESCE(activa, true) = true' : ''}
     ORDER BY row_id
@@ -110,7 +110,7 @@ async function fetchClient(client, clientId) {
     SELECT
       id_cliente, nombre, telefono, email, direccion,
       ciudad, estado, cp
-    FROM shiny.clientes
+    FROM gmx.clientes
     WHERE id_cliente = $1
     ORDER BY row_id
     LIMIT 1
@@ -122,7 +122,7 @@ async function fetchClient(client, clientId) {
 async function fetchProduct(client, productId) {
   const result = await client.query(`
     SELECT id, sku, nombre, precio, estado
-    FROM shiny.productos
+    FROM gmx.productos
     WHERE id = $1
     ORDER BY row_id
     LIMIT 1
@@ -137,7 +137,7 @@ async function lockInventory(client, branchId, productId) {
   [`PRODUCT:${branchId}:${productId}`]);
   const result = await client.query(`
     SELECT *
-    FROM shiny.inventario_sucursales
+    FROM gmx.inventario_sucursales
     WHERE id_sucursal = $1
       AND id_producto = $2
     ORDER BY row_id
@@ -152,11 +152,11 @@ async function logMovement(client, {
   branch, product, type, quantity, before, after, reason, reference, user = null
 }) {
   const actorId = String(user?.id_admin || '').trim();
-  const actorName = String(user?.nombre || user?.email || brandText("Shiny Local POS")).trim();
-  const actorUser = String(user?.email || user?.nombre || 'shiny_app').trim();
+  const actorName = String(user?.nombre || user?.email || brandText("GMX Local POS")).trim();
+  const actorUser = String(user?.email || user?.nombre || 'gmx_app').trim();
 
   await client.query(`
-    INSERT INTO shiny.movimientos_inventario_sucursales (
+    INSERT INTO gmx.movimientos_inventario_sucursales (
       id_movimiento, fecha, id_sucursal, sucursal,
       id_producto, sku, producto, tipo, cantidad,
       stock_anterior, stock_nuevo, motivo,
@@ -193,7 +193,7 @@ function normalizePaymentMethod(value) {
 async function lockOpenCashSession(client, branchId) {
   const result = await client.query(`
     SELECT *
-    FROM shiny.caja_sesiones
+    FROM gmx.caja_sesiones
     WHERE id_sucursal=$1
       AND UPPER(COALESCE(estado,''))='ABIERTA'
       AND fecha_cierre IS NULL
@@ -209,7 +209,7 @@ async function registerCashSale(client, { cash, branch, orderId, total, user = n
 
   const existing = await client.query(`
     SELECT row_id,id_movimiento
-    FROM shiny.caja_movimientos
+    FROM gmx.caja_movimientos
     WHERE origen_modulo='POS_LOCAL'
       AND id_origen=$1
       AND categoria='VENTA'
@@ -224,10 +224,10 @@ async function registerCashSale(client, { cash, branch, orderId, total, user = n
   if (!Number.isFinite(amount) || amount < 0) throw new Error('INVALID_SALE_TOTAL');
 
   const actorId = String(user?.id_admin || '').trim();
-  const actorName = String(user?.nombre || user?.email || brandText("Shiny Local POS")).trim();
+  const actorName = String(user?.nombre || user?.email || brandText("GMX Local POS")).trim();
 
   const inserted = await client.query(`
-    INSERT INTO shiny.caja_movimientos(
+    INSERT INTO gmx.caja_movimientos(
       id_movimiento,id_caja,fecha,id_sucursal,sucursal,tipo,categoria,
       metodo_pago,importe,impacto_efectivo,referencia,descripcion,
       origen_modulo,id_origen,id_admin,administrador,anulado,id_movimiento_reversion
@@ -241,7 +241,7 @@ async function registerCashSale(client, { cash, branch, orderId, total, user = n
   `, [cash.id_caja, branch.id_sucursal, branch.nombre_sucursal, amount, orderId, actorId, actorName]);
 
   await client.query(`
-    UPDATE shiny.caja_sesiones
+    UPDATE gmx.caja_sesiones
     SET
       ingresos_efectivo=COALESCE(ingresos_efectivo,0)+$2,
       saldo_esperado=COALESCE(fondo_inicial,0)
@@ -261,7 +261,7 @@ async function registerCashSale(client, { cash, branch, orderId, total, user = n
 async function reverseCashSaleOnCancellation(client, { order, branch, user = null }) {
   const payments = await client.query(`
     SELECT COALESCE(SUM(importe_aplicado),0)::numeric AS cash_total
-    FROM shiny.pedido_pagos
+    FROM gmx.pedido_pagos
     WHERE id_pedido=$1
       AND UPPER(COALESCE(metodo,''))='EFECTIVO'
       AND UPPER(COALESCE(estado,''))='PAGADO'
@@ -272,7 +272,7 @@ async function reverseCashSaleOnCancellation(client, { order, branch, user = nul
 
   const existing = await client.query(`
     SELECT row_id,id_movimiento
-    FROM shiny.caja_movimientos
+    FROM gmx.caja_movimientos
     WHERE origen_modulo='POS_CANCELACION'
       AND id_origen=$1
       AND categoria='CANCELACION_VENTA'
@@ -288,7 +288,7 @@ async function reverseCashSaleOnCancellation(client, { order, branch, user = nul
 
   const original = await client.query(`
     SELECT *
-    FROM shiny.caja_movimientos
+    FROM gmx.caja_movimientos
     WHERE origen_modulo='POS_LOCAL'
       AND id_origen=$1
       AND categoria='VENTA'
@@ -305,10 +305,10 @@ async function reverseCashSaleOnCancellation(client, { order, branch, user = nul
   if (!cash) throw new Error('CASH_SESSION_REQUIRED_FOR_CANCELLATION');
 
   const actorId = String(user?.id_admin || '').trim();
-  const actorName = String(user?.nombre || user?.email || brandText("Shiny Local POS")).trim();
+  const actorName = String(user?.nombre || user?.email || brandText("GMX Local POS")).trim();
 
   const reversal = await client.query(`
-    INSERT INTO shiny.caja_movimientos(
+    INSERT INTO gmx.caja_movimientos(
       id_movimiento,id_caja,fecha,id_sucursal,sucursal,tipo,categoria,
       metodo_pago,importe,impacto_efectivo,referencia,descripcion,
       origen_modulo,id_origen,id_admin,administrador,anulado,id_movimiento_reversion
@@ -325,13 +325,13 @@ async function reverseCashSaleOnCancellation(client, { order, branch, user = nul
   );
 
   await client.query(`
-    UPDATE shiny.caja_movimientos
+    UPDATE gmx.caja_movimientos
     SET id_movimiento_reversion=$2
     WHERE row_id=$1
   `, [original.rows[0].row_id, reversal.rows[0].id_movimiento]);
 
   await client.query(`
-    UPDATE shiny.caja_sesiones
+    UPDATE gmx.caja_sesiones
     SET egresos_efectivo=COALESCE(egresos_efectivo,0)+($2::numeric),
         saldo_esperado=COALESCE(fondo_inicial,0)
           +COALESCE(ingresos_efectivo,0)
@@ -341,7 +341,7 @@ async function reverseCashSaleOnCancellation(client, { order, branch, user = nul
   `, [cash.row_id, cashTotal]);
 
   await client.query(`
-    UPDATE shiny.pedido_pagos
+    UPDATE gmx.pedido_pagos
     SET estado='REEMBOLSADO'
     WHERE id_pedido=$1
       AND UPPER(COALESCE(metodo,''))='EFECTIVO'
@@ -401,8 +401,8 @@ export async function searchPosCatalog({
         NULL::text AS image_url,
         inv.stock,
         p.precio AS price
-      FROM shiny.productos p
-      JOIN shiny.inventario_sucursales inv
+      FROM gmx.productos p
+      JOIN gmx.inventario_sucursales inv
         ON inv.id_producto=p.id AND inv.id_sucursal=$1
       WHERE COALESCE(p.estado,'ACTIVO')<>'INACTIVO'
         AND COALESCE(inv.stock,0)>0
@@ -455,14 +455,14 @@ export async function searchPosCatalog({
           WHEN COALESCE(i.precio_oferta,0)>0 THEN i.precio_oferta
           ELSE i.precio
         END AS price
-      FROM shiny.tcg_inventario i
-      JOIN shiny.tcg_inventario_sucursales s
+      FROM gmx.tcg_inventario i
+      JOIN gmx.tcg_inventario_sucursales s
         ON s.id_inventario=i.id_inventario
-      JOIN shiny.tcg_cartas c
+      JOIN gmx.tcg_cartas c
         ON c.id_carta=i.id_carta
-      LEFT JOIN shiny.tcg_juegos j
+      LEFT JOIN gmx.tcg_juegos j
         ON j.id_juego=c.id_juego
-      LEFT JOIN shiny.tcg_sets st
+      LEFT JOIN gmx.tcg_sets st
         ON st.id_set=c.id_set
       WHERE ${filters.join(' AND ')}
       ORDER BY c.nombre,c.numero_completo,i.condicion,i.idioma
@@ -495,6 +495,8 @@ export async function createSale({
   items = []
 }) {
   if (!branchId) throw new Error('BRANCH_REQUIRED');
+
+
   if (!Array.isArray(items) || !items.length) throw new Error('EMPTY_CART');
 
   const normalizedItems = new Map();
@@ -527,7 +529,7 @@ export async function createSale({
 
     const existingSale = await client.query(`
       SELECT row_id,id_pedido
-      FROM shiny.pedidos
+      FROM gmx.pedidos
       WHERE pos_idempotency_key=$1
       ORDER BY row_id
       LIMIT 1
@@ -564,7 +566,18 @@ export async function createSale({
         reference: String(p?.reference || p?.referencia || '').trim(),
         provider: String(p?.provider || p?.proveedor || '').trim()
       };
-    });
+    });    // GMX_POS_CARD_VALIDATE_BACKEND_R1
+    for (const p of normalizedPayments) {
+      if (p.method !== 'TARJETA') continue;
+      const reference = String(p.reference || '').trim();
+      const provider = String(p.provider || '').trim();
+      if (!reference) throw new Error('CARD_REFERENCE_REQUIRED');
+      if (!provider) throw new Error('CARD_PROVIDER_REQUIRED');
+      if (!provider.includes('BANK=')) throw new Error('CARD_BANK_REQUIRED');
+      if (!provider.includes('BRAND=')) throw new Error('CARD_BRAND_REQUIRED');
+      if (!provider.includes('TYPE=')) throw new Error('CARD_TYPE_REQUIRED');
+    }
+
 
     // SHINY_POS_003_MERCADOPAGO
     const cardPayments =
@@ -576,20 +589,10 @@ export async function createSale({
      * POS-003 certification covers one Mercado Pago card
      * payment for the full POS sale.
      */
-    if (
-    cardPayments.length && (
+    /* GMX_POS_CARD_MP_MIXED_REMOVED_R1 */
 
-    cardPayments.length !== 1 ||
-    normalizedPayments.length !== 1))
-
-    {
-      throw new Error(
-        'MERCADOPAGO_MIXED_PAYMENT_NOT_SUPPORTED'
-      );
-    }
-
-    const isMercadoPagoCardSale =
-    cardPayments.length === 1;
+    // GMX_POS_CARD_MANUAL_R1
+    const isMercadoPagoCardSale = false;
 
     const hasCashRequested = normalizedPayments.some((p) => p.method === 'EFECTIVO');
     const cashSession = hasCashRequested ?
@@ -635,11 +638,11 @@ export async function createSale({
             i.*,c.nombre AS carta,c.id_carta,c.id_juego,c.id_set,c.numero_completo,c.rareza AS carta_rareza,
             j.nombre AS juego,st.nombre AS set_nombre,
             s.row_id AS branch_row_id,s.stock AS branch_stock,s.stock_reservado AS branch_reserved
-          FROM shiny.tcg_inventario i
-          JOIN shiny.tcg_cartas c ON c.id_carta=i.id_carta
-          LEFT JOIN shiny.tcg_juegos j ON j.id_juego=c.id_juego
-          LEFT JOIN shiny.tcg_sets st ON st.id_set=c.id_set
-          JOIN shiny.tcg_inventario_sucursales s
+          FROM gmx.tcg_inventario i
+          JOIN gmx.tcg_cartas c ON c.id_carta=i.id_carta
+          LEFT JOIN gmx.tcg_juegos j ON j.id_juego=c.id_juego
+          LEFT JOIN gmx.tcg_sets st ON st.id_set=c.id_set
+          JOIN gmx.tcg_inventario_sucursales s
             ON s.id_inventario=i.id_inventario AND s.id_sucursal=$1
           WHERE i.id_inventario=$2
           ORDER BY i.row_id
@@ -671,6 +674,23 @@ export async function createSale({
       }
     }
 
+    // GMX_MEMBERSHIP_BACKEND_GUARD_R5
+    const membershipLines = prepared.filter((line) => line.itemType === 'PRODUCT' && String(line.sku || '').trim().toUpperCase().startsWith('MEM-'));
+    if (membershipLines.length) {
+      if (!customer) throw new Error('MEMBERSHIP_CLIENT_REQUIRED');
+      if (membershipLines.some((line) => Number(line.quantity || 0) !== 1)) throw new Error('MEMBERSHIP_QUANTITY_ONE_REQUIRED');
+    }
+    // GMX_MEMBERSHIP_DUPLICATE_TCG_GUARD_R5D
+    const membershipSkuLines = prepared.filter((line) => line.itemType === 'PRODUCT' && String(line.sku || '').trim().toUpperCase().startsWith('MEM-'));
+    if (membershipSkuLines.length) {
+      for (const line of membershipSkuLines) {
+        const typeResult = await client.query(`SELECT id,id_juego,nombre,sku FROM gmx.membresia_tipos WHERE UPPER(sku)=UPPER($1) AND activo=true LIMIT 1`,[String(line.sku || '').trim()]);
+        const membershipType = typeResult.rows[0];
+        if (!membershipType) continue;
+        const duplicate = await client.query(`SELECT cm.id,cm.estado,cm.fin FROM gmx.cliente_membresias cm JOIN gmx.membresia_tipos mt ON mt.id=cm.id_tipo WHERE cm.id_cliente=$1 AND mt.id_juego=$2 AND cm.estado IN ('ACTIVA','PROGRAMADA') AND cm.fin>NOW() ORDER BY cm.fin DESC LIMIT 1`,[customer.id_cliente,membershipType.id_juego]);
+        if (duplicate.rowCount) throw new Error('MEMBERSHIP_TCG_ALREADY_ACTIVE');
+      }
+    }
     subtotal = Number(subtotal.toFixed(4));
     const shipping = 0;
     const benefit = await applyBenefitsTx(client, {
@@ -745,7 +765,7 @@ export async function createSale({
     String(paymentReference || '').trim();
 
     const insertedOrder = await client.query(`
-      INSERT INTO shiny.pedidos (
+      INSERT INTO gmx.pedidos (
         id_pedido,fecha,id_cliente,nombre_cliente,telefono,email,direccion,ciudad,estado,cp,
         metodo_pago,subtotal,envio,total,estado_pedido,referencia_pago,fecha_pago,notas,
         fecha_actualizacion,inventario_liberado,id_admin_venta,vendedor,id_sucursal,sucursal,
@@ -767,7 +787,7 @@ export async function createSale({
     customer?.ciudad || '', customer?.estado || '', customer?.cp || '',
     method, subtotal, shipping, total, effectiveReference, notes,
     branch.id_sucursal, branch.nombre_sucursal,
-    user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText("Shiny Local POS"),
+    user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText("GMX Local POS"),
     benefit.promotion?.id || null, benefit.promotion?.codigo || null, benefit.discountPromo,
     benefit.pointsUsed, benefit.loyaltyDiscount, benefit.pointsEarned, efectivoRecibido, cambioEntregado,
     idemKey, manualDiscount, manualType, manualType ? manualValue : null, manualReason,
@@ -777,7 +797,7 @@ export async function createSale({
 
     for (const p of normalizedPayments) {
       await client.query(`
-        INSERT INTO shiny.pedido_pagos(
+        INSERT INTO gmx.pedido_pagos(
           id_pago,id_pedido,linea,metodo,importe_aplicado,
           efectivo_recibido,cambio_entregado,referencia,proveedor,
           provider_payment_id,estado,id_admin,administrador,fecha
@@ -791,7 +811,7 @@ export async function createSale({
       orderId, p.line, p.method, p.amount, p.cashReceived, p.change,
       p.reference, p.provider,
       String(user?.id_admin || '').trim(),
-      String(user?.nombre || user?.email || brandText("Shiny Local POS")).trim()]
+      String(user?.nombre || user?.email || brandText("GMX Local POS")).trim()]
       );
     }
 
@@ -802,7 +822,7 @@ export async function createSale({
     if (isMercadoPagoCardSale) {
 
       await client.query(
-        `UPDATE shiny.pedidos
+        `UPDATE gmx.pedidos
          SET
            estado_pedido='PENDIENTE',
            estado_pago='PENDIENTE',
@@ -820,7 +840,7 @@ export async function createSale({
       );
 
       await client.query(
-        `UPDATE shiny.pedido_pagos
+        `UPDATE gmx.pedido_pagos
          SET
            proveedor='MERCADOPAGO',
            provider_payment_id=NULL,
@@ -838,11 +858,11 @@ export async function createSale({
       const detailId = 'DET-LOCAL-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8);
 
       if (line.itemType === 'PRODUCT') {
-        await client.query(`UPDATE shiny.inventario_sucursales SET stock=$1,fecha_actualizacion=NOW() WHERE row_id=$2`,
+        await client.query(`UPDATE gmx.inventario_sucursales SET stock=$1,fecha_actualizacion=NOW() WHERE row_id=$2`,
         [line.after, line.inventory.row_id]);
 
         await client.query(`
-          INSERT INTO shiny.detalle_pedidos(
+          INSERT INTO gmx.detalle_pedidos(
             id_pedido,id_producto,producto,cantidad,precio,subtotal,id_detalle,sku,
             precio_unitario,tipo,id_inventario,detalle
           )
@@ -855,15 +875,15 @@ export async function createSale({
           before: line.before, after: line.after, reason: 'Venta POS local', reference: orderId, user
         });
       } else {
-        await client.query(`UPDATE shiny.tcg_inventario_sucursales
+        await client.query(`UPDATE gmx.tcg_inventario_sucursales
           SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`,
         [line.item.branch_row_id, line.after]);
-        await client.query(`UPDATE shiny.tcg_inventario
+        await client.query(`UPDATE gmx.tcg_inventario
           SET stock=$2,ultima_actualizacion=NOW() WHERE row_id=$1`,
         [line.item.row_id, line.globalAfter]);
 
         await client.query(`
-          INSERT INTO shiny.detalle_pedidos(
+          INSERT INTO gmx.detalle_pedidos(
             id_pedido,id_producto,producto,cantidad,precio,subtotal,id_detalle,sku,
             precio_unitario,tipo,id_inventario,detalle
           )
@@ -872,7 +892,7 @@ export async function createSale({
         detailId, line.sku, line.unitPrice, line.item.id_inventario, line.detail]);
 
         await client.query(`
-          INSERT INTO shiny.tcg_movimientos_sucursales(
+          INSERT INTO gmx.tcg_movimientos_sucursales(
             id_movimiento,fecha,tipo,id_inventario,id_carta,sku,
             id_sucursal_origen,sucursal_origen,cantidad,
             stock_origen_anterior,stock_origen_nuevo,
@@ -888,7 +908,7 @@ export async function createSale({
         line.item.id_inventario, line.item.id_carta, line.item.sku,
         branch.id_sucursal, branch.nombre_sucursal, line.quantity,
         line.before, line.after, line.globalBefore, line.globalAfter, orderId,
-        user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText("Shiny Local POS")]
+        user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText("GMX Local POS")]
         );
       }
     }
@@ -905,12 +925,12 @@ export async function createSale({
 
     if (manualDiscount > 0) {
       await client.query(`
-        INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+        INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
         VALUES(NOW(),'PEDIDOS','DESCUENTO_MANUAL',$1,$2,$3)
       `, [
       orderId,
       `tipo=${manualType}; valor=${manualValue}; descuento=${manualDiscount}; motivo=${manualReason}; total_antes=${totalBeforeManualDiscount}; total_final=${total}`,
-      user?.email || user?.nombre || brandText("Shiny Local")]
+      user?.email || user?.nombre || brandText("GMX Local")]
       );
     }
 
@@ -1004,7 +1024,7 @@ export async function createSale({
 
 
       await query(
-        `UPDATE shiny.pedido_pagos
+        `UPDATE gmx.pedido_pagos
          SET
            proveedor='MERCADOPAGO',
            provider_payment_id=$2,
@@ -1044,7 +1064,7 @@ export async function cancelSale(rowId, reason = '', user = null) {
   try {
     await client.query('BEGIN');
 
-    const header = await client.query(`SELECT * FROM shiny.pedidos WHERE row_id=$1 FOR UPDATE`, [rowId]);
+    const header = await client.query(`SELECT * FROM gmx.pedidos WHERE row_id=$1 FOR UPDATE`, [rowId]);
     if (!header.rowCount) throw new Error('ORDER_NOT_FOUND');
     const order = header.rows[0];
     if (String(order.estado_pedido || '').toUpperCase() === 'CANCELADO') throw new Error('ORDER_ALREADY_CANCELLED');
@@ -1053,14 +1073,14 @@ export async function cancelSale(rowId, reason = '', user = null) {
     const branch = await fetchBranch(client, order.id_sucursal, { requireActive: false });
     if (!branch) throw new Error('BRANCH_NOT_FOUND');
 
-    const details = await client.query(`SELECT * FROM shiny.detalle_pedidos WHERE id_pedido=$1 ORDER BY row_id`, [order.id_pedido]);
+    const details = await client.query(`SELECT * FROM gmx.detalle_pedidos WHERE id_pedido=$1 ORDER BY row_id`, [order.id_pedido]);
 
     for (const detail of details.rows) {
       if (String(detail.tipo || 'PRODUCTO').toUpperCase() === 'TCG') {
         const inv = await client.query(`
           SELECT i.*,s.row_id AS branch_row_id,s.stock AS branch_stock,s.stock_reservado AS branch_reserved
-          FROM shiny.tcg_inventario i
-          JOIN shiny.tcg_inventario_sucursales s
+          FROM gmx.tcg_inventario i
+          JOIN gmx.tcg_inventario_sucursales s
             ON s.id_inventario=i.id_inventario AND s.id_sucursal=$1
           WHERE i.id_inventario=$2
           LIMIT 1 FOR UPDATE OF i,s
@@ -1094,19 +1114,19 @@ export async function cancelSale(rowId, reason = '', user = null) {
           const globalReservedAfter = globalReservedBefore - qty;
 
           await client.query(`
-            UPDATE shiny.tcg_inventario_sucursales
+            UPDATE gmx.tcg_inventario_sucursales
             SET stock_reservado=$2,ultima_actualizacion=NOW()
             WHERE row_id=$1
           `, [item.branch_row_id, branchReservedAfter]);
 
           await client.query(`
-            UPDATE shiny.tcg_inventario
+            UPDATE gmx.tcg_inventario
             SET stock_reservado=$2,ultima_actualizacion=NOW()
             WHERE row_id=$1
           `, [item.row_id, globalReservedAfter]);
 
           await client.query(`
-            INSERT INTO shiny.auditoria(
+            INSERT INTO gmx.auditoria(
               fecha,modulo,accion,referencia,detalle,usuario
             )
             VALUES(
@@ -1120,7 +1140,7 @@ export async function cancelSale(rowId, reason = '', user = null) {
           `, [
           order.id_pedido,
           `Cancelaci�n pedido WEB: ${item.sku} x${qty}; reserva sucursal ${branchReservedBefore}->${branchReservedAfter}; reserva global ${globalReservedBefore}->${globalReservedAfter}`,
-          user?.nombre || user?.email || brandText("Shiny Local")]
+          user?.nombre || user?.email || brandText("GMX Local")]
           );
 
         } else {
@@ -1128,19 +1148,19 @@ export async function cancelSale(rowId, reason = '', user = null) {
           const globalAfter = globalBefore + qty;
 
           await client.query(`
-            UPDATE shiny.tcg_inventario_sucursales
+            UPDATE gmx.tcg_inventario_sucursales
             SET stock=$2,ultima_actualizacion=NOW()
             WHERE row_id=$1
           `, [item.branch_row_id, after]);
 
           await client.query(`
-            UPDATE shiny.tcg_inventario
+            UPDATE gmx.tcg_inventario
             SET stock=$2,ultima_actualizacion=NOW()
             WHERE row_id=$1
           `, [item.row_id, globalAfter]);
 
           await client.query(`
-            INSERT INTO shiny.tcg_movimientos_sucursales(
+            INSERT INTO gmx.tcg_movimientos_sucursales(
               id_movimiento,fecha,tipo,id_inventario,id_carta,sku,
               id_sucursal_destino,sucursal_destino,cantidad,
               stock_destino_anterior,stock_destino_nuevo,
@@ -1158,7 +1178,7 @@ export async function cancelSale(rowId, reason = '', user = null) {
           qty, before, after, globalBefore, globalAfter,
           order.id_pedido,
           user?.id_admin || 'LOCAL',
-          user?.nombre || user?.email || brandText("Shiny Local POS")]
+          user?.nombre || user?.email || brandText("GMX Local POS")]
           );
         }
       } else {
@@ -1168,7 +1188,7 @@ export async function cancelSale(rowId, reason = '', user = null) {
         if (!inventory) throw new Error(`INVENTORY_NOT_FOUND:${detail.id_producto}`);
         const qty = Number(detail.cantidad || 0);
         const before = Number(inventory.stock || 0),after = before + qty;
-        await client.query(`UPDATE shiny.inventario_sucursales SET stock=$1,fecha_actualizacion=NOW() WHERE row_id=$2`,
+        await client.query(`UPDATE gmx.inventario_sucursales SET stock=$1,fecha_actualizacion=NOW() WHERE row_id=$2`,
         [after, inventory.row_id]);
         await logMovement(client, {
           branch, product, type: 'CANCELACION_VENTA', quantity: qty, before, after,
@@ -1183,7 +1203,7 @@ export async function cancelSale(rowId, reason = '', user = null) {
     const cashReversal = await reverseCashSaleOnCancellation(client, { order, branch, user });
 
     await client.query(`
-      UPDATE shiny.pedidos
+      UPDATE gmx.pedidos
       SET estado_pedido='CANCELADO',
           venta_confirmada=false,
           inventario_liberado=true,
@@ -1214,7 +1234,7 @@ export async function sendOrderReceiptEmail(rowId, user = null, recipientOverrid
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) throw new Error('ORDER_EMAIL_INVALID');
 
   if (recipientOverride && recipient !== String(order.email || '').trim().toLowerCase()) {
-    await query(`UPDATE shiny.pedidos SET email=$2,fecha_actualizacion=NOW() WHERE row_id=$1`, [rowId, recipient]);
+    await query(`UPDATE gmx.pedidos SET email=$2,fecha_actualizacion=NOW() WHERE row_id=$1`, [rowId, recipient]);
     order.email = recipient;
   }
 
@@ -1232,9 +1252,9 @@ export async function sendOrderReceiptEmail(rowId, user = null, recipientOverrid
     err.smtpDiagnostic = mail.diagnostic || null;
     throw err;
   }
-  await query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+  await query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
     VALUES(NOW(),'PEDIDOS','ENVIAR_COMPROBANTE',$1,$2,$3)`, [
-  order.id_pedido, `${recipient}; email=${mail.id}`, user?.email || user?.nombre || brandText("Shiny Local")]
+  order.id_pedido, `${recipient}; email=${mail.id}`, user?.email || user?.nombre || brandText("GMX Local")]
   );
   return { sent: true, to: recipient, id: mail.id, orderId: order.id_pedido, attachment: fileName };
 }
@@ -1249,16 +1269,16 @@ export async function prepareGuestOrderWhatsApp(rowId, phone, user = null) {
   const current = await getOrder(rowId);
   if (!current) throw new Error('ORDER_NOT_FOUND');
   await query(`
-    UPDATE shiny.pedidos
+    UPDATE gmx.pedidos
     SET telefono=$2,fecha_actualizacion=NOW()
     WHERE row_id=$1
   `, [rowId, whatsappNumber]);
 
-  await query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+  await query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
     VALUES(NOW(),'PEDIDOS','PREPARAR_WHATSAPP',$1,$2,$3)`, [
   current.id_pedido,
   `telefono=***${whatsappNumber.slice(-4)}; cliente=${current.id_cliente ? 'REGISTRADO' : 'PUBLICO_GENERAL'}; estado=ABIERTO_PARA_ENVIO`,
-  user?.email || user?.nombre || brandText("Shiny Local POS")
+  user?.email || user?.nombre || brandText("GMX Local POS")
   ]);
 
   return { order: await getOrder(rowId), whatsappNumber };
@@ -1266,6 +1286,8 @@ export async function prepareGuestOrderWhatsApp(rowId, phone, user = null) {
 
 export async function createPendingAdminOrder({ branchId, clientId = '', notes = '', items = [], user = null } = {}) {
   if (!branchId) throw new Error('BRANCH_REQUIRED');
+
+
   if (!Array.isArray(items) || !items.length) throw new Error('EMPTY_CART');
   const normalized = new Map();
   for (const raw of items) {
@@ -1300,8 +1322,8 @@ export async function createPendingAdminOrder({ branchId, clientId = '', notes =
         lines.push({ ...raw, name: product.nombre, sku: product.sku, price, lineTotal, productId: product.id, inventoryId: null, detail: null });
       } else {
         const inv = await client.query(`SELECT i.*,c.nombre AS carta,s.stock AS branch_stock
-          FROM shiny.tcg_inventario i JOIN shiny.tcg_cartas c ON c.id_carta=i.id_carta
-          JOIN shiny.tcg_inventario_sucursales s ON s.id_inventario=i.id_inventario AND s.id_sucursal=$1
+          FROM gmx.tcg_inventario i JOIN gmx.tcg_cartas c ON c.id_carta=i.id_carta
+          JOIN gmx.tcg_inventario_sucursales s ON s.id_inventario=i.id_inventario AND s.id_sucursal=$1
           WHERE i.id_inventario=$2 ORDER BY i.row_id LIMIT 1 FOR UPDATE OF i,s`, [branchId, raw.itemId]);
         if (!inv.rowCount) throw new Error(`TCG_INVENTORY_NOT_FOUND:${raw.itemId}`);
         const item = inv.rows[0];
@@ -1312,22 +1334,39 @@ export async function createPendingAdminOrder({ branchId, clientId = '', notes =
         lines.push({ ...raw, name: item.carta, sku: item.sku, price, lineTotal, productId: null, inventoryId: item.id_inventario, detail: null });
       }
     }
+    // GMX_MEMBERSHIP_BACKEND_GUARD_R5
+    const membershipLines = prepared.filter((line) => line.itemType === 'PRODUCT' && String(line.sku || '').trim().toUpperCase().startsWith('MEM-'));
+    if (membershipLines.length) {
+      if (!customer) throw new Error('MEMBERSHIP_CLIENT_REQUIRED');
+      if (membershipLines.some((line) => Number(line.quantity || 0) !== 1)) throw new Error('MEMBERSHIP_QUANTITY_ONE_REQUIRED');
+    }
+    // GMX_MEMBERSHIP_DUPLICATE_TCG_GUARD_R5D
+    const membershipSkuLines = prepared.filter((line) => line.itemType === 'PRODUCT' && String(line.sku || '').trim().toUpperCase().startsWith('MEM-'));
+    if (membershipSkuLines.length) {
+      for (const line of membershipSkuLines) {
+        const typeResult = await client.query(`SELECT id,id_juego,nombre,sku FROM gmx.membresia_tipos WHERE UPPER(sku)=UPPER($1) AND activo=true LIMIT 1`,[String(line.sku || '').trim()]);
+        const membershipType = typeResult.rows[0];
+        if (!membershipType) continue;
+        const duplicate = await client.query(`SELECT cm.id,cm.estado,cm.fin FROM gmx.cliente_membresias cm JOIN gmx.membresia_tipos mt ON mt.id=cm.id_tipo WHERE cm.id_cliente=$1 AND mt.id_juego=$2 AND cm.estado IN ('ACTIVA','PROGRAMADA') AND cm.fin>NOW() ORDER BY cm.fin DESC LIMIT 1`,[customer.id_cliente,membershipType.id_juego]);
+        if (duplicate.rowCount) throw new Error('MEMBERSHIP_TCG_ALREADY_ACTIVE');
+      }
+    }
     subtotal = Number(subtotal.toFixed(4));
-    const inserted = await client.query(`INSERT INTO shiny.pedidos(
+    const inserted = await client.query(`INSERT INTO gmx.pedidos(
       id_pedido,fecha,id_cliente,nombre_cliente,telefono,email,metodo_pago,subtotal,envio,total,
       estado_pedido,estado_pago,fecha_actualizacion,inventario_liberado,id_admin_venta,vendedor,
       id_sucursal,sucursal,canal_venta,venta_confirmada,notas,total_antes_beneficios)
       VALUES($1,NOW(),NULLIF($2,''),$3,$4,$5,NULL,$6,0,$6,'PENDIENTE','PENDIENTE',NOW(),false,$7,$8,$9,$10,'ADMIN_MANUAL',false,NULLIF($11,''),$6)
       RETURNING row_id`, [orderId, customer?.id_cliente || '', customer?.nombre || 'Público general', customer?.telefono || '', customer?.email || '', subtotal,
-      user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText('Shiny Admin'), branch.id_sucursal, branch.nombre_sucursal, String(notes || '').trim()]);
+      user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText('GMX Admin'), branch.id_sucursal, branch.nombre_sucursal, String(notes || '').trim()]);
 
     for (const line of lines) {
-      await client.query(`INSERT INTO shiny.detalle_pedidos(id_pedido,id_producto,producto,cantidad,precio,subtotal,id_detalle,sku,precio_unitario,tipo,id_inventario,detalle)
+      await client.query(`INSERT INTO gmx.detalle_pedidos(id_pedido,id_producto,producto,cantidad,precio,subtotal,id_detalle,sku,precio_unitario,tipo,id_inventario,detalle)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$5,$9,$10,$11)`, [orderId, line.productId, line.name, line.quantity, line.price, line.lineTotal,
       `DET-ADMIN-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`, line.sku, line.itemType === 'TCG' ? 'TCG' : 'PRODUCTO', line.inventoryId, line.detail]);
     }
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
-      VALUES(NOW(),'PEDIDOS','CREAR_PEDIDO_ADMIN',$1,$2,$3)`, [orderId, `estado=PENDIENTE; total=${subtotal}; partidas=${lines.length}`, user?.email || user?.nombre || brandText('Shiny Admin')]);
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+      VALUES(NOW(),'PEDIDOS','CREAR_PEDIDO_ADMIN',$1,$2,$3)`, [orderId, `estado=PENDIENTE; total=${subtotal}; partidas=${lines.length}`, user?.email || user?.nombre || brandText('GMX Admin')]);
     await client.query('COMMIT');
     return getOrder(inserted.rows[0].row_id);
   } catch (error) {
@@ -1354,7 +1393,7 @@ export async function payPendingOrder(rowId, {
 
     const header = await client.query(`
       SELECT *
-      FROM shiny.pedidos
+      FROM gmx.pedidos
       WHERE row_id=$1
       FOR UPDATE
     `, [Number(rowId)]);
@@ -1381,7 +1420,7 @@ export async function payPendingOrder(rowId, {
 
     const details = await client.query(`
       SELECT *
-      FROM shiny.detalle_pedidos
+      FROM gmx.detalle_pedidos
       WHERE id_pedido=$1
       ORDER BY row_id
       FOR UPDATE
@@ -1404,8 +1443,8 @@ export async function payPendingOrder(rowId, {
             s.row_id AS branch_row_id,
             s.stock AS branch_stock,
             s.stock_reservado AS branch_reserved
-          FROM shiny.tcg_inventario i
-          JOIN shiny.tcg_inventario_sucursales s
+          FROM gmx.tcg_inventario i
+          JOIN gmx.tcg_inventario_sucursales s
             ON s.id_inventario=i.id_inventario
            AND s.id_sucursal=$1
           WHERE i.id_inventario=$2
@@ -1451,7 +1490,7 @@ export async function payPendingOrder(rowId, {
         globalReservedBefore;
 
         await client.query(`
-          UPDATE shiny.tcg_inventario_sucursales
+          UPDATE gmx.tcg_inventario_sucursales
           SET
             stock=$2,
             stock_reservado=$3,
@@ -1460,7 +1499,7 @@ export async function payPendingOrder(rowId, {
         `, [item.branch_row_id, after, branchReservedAfter]);
 
         await client.query(`
-          UPDATE shiny.tcg_inventario
+          UPDATE gmx.tcg_inventario
           SET
             stock=$2,
             stock_reservado=$3,
@@ -1469,7 +1508,7 @@ export async function payPendingOrder(rowId, {
         `, [item.row_id, globalAfter, globalReservedAfter]);
 
         await client.query(`
-          INSERT INTO shiny.tcg_movimientos_sucursales(
+          INSERT INTO gmx.tcg_movimientos_sucursales(
             id_movimiento,fecha,tipo,id_inventario,id_carta,sku,
             id_sucursal_origen,sucursal_origen,cantidad,
             stock_origen_anterior,stock_origen_nuevo,
@@ -1485,7 +1524,7 @@ export async function payPendingOrder(rowId, {
         item.id_inventario, item.id_carta, item.sku,
         branch.id_sucursal, branch.nombre_sucursal, qty,
         before, after, globalBefore, globalAfter, order.id_pedido,
-        user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText("Shiny Local")]
+        user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText("GMX Local")]
         );
         inventoryUpdates.push({ type: 'TCG', id: item.id_inventario, branchId: branch.id_sucursal, stock: after });
       } else {
@@ -1502,7 +1541,7 @@ export async function payPendingOrder(rowId, {
         const after = before - qty;
 
         await client.query(`
-          UPDATE shiny.inventario_sucursales
+          UPDATE gmx.inventario_sucursales
           SET stock=$1,fecha_actualizacion=NOW()
           WHERE row_id=$2
         `, [after, inventory.row_id]);
@@ -1523,7 +1562,7 @@ export async function payPendingOrder(rowId, {
     }
 
     await client.query(`
-      UPDATE shiny.pedidos
+      UPDATE gmx.pedidos
       SET
         metodo_pago=$2,
         referencia_pago=NULLIF($3,''),
@@ -1546,13 +1585,13 @@ export async function payPendingOrder(rowId, {
     String(notes || '').trim()]
     );
 
-    await client.query(`INSERT INTO shiny.pedido_pagos(
+    await client.query(`INSERT INTO gmx.pedido_pagos(
       id_pago,id_pedido,linea,metodo,importe_aplicado,efectivo_recibido,cambio_entregado,
       referencia,proveedor,provider_payment_id,estado,id_admin,administrador,fecha)
       VALUES('PAG-PED-'||floor(extract(epoch from clock_timestamp())*1000)::text||'-'||substr(md5(random()::text),1,6),
       $1,1,$2,$3,NULL,NULL,NULLIF($4,''),NULL,NULL,'PAGADO',NULLIF($5,''),$6,NOW())`, [
     order.id_pedido, method, Number(order.total || 0), String(paymentReference || '').trim(),
-    String(user?.id_admin || '').trim(), String(user?.nombre || user?.email || brandText('Shiny Local POS')).trim()]);
+    String(user?.id_admin || '').trim(), String(user?.nombre || user?.email || brandText('GMX Local POS')).trim()]);
 
     if (method === 'EFECTIVO') {
       await registerCashSale(client, {
@@ -1565,12 +1604,12 @@ export async function payPendingOrder(rowId, {
     }
 
     await client.query(`
-      INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+      INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'PEDIDOS','REGISTRAR_PAGO',$1,$2,$3)
     `, [
     order.id_pedido,
     `${method}${paymentReference ? `; referencia=${String(paymentReference).trim()}` : ''}; total=${Number(order.total || 0)}`,
-    user?.email || user?.nombre || brandText("Shiny Local")]
+    user?.email || user?.nombre || brandText("GMX Local")]
     );
 
     await client.query('COMMIT');

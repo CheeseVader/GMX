@@ -246,7 +246,7 @@ async function residueSnapshot(db) {
 
       (
         SELECT COUNT(*)
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE
           nombre ILIKE '%CLIENTES001%'
           OR nombre ILIKE '%LOYALTY00%'
@@ -256,7 +256,7 @@ async function residueSnapshot(db) {
 
       (
         SELECT COUNT(*)
-        FROM shiny.pedidos
+        FROM gmx.pedidos
         WHERE
           pos_idempotency_key LIKE 'LOYALTY007-%'
           OR id_pedido LIKE 'PED-LOYALTY%'
@@ -264,7 +264,7 @@ async function residueSnapshot(db) {
 
       (
         SELECT COUNT(*)
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         WHERE
           id_admin LIKE 'TEST-LOYALTY%'
           OR motivo LIKE 'LOYALTY00%'
@@ -273,10 +273,10 @@ async function residueSnapshot(db) {
 
       (
         SELECT COUNT(*)
-        FROM shiny.fidelidad_cuentas fc
+        FROM gmx.fidelidad_cuentas fc
         WHERE EXISTS (
           SELECT 1
-          FROM shiny.clientes c
+          FROM gmx.clientes c
           WHERE
             c.id_cliente=fc.id_cliente
             AND (
@@ -306,7 +306,7 @@ async function residueSnapshot(db) {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-011 FINAL CONSOLIDATED SMOKE")
+  section(brandText("GMX — CLIENTES-LOYALTY-011 FINAL CONSOLIDATED SMOKE")
 
   );
 

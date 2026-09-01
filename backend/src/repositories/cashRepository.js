@@ -3,7 +3,7 @@ import { brandText } from "../config/brand.js";import { pool, query } from '../d
 // SHINY_CAJA_AUTH_001
 function cashActor(user = {}) {
   const id = String(user?.id_admin || 'LOCAL').trim() || 'LOCAL';
-  const name = String(user?.nombre || user?.email || brandText("Shiny Local")).trim() || brandText("Shiny Local");
+  const name = String(user?.nombre || user?.email || brandText("GMX Local")).trim() || brandText("GMX Local");
   return { id, name };
 }
 
@@ -19,7 +19,7 @@ async function recalcSession(client, cashId) {
                         THEN impacto_efectivo ELSE 0 END),0)::numeric AS ingresos,
       COALESCE(SUM(CASE WHEN impacto_efectivo < 0 AND COALESCE(anulado,false)=false
                         THEN ABS(impacto_efectivo) ELSE 0 END),0)::numeric AS egresos
-    FROM shiny.caja_movimientos
+    FROM gmx.caja_movimientos
     WHERE id_caja = $1
   `, [cashId]);
 
@@ -27,7 +27,7 @@ async function recalcSession(client, cashId) {
   const egresos = Number(totals.rows[0].egresos || 0);
 
   const updated = await client.query(`
-    UPDATE shiny.caja_sesiones
+    UPDATE gmx.caja_sesiones
     SET ingresos_efectivo=$2,
         egresos_efectivo=$3,
         saldo_esperado=COALESCE(fondo_inicial,0)+$2-$3,
@@ -45,7 +45,7 @@ export async function listCashSessions({ branchId = '', status = '', limit = 100
   if (status) {values.push(status);filters.push(`estado=$${values.length}`);}
   values.push(Math.min(Math.max(Number(limit) || 100, 1), 500));
   return query(`
-    SELECT * FROM shiny.caja_sesiones
+    SELECT * FROM gmx.caja_sesiones
     ${filters.length ? 'WHERE ' + filters.join(' AND ') : ''}
     ORDER BY fecha_apertura DESC NULLS LAST,row_id DESC
     LIMIT $${values.length}
@@ -54,7 +54,7 @@ export async function listCashSessions({ branchId = '', status = '', limit = 100
 
 export async function getOpenCash(branchId) {
   const r = await query(`
-    SELECT * FROM shiny.caja_sesiones
+    SELECT * FROM gmx.caja_sesiones
     WHERE id_sucursal=$1 AND UPPER(COALESCE(estado,''))='ABIERTA'
     ORDER BY fecha_apertura DESC,row_id DESC LIMIT 1
   `, [branchId]);
@@ -67,7 +67,7 @@ export async function listCashMovements({ cashId = '', branchId = '', limit = 30
   if (branchId) {values.push(branchId);filters.push(`id_sucursal=$${values.length}`);}
   values.push(Math.min(Math.max(Number(limit) || 300, 1), 1000));
   return query(`
-    SELECT * FROM shiny.caja_movimientos
+    SELECT * FROM gmx.caja_movimientos
     ${filters.length ? 'WHERE ' + filters.join(' AND ') : ''}
     ORDER BY fecha DESC NULLS LAST,row_id DESC
     LIMIT $${values.length}
@@ -80,14 +80,14 @@ export async function openCash({ branchId, openingFund = 0, notes = '' }, user =
   try {
     await client.query('BEGIN');
     const branch = await client.query(`
-      SELECT id_sucursal,nombre_sucursal FROM shiny.sucursales
+      SELECT id_sucursal,nombre_sucursal FROM gmx.sucursales
       WHERE id_sucursal=$1 AND COALESCE(activa,true)=true
       ORDER BY row_id LIMIT 1 FOR UPDATE
     `, [branchId]);
     if (!branch.rowCount) throw new Error('BRANCH_NOT_FOUND');
 
     const existing = await client.query(`
-      SELECT id_caja FROM shiny.caja_sesiones
+      SELECT id_caja FROM gmx.caja_sesiones
       WHERE id_sucursal=$1 AND UPPER(COALESCE(estado,''))='ABIERTA'
       LIMIT 1 FOR UPDATE
     `, [branchId]);
@@ -98,7 +98,7 @@ export async function openCash({ branchId, openingFund = 0, notes = '' }, user =
 
     const id = `CAJA-LOCAL-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`;
     const r = await client.query(`
-      INSERT INTO shiny.caja_sesiones(
+      INSERT INTO gmx.caja_sesiones(
         id_caja,id_sucursal,sucursal,fecha_apertura,fondo_inicial,
         ingresos_efectivo,egresos_efectivo,saldo_esperado,
         estado,id_admin_apertura,admin_apertura,notas_apertura,fecha_actualizacion
@@ -119,7 +119,7 @@ export async function addCashMovement({
   try {
     await client.query('BEGIN');
     const session = await client.query(`
-      SELECT * FROM shiny.caja_sesiones
+      SELECT * FROM gmx.caja_sesiones
       WHERE id_sucursal=$1 AND UPPER(COALESCE(estado,''))='ABIERTA'
       ORDER BY fecha_apertura DESC,row_id DESC LIMIT 1 FOR UPDATE
     `, [branchId]);
@@ -164,7 +164,7 @@ export async function addCashMovement({
     const id = `CAJMOV-LOCAL-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`;
 
     const r = await client.query(`
-      INSERT INTO shiny.caja_movimientos(
+      INSERT INTO gmx.caja_movimientos(
         id_movimiento,id_caja,fecha,id_sucursal,sucursal,tipo,categoria,
         metodo_pago,importe,impacto_efectivo,referencia,descripcion,
         origen_modulo,id_origen,id_admin,administrador,anulado
@@ -189,7 +189,7 @@ export async function closeCash({ branchId, countedCash, notes = '' }, user = {}
   try {
     await client.query('BEGIN');
     const session = await client.query(`
-      SELECT * FROM shiny.caja_sesiones
+      SELECT * FROM gmx.caja_sesiones
       WHERE id_sucursal=$1 AND UPPER(COALESCE(estado,''))='ABIERTA'
       ORDER BY fecha_apertura DESC,row_id DESC LIMIT 1 FOR UPDATE
     `, [branchId]);
@@ -201,7 +201,7 @@ export async function closeCash({ branchId, countedCash, notes = '' }, user = {}
     const difference = Number((counted - Number(fresh.saldo_esperado || 0)).toFixed(4));
 
     const r = await client.query(`
-      UPDATE shiny.caja_sesiones
+      UPDATE gmx.caja_sesiones
       SET fecha_cierre=NOW(),efectivo_contado=$2::text,diferencia=$3,
           estado='CERRADA',id_admin_cierre=$4,admin_cierre=$5,
           notas_cierre=$6,fecha_actualizacion=NOW()

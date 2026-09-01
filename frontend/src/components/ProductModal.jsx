@@ -108,7 +108,7 @@ export default function ProductModal({ open, product, initialValues = null, cate
   if (!open) return null;
   const change = (e) => setForm((x) => ({ ...x, [e.target.name]: e.target.value }));
   return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal product-modal-complete" onMouseDown={(e) => e.stopPropagation()}>
-    <div className="modal-head"><div><div className="eyebrow">{brandText("Shiny · PRODUCTOS")}</div><h2>{product ? `Editar ${product.nombre || product.id}` : 'Nuevo producto'}</h2></div><button className="icon-btn" onClick={onClose}>×</button></div>
+    <div className="modal-head"><div><div className="eyebrow">{brandText("GMX · PRODUCTOS")}</div><h2>{product ? `Editar ${product.nombre || product.id}` : 'Nuevo producto'}</h2></div><button className="icon-btn" onClick={onClose}>×</button></div>
     <form onSubmit={(e) => {e.preventDefault();onSave(normalizedProductIdentifier(form));}}>
       <div className="form-grid">
         <label className="product-identifier-field">Código / SKU *<input required name="sku" value={form.sku} onChange={change} autoComplete="off"  placeholder="Escanear código o escribir SKU interno" /></label>

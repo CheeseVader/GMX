@@ -103,7 +103,7 @@ router.get('/inventory/receipt-template.xlsx', async (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.send(buffer);
   } catch (e) {
-    console.error(brandText("[Shiny][TCG_RECEIPT_TEMPLATE]"), e);
+    console.error(brandText("[GMX][TCG_RECEIPT_TEMPLATE]"), e);
     res.status(500).json({ success: false, error: 'TCG_RECEIPT_TEMPLATE_FAILED' });
   }
 });

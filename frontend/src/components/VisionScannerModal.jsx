@@ -1003,7 +1003,7 @@ export default function VisionScannerModal({
 
       setCameraReady(true);
 
-      setStatus(brandText("Centra la carta completa. Shiny buscara primero el passcode.")
+      setStatus(brandText("Centra la carta completa. GMX buscara primero el passcode.")
 
       );
 
@@ -1058,7 +1058,7 @@ export default function VisionScannerModal({
       ) :
       canvas;
 
-      console.log(brandText("[Shiny Vision] card detection"),
+      console.log(brandText("[GMX Vision] card detection"),
 
       cardRect || {
         detected: false
@@ -1091,7 +1091,7 @@ export default function VisionScannerModal({
           }
         );
 
-        console.log(brandText("[Shiny Vision] local visual match"),
+        console.log(brandText("[GMX Vision] local visual match"),
 
         visual
         );
@@ -1124,7 +1124,7 @@ export default function VisionScannerModal({
           return;
         }
       } catch (e) {
-        console.warn(brandText("[Shiny Vision] visual match fallback"),
+        console.warn(brandText("[GMX Vision] visual match fallback"),
 
         e
         );
@@ -1165,7 +1165,7 @@ export default function VisionScannerModal({
 
     } catch (e) {
 
-      console.error(brandText("[Shiny Vision OCR]"),
+      console.error(brandText("[GMX Vision OCR]"),
 
       e
       );
@@ -1316,7 +1316,7 @@ export default function VisionScannerModal({
 
           <div>
 
-            <div className="eyebrow">{brandText("\n              Shiny VISION\n            ")}
+            <div className="eyebrow">{brandText("\n              GMX VISION\n            ")}
 
             </div>
 

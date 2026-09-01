@@ -19,7 +19,7 @@ async function columnExists(client, table, column) {
   const r = await client.query(
     `SELECT 1
      FROM information_schema.columns
-     WHERE table_schema='shiny'
+     WHERE table_schema='gmx'
        AND table_name=$1
        AND column_name=$2
      LIMIT 1`,
@@ -31,7 +31,7 @@ async function columnExists(client, table, column) {
 
 try {
 
-  section(brandText("Shiny DEV TEST RESIDUE CLEANUP"));
+  section(brandText("GMX DEV TEST RESIDUE CLEANUP"));
 
   console.log('TARGETS=' + IDS.join(','));
   console.log('NO INVENTORY MUTATION');
@@ -56,7 +56,7 @@ try {
        estado,
        reintegra_stock,
        notas
-     FROM shiny.devoluciones
+     FROM gmx.devoluciones
      WHERE id = ANY($1::text[])
      ORDER BY row_id`,
     [IDS]
@@ -120,7 +120,7 @@ try {
 
         const r = await client.query(
           `SELECT COUNT(*)::int AS total
-           FROM shiny.${table}
+           FROM gmx.${table}
            WHERE id_devolucion = ANY($1::text[])`,
           [IDS]
         );
@@ -165,7 +165,7 @@ try {
         const deleted =
         await client.query(
           `DELETE
-             FROM shiny.${table}
+             FROM gmx.${table}
              WHERE id_devolucion = ANY($1::text[])
              RETURNING *`,
           [IDS]
@@ -186,7 +186,7 @@ try {
     const deletedDev =
     await client.query(
       `DELETE
-         FROM shiny.devoluciones
+         FROM gmx.devoluciones
          WHERE id = ANY($1::text[])
          RETURNING id`,
       [IDS]
@@ -243,7 +243,7 @@ try {
   const remaining =
   await query(
     `SELECT COUNT(*)::int AS total
-       FROM shiny.devoluciones
+       FROM gmx.devoluciones
        WHERE id = ANY($1::text[])`,
     [IDS]
   );
@@ -257,7 +257,7 @@ try {
   const smokeResidue =
   await query(`
       SELECT COUNT(*)::int AS total
-      FROM shiny.devoluciones
+      FROM gmx.devoluciones
       WHERE id LIKE 'DEV-%'
         AND (
           notas ILIKE '%TEST%'

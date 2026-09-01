@@ -26,7 +26,7 @@ export default function ProductCard({ product, currency = 'MXN' }) {
 
   return <article className="public-product-card shiny-product-card">
     <Link to={`/tienda/producto/${product.row_id}`} className="product-card-image">
-      {product.imagen ? <img src={imgSrc(product.imagen)} alt={product.nombre || ''} loading="lazy" /> : <div className="public-image-placeholder shiny-image-fallback"><span>{brandText('Shiny')}</span><small>Imagen próximamente</small></div>}
+      {product.imagen ? <img src={imgSrc(product.imagen)} alt={product.nombre || ''} loading="lazy" /> : <div className="public-image-placeholder shiny-image-fallback"><span>{brandText('GMX')}</span><small>Imagen próximamente</small></div>}
     </Link>
     <button type="button" className={`shiny-favorite ${favorite ? 'active' : ''}`} aria-label={favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'} onClick={() => setFavorite((value) => !value)}><PublicIcon name="heart" size={18} /></button>
     <div className="public-product-body">

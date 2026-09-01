@@ -12,7 +12,7 @@ export default function StoreCartPage() {
     {!cart.items.length ? <div className="public-empty"><h2>Tu carrito está vacío</h2><Link className="public-cta" to="/tienda/catalogo">Explorar catálogo</Link></div> : <div className="cart-layout">
       <section className="public-cart-list">
         {cart.items.map((x) => <article className="public-cart-row" key={x.key}>
-          <div className="cart-thumb">{x.image ? <img src={x.image} alt={x.name} /> : <div className="public-image-placeholder">{brandText("Shiny")}</div>}</div>
+          <div className="cart-thumb">{x.image ? <img src={x.image} alt={x.name} /> : <div className="public-image-placeholder">{brandText("GMX")}</div>}</div>
           <div className="cart-copy"><small>{x.type}{x.detail ? ` · ${x.detail}` : ''}</small><h3>{x.name}</h3><span>{money(x.price, currency)} c/u</span></div>
           <input type="number" min="1" max={x.stock || 999} value={x.quantity} onChange={(e) => cart.setQuantity(x.key, e.target.value)} />
           <strong>{money(Number(x.price) * Number(x.quantity), currency)}</strong>

@@ -18,7 +18,7 @@ const known = new Set([
 
 function sendError(res, e) {
   const msg = String(e?.message || e || 'SYNC_FAILED').replace(/[\r\n\t]+/g, ' ').slice(0, 900);
-  console.error(brandText("[Shiny][TCG-SYNC]"), msg, e?.stack || '');
+  console.error(brandText("[GMX][TCG-SYNC]"), msg, e?.stack || '');
   const knownCode = known.has(msg) || msg.startsWith('UNKNOWN_SET:');
   const remote =
   msg.startsWith('REMOTE_') ||

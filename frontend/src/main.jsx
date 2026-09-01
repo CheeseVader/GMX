@@ -3,7 +3,7 @@ import { brandText, applyDocumentBrand } from "./config/brand.js";import { regis
 const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    const acceptUpdate = window.confirm(brandText("Hay una nueva version de Shiny disponible. ¿Deseas actualizar ahora?")
+    const acceptUpdate = window.confirm(brandText("Hay una nueva version de GMX disponible. ¿Deseas actualizar ahora?")
 
     );
     if (acceptUpdate) updateSW(true);

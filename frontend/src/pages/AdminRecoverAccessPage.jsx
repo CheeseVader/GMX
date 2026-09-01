@@ -55,11 +55,11 @@ export default function AdminRecoverAccessPage() {
   return <main className="login-page admin-recovery-page">
     <section className="login-card admin-recovery-card">
       <div className="brand-mark login-mark">G</div>
-      <div className="eyebrow">{brandText("Shiny · SEGURIDAD ADMIN")}</div>
+      <div className="eyebrow">{brandText("GMX · SEGURIDAD ADMIN")}</div>
 
       {!token ? <>
         <h1>Recuperar acceso</h1>
-        <p>{brandText("Escribe el correo de tu cuenta administrativa. Shiny enviará un enlace temporal si la cuenta está activa.")}</p>
+        <p>{brandText("Escribe el correo de tu cuenta administrativa. GMX enviará un enlace temporal si la cuenta está activa.")}</p>
         {message ? <div className="alert info">{message}</div> : null}
         {developmentUrl ? <div className="admin-dev-reset"><b>Modo local:</b> mientras SMTP no esté configurado puedes <a href={developmentUrl}>abrir el enlace de recuperación</a>.</div> : null}
         <form className="admin-recovery-form" onSubmit={requestReset}>
@@ -69,7 +69,7 @@ export default function AdminRecoverAccessPage() {
         <Link className="admin-forgot-link" to="/login">← Volver al login administrativo</Link>
       </> : <>
         <h1>Nueva contraseña</h1>
-        <p>{brandText("Al completar el cambio, Shiny cerrará todas las sesiones administrativas anteriores de esta cuenta.")}</p>
+        <p>{brandText("Al completar el cambio, GMX cerrará todas las sesiones administrativas anteriores de esta cuenta.")}</p>
         {message ? <div className="alert error">{message}</div> : null}
         <form className="admin-recovery-form" onSubmit={resetPassword}>
           <label>Nueva contraseña<input required minLength="10" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} /><small>Mínimo 10 caracteres, incluyendo letras y números.</small></label>

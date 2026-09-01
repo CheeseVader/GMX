@@ -29,7 +29,7 @@ export default function StoreSlideshow({ slides = [], settings = {}, variant = '
     <picture>
       {external && current?.url_mobile ? <source media="(max-width:700px)" srcSet={current.url_mobile} /> : null}
       {!external && mobileId ? <source media="(max-width:700px)" srcSet={`/api/public/media/${encodeURIComponent(mobileId)}`} /> : null}
-      <PublicMedia mediaId={external ? null : desktopId} url={url} className="public-slide-image" alt={current.nombre || current.titulo || brandText("Shiny")} />
+      <PublicMedia mediaId={external ? null : desktopId} url={url} className="public-slide-image" alt={current.nombre || current.titulo || brandText("GMX")} />
     </picture>
     <div className="public-slide-overlay" style={{ opacity: Number(current?.overlay_opacity ?? .25) }} />
     {current?.titulo || current?.subtitulo || current?.texto_cta ? <div className={`public-slide-copy align-${String(current?.text_align || 'LEFT').toLowerCase()}`}>

@@ -10,7 +10,7 @@ function makeCanvas(w, h) {
 }
 
 function centeredCardFallback(source) {
-  // Matches the visual guide used by Shiny Vision when border detection is uncertain.
+  // Matches the visual guide used by GMX Vision when border detection is uncertain.
   const targetRatio = 59 / 86;
   const h = source.height * 0.88;
   const w = Math.min(source.width * 0.72, h * targetRatio);
@@ -248,7 +248,7 @@ sourceCanvas,
         ...match
       });
     } catch (e) {
-      console.warn(brandText("[Shiny Vision Local Match]"), ref.id, e);
+      console.warn(brandText("[GMX Vision Local Match]"), ref.id, e);
     }
   }
 

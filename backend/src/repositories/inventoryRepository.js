@@ -65,8 +65,8 @@ export async function listInventory({
 
   const count = await query(`
     SELECT COUNT(*)::bigint total
-    FROM shiny.inventario_sucursales i
-    LEFT JOIN shiny.productos p ON p.id=i.id_producto
+    FROM gmx.inventario_sucursales i
+    LEFT JOIN gmx.productos p ON p.id=i.id_producto
     ${whereSql}
   `, values);
 
@@ -79,8 +79,8 @@ export async function listInventory({
         WHERE COALESCE(i.stock,0)>0
           AND COALESCE(i.stock,0)<=COALESCE(i.stock_minimo,0)
       )::bigint low_stock
-    FROM shiny.inventario_sucursales i
-    LEFT JOIN shiny.productos p ON p.id=i.id_producto
+    FROM gmx.inventario_sucursales i
+    LEFT JOIN gmx.productos p ON p.id=i.id_producto
     ${whereSql}
   `, values);
 
@@ -95,8 +95,8 @@ export async function listInventory({
       p.codigo_barras,p.categoria,
       i.stock,i.stock_minimo,i.fecha_actualizacion,
       p.precio,p.costo,p.estado AS estado_producto
-    FROM shiny.inventario_sucursales i
-    LEFT JOIN shiny.productos p ON p.id=i.id_producto
+    FROM gmx.inventario_sucursales i
+    LEFT JOIN gmx.productos p ON p.id=i.id_producto
     ${whereSql}
     ORDER BY ${order} ${dir} NULLS LAST,i.row_id ASC
     LIMIT $${li} OFFSET $${oi}
@@ -129,7 +129,7 @@ export async function listMovements({ branchId = '', productId = '', limit = 100
       id_producto, sku, producto, tipo, cantidad,
       stock_anterior, stock_nuevo, motivo, id_admin,
       nombre_usuario, usuario, referencia
-    FROM shiny.movimientos_inventario_sucursales
+    FROM gmx.movimientos_inventario_sucursales
     ${filters.length ? 'WHERE ' + filters.join(' AND ') : ''}
     ORDER BY fecha DESC NULLS LAST, row_id DESC
     LIMIT $${values.length}
@@ -139,7 +139,7 @@ export async function listMovements({ branchId = '', productId = '', limit = 100
 async function lockInventory(client, branchId, productId) {
   const found = await client.query(`
     SELECT *
-    FROM shiny.inventario_sucursales
+    FROM gmx.inventario_sucursales
     WHERE id_sucursal = $1 AND id_producto = $2
     ORDER BY row_id
     LIMIT 1
@@ -151,7 +151,7 @@ async function lockInventory(client, branchId, productId) {
 async function productInfo(client, productId) {
   const result = await client.query(`
     SELECT id, sku, nombre
-    FROM shiny.productos
+    FROM gmx.productos
     WHERE id = $1
     ORDER BY row_id
     LIMIT 1
@@ -162,7 +162,7 @@ async function productInfo(client, productId) {
 async function branchInfo(client, branchId) {
   const result = await client.query(`
     SELECT id_sucursal, nombre_sucursal
-    FROM shiny.sucursales
+    FROM gmx.sucursales
     WHERE id_sucursal = $1
     ORDER BY row_id
     LIMIT 1
@@ -175,7 +175,7 @@ async function ensureInventoryRow(client, branch, product) {
   if (row) return row;
 
   const inserted = await client.query(`
-    INSERT INTO shiny.inventario_sucursales (
+    INSERT INTO gmx.inventario_sucursales (
       id_registro, id_sucursal, sucursal,
       id_producto, sku, producto,
       stock, stock_minimo, fecha_actualizacion
@@ -195,7 +195,7 @@ async function ensureInventoryRow(client, branch, product) {
 
 function actorInfo(user = {}) {
   const email = String(user?.email || user?.usuario || '').trim();
-  const name = String(user?.nombre || user?.name || email || brandText("Shiny Local")).trim();
+  const name = String(user?.nombre || user?.name || email || brandText("GMX Local")).trim();
   const idAdmin = String(user?.id_admin || user?.id || '').trim();
   return { email, name, idAdmin };
 }
@@ -205,7 +205,7 @@ async function logMovement(client, {
 }) {
   const actor = actorInfo(user);
   await client.query(`
-    INSERT INTO shiny.movimientos_inventario_sucursales (
+    INSERT INTO gmx.movimientos_inventario_sucursales (
       id_movimiento, fecha, id_sucursal, sucursal,
       id_producto, sku, producto, tipo, cantidad,
       stock_anterior, stock_nuevo, motivo,
@@ -250,7 +250,7 @@ export async function adjustInventory({ branchId, productId, quantity, mode, rea
     if (after < 0) throw new Error('INSUFFICIENT_STOCK');
 
     await client.query(`
-      UPDATE shiny.inventario_sucursales
+      UPDATE gmx.inventario_sucursales
       SET stock = $1, fecha_actualizacion = NOW()
       WHERE row_id = $2
     `, [after, row.row_id]);
@@ -309,13 +309,13 @@ export async function transferInventory({ originId, destinationId, productId, qu
     'TRF-LOCAL-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8);
 
     await client.query(`
-      UPDATE shiny.inventario_sucursales
+      UPDATE gmx.inventario_sucursales
       SET stock = $1, fecha_actualizacion = NOW()
       WHERE row_id = $2
     `, [originAfter, originRow.row_id]);
 
     await client.query(`
-      UPDATE shiny.inventario_sucursales
+      UPDATE gmx.inventario_sucursales
       SET stock = $1, fecha_actualizacion = NOW()
       WHERE row_id = $2
     `, [destinationAfter, destinationRow.row_id]);
@@ -323,7 +323,7 @@ export async function transferInventory({ originId, destinationId, productId, qu
     const actor = actorInfo(user);
 
     await client.query(`
-      INSERT INTO shiny.inventario_transferencias (
+      INSERT INTO gmx.inventario_transferencias (
         id_transferencia, fecha, tipo,
         id_origen, origen, id_destino, destino,
         estado, total_unidades, motivo,
@@ -343,7 +343,7 @@ export async function transferInventory({ originId, destinationId, productId, qu
     );
 
     await client.query(`
-      INSERT INTO shiny.inventario_transferencias_detalle (
+      INSERT INTO gmx.inventario_transferencias_detalle (
         id_detalle, id_transferencia, id_producto, sku, producto,
         cantidad, stock_origen_anterior, stock_origen_nuevo,
         stock_destino_anterior, stock_destino_nuevo
@@ -389,7 +389,7 @@ export async function listTransfers({ limit = 100 }) {
       estado, total_unidades, proveedor,
       referencia_externa, motivo,
       id_admin, nombre_admin, email_admin, fecha_completada
-    FROM shiny.inventario_transferencias
+    FROM gmx.inventario_transferencias
     ORDER BY fecha DESC NULLS LAST, row_id DESC
     LIMIT $1
   `, [limit]);

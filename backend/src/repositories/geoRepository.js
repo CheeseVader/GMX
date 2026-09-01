@@ -9,7 +9,7 @@ export async function lookupMexicanPostalCode(cp) {
       ciudad,
       colonia,
       tipo_asentamiento
-    FROM shiny.catalogo_cp
+    FROM gmx.catalogo_cp
     WHERE cp = $1
     ORDER BY colonia NULLS LAST
     LIMIT 500

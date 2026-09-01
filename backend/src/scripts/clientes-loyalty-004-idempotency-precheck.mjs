@@ -251,7 +251,7 @@ function printRows(rows, max = 300) {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-004 IDEMPOTENCY PRECHECK")
+  section(brandText("GMX — CLIENTES-LOYALTY-004 IDEMPOTENCY PRECHECK")
 
   );
 
@@ -472,7 +472,7 @@ async function main() {
           column_default
         FROM information_schema.columns
         WHERE
-          table_schema='shiny'
+          table_schema='gmx'
           AND table_name='pedidos'
           AND (
             lower(column_name)
@@ -509,7 +509,7 @@ async function main() {
           indexdef
         FROM pg_indexes
         WHERE
-          schemaname='shiny'
+          schemaname='gmx'
           AND tablename='pedidos'
           AND (
             lower(indexname)
@@ -544,7 +544,7 @@ async function main() {
           indexdef
         FROM pg_indexes
         WHERE
-          schemaname='shiny'
+          schemaname='gmx'
           AND tablename='fidelidad_movimientos'
         ORDER BY indexname
         `
@@ -597,7 +597,7 @@ async function main() {
           ON n.oid=c.relnamespace
 
         WHERE
-          n.nspname='shiny'
+          n.nspname='gmx'
 
           AND c.relname IN (
             'pedidos',
@@ -660,7 +660,7 @@ async function main() {
           pos_idempotency_key,
           COUNT(*)::bigint
             AS occurrences
-        FROM shiny.pedidos
+        FROM gmx.pedidos
         WHERE
           pos_idempotency_key IS NOT NULL
           AND btrim(
@@ -773,7 +773,7 @@ async function main() {
           )::bigint
             AS partial_return_points
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
 
         WHERE
           id_pedido IS NOT NULL
@@ -811,7 +811,7 @@ async function main() {
             AS generation_rows,
           SUM(puntos)::bigint
             AS generated_points
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         WHERE tipo='GENERACION'
           AND id_pedido IS NOT NULL
         GROUP BY
@@ -855,7 +855,7 @@ async function main() {
             AS redemption_rows,
           SUM(puntos)::bigint
             AS redeemed_points
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         WHERE tipo='REDENCION'
           AND id_pedido IS NOT NULL
         GROUP BY
@@ -915,10 +915,10 @@ async function main() {
           END
             AS original_found
 
-        FROM shiny.fidelidad_movimientos r
+        FROM gmx.fidelidad_movimientos r
 
         LEFT JOIN
-          shiny.fidelidad_movimientos original
+          gmx.fidelidad_movimientos original
             ON original.id_movimiento
                = r.reversa_de
 
@@ -946,7 +946,7 @@ async function main() {
           reversa_de,
           COUNT(*)::bigint
             AS reversal_count
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         WHERE
           reversa_de IS NOT NULL
         GROUP BY reversa_de
@@ -985,7 +985,7 @@ async function main() {
           beneficios_revertidos,
           COUNT(*)::bigint
             AS pedidos
-        FROM shiny.pedidos
+        FROM gmx.pedidos
         GROUP BY beneficios_revertidos
         ORDER BY beneficios_revertidos
         `
@@ -1015,7 +1015,7 @@ async function main() {
             AS occurrences,
           SUM(puntos)::bigint
             AS points_sum
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         WHERE tipo='DEVOLUCION_RETIRO'
         GROUP BY
           id_pedido,
@@ -1062,7 +1062,7 @@ async function main() {
               WHERE tipo='REVERSA'
             )::bigint
               AS reversal_rows
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE id_pedido IS NOT NULL
           GROUP BY id_pedido
         )
@@ -1077,7 +1077,7 @@ async function main() {
           )::bigint
             AS reversal_rows
 
-        FROM shiny.pedidos p
+        FROM gmx.pedidos p
 
         LEFT JOIN movement_state m
           ON m.id_pedido=p.id_pedido

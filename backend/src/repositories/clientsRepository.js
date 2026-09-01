@@ -58,7 +58,7 @@ export async function listClients({ search = '', limit = 50, offset = 0 }) {
       COALESCE(v.pedidos,0)::bigint AS pedidos,
       COALESCE(v.total_comprado,0)::numeric AS total_comprado,
       v.ultima_compra
-    FROM shiny.clientes c
+    FROM gmx.clientes c
     LEFT JOIN LATERAL (
       SELECT
         COUNT(*) FILTER (
@@ -73,7 +73,7 @@ export async function listClients({ search = '', limit = 50, offset = 0 }) {
           WHERE COALESCE(p.venta_confirmada,false)=true
              OR UPPER(COALESCE(p.estado_pedido,''))='PAGADO'
         ) AS ultima_compra
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
       WHERE p.id_cliente = c.id_cliente
         AND UPPER(COALESCE(p.estado_pedido,'')) <> 'CANCELADO'
     ) v ON true
@@ -86,7 +86,7 @@ export async function listClients({ search = '', limit = 50, offset = 0 }) {
 export async function getClient(rowId) {
   const result = await query(`
     SELECT ${CLIENT_COLUMNS}
-    FROM shiny.clientes
+    FROM gmx.clientes
     WHERE row_id = $1
   `, [rowId]);
 
@@ -95,7 +95,7 @@ export async function getClient(rowId) {
 
 export async function createClient(input) {
   const result = await query(`
-    INSERT INTO shiny.clientes (
+    INSERT INTO gmx.clientes (
       nombre, telefono, email, direccion,
       ciudad, estado, municipio, colonia, cp, pais,
       rfc, razon_social, regimen_fiscal, cp_fiscal, uso_cfdi,
@@ -105,7 +105,7 @@ export async function createClient(input) {
       NULLIF($1,''), NULLIF($2,''), NULLIF($3,''), NULLIF($4,''),
       NULLIF($5,''), NULLIF($6,''), NULLIF($7,''), NULLIF($8,''),
       NULLIF($9,''), COALESCE(NULLIF($10,''), 'México'),
-      shiny.normalize_rfc($11), NULLIF($12,''), NULLIF($13,''), NULLIF($14,''), NULLIF($15,''),
+      gmx.normalize_rfc($11), NULLIF($12,''), NULLIF($13,''), NULLIF($14,''), NULLIF($15,''),
       NOW(), NOW()
     )
     RETURNING row_id
@@ -120,10 +120,10 @@ export async function createClient(input) {
 
 export async function updateClient(rowId, input) {
   const result = await query(`
-    UPDATE shiny.clientes
+    UPDATE gmx.clientes
     SET
       nombre = NULLIF($1,''),
-      telefono = shiny.normalize_phone_digits($2),
+      telefono = gmx.normalize_phone_digits($2),
       email = NULLIF($3,''),
       direccion = NULLIF($4,''),
       ciudad = NULLIF($5,''),
@@ -132,7 +132,7 @@ export async function updateClient(rowId, input) {
       colonia = NULLIF($8,''),
       cp = NULLIF($9,''),
       pais = COALESCE(NULLIF($10,''), pais),
-      rfc = shiny.normalize_rfc($11),
+      rfc = gmx.normalize_rfc($11),
       razon_social = NULLIF($12,''),
       regimen_fiscal = NULLIF($13,''),
       cp_fiscal = NULLIF($14,''),
@@ -153,7 +153,7 @@ export async function updateClient(rowId, input) {
 
 export async function deleteClient(rowId) {
   const result = await query(`
-    DELETE FROM shiny.clientes
+    DELETE FROM gmx.clientes
     WHERE row_id = $1
     RETURNING row_id, id_cliente, nombre, email
   `, [rowId]);

@@ -220,7 +220,7 @@ export default function CategoriesPage() {
             </select>
           </label>
 
-          {form.id ? <p className="muted" style={{ margin: 0 }}>{brandText("\n            Si cambias el nombre, Shiny actualizará también los productos actualmente asociados a esta categoría.\n          ")}
+          {form.id ? <p className="muted" style={{ margin: 0 }}>{brandText("\n            Si cambias el nombre, GMX actualizará también los productos actualmente asociados a esta categoría.\n          ")}
 
           </p> : null}
         </div>

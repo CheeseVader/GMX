@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { query, pool } from '../db.js';
 
-const ROOT = brandText("C:\\Users\\igarcia\\Videos\\Shiny\\backend");
+const ROOT = brandText("C:\\Users\\igarcia\\Videos\\GMX\\backend");
 
 function section(t) {
   console.log('');
@@ -18,7 +18,7 @@ function assert(c, m) {
 
 try {
 
-  section(brandText("Shiny INVENTARIO COMPRAS FINAL SMOKE"));
+  section(brandText("GMX INVENTARIO COMPRAS FINAL SMOKE"));
   console.log('NO DATABASE MUTATION');
   console.log('NO PURCHASE CREATED');
 
@@ -27,7 +27,7 @@ try {
   const tables = await query(`
     SELECT table_name
     FROM information_schema.tables
-    WHERE table_schema='shiny'
+    WHERE table_schema='gmx'
       AND (
         table_name ILIKE '%inventario%'
         OR table_name ILIKE '%compra%'
@@ -70,7 +70,7 @@ try {
     const r = await query(`
       SELECT 1
       FROM information_schema.tables
-      WHERE table_schema='shiny'
+      WHERE table_schema='gmx'
         AND table_name=$1
     `, [table]);
 
@@ -82,7 +82,7 @@ try {
 
   const negativeProductStock = await query(`
     SELECT row_id,id_producto,id_sucursal,stock
-    FROM shiny.inventario_sucursales
+    FROM gmx.inventario_sucursales
     WHERE stock<0
     LIMIT 20
   `);
@@ -91,7 +91,7 @@ try {
 
   const negativeTcgGlobal = await query(`
     SELECT row_id,id_inventario,stock,stock_reservado
-    FROM shiny.tcg_inventario
+    FROM gmx.tcg_inventario
     WHERE stock<0 OR stock_reservado<0
     LIMIT 20
   `);
@@ -100,7 +100,7 @@ try {
 
   const negativeTcgBranch = await query(`
     SELECT row_id,id_inventario,id_sucursal,stock,stock_reservado
-    FROM shiny.tcg_inventario_sucursales
+    FROM gmx.tcg_inventario_sucursales
     WHERE stock<0 OR stock_reservado<0
     LIMIT 20
   `);
@@ -118,8 +118,8 @@ try {
       g.id_inventario,
       g.stock AS global_stock,
       COALESCE(SUM(s.stock),0)::bigint AS branch_stock
-    FROM shiny.tcg_inventario g
-    LEFT JOIN shiny.tcg_inventario_sucursales s
+    FROM gmx.tcg_inventario g
+    LEFT JOIN gmx.tcg_inventario_sucursales s
       ON s.id_inventario=g.id_inventario
     GROUP BY g.id_inventario,g.stock
     HAVING g.stock<>COALESCE(SUM(s.stock),0)
@@ -149,17 +149,17 @@ try {
   section('7. SALE INVENTORY CONTRACT');
 
   assert(
-    source.includes('UPDATE shiny.inventario_sucursales'),
+    source.includes('UPDATE gmx.inventario_sucursales'),
     'PRODUCT_SALE_STOCK_UPDATE_MISSING'
   );
 
   assert(
-    source.includes('UPDATE shiny.tcg_inventario_sucursales'),
+    source.includes('UPDATE gmx.tcg_inventario_sucursales'),
     'TCG_BRANCH_SALE_STOCK_UPDATE_MISSING'
   );
 
   assert(
-    source.includes('UPDATE shiny.tcg_inventario'),
+    source.includes('UPDATE gmx.tcg_inventario'),
     'TCG_GLOBAL_SALE_STOCK_UPDATE_MISSING'
   );
 
@@ -204,8 +204,8 @@ try {
 
   const orphanProduct = await query(`
     SELECT i.row_id,i.id_producto
-    FROM shiny.inventario_sucursales i
-    LEFT JOIN shiny.productos p
+    FROM gmx.inventario_sucursales i
+    LEFT JOIN gmx.productos p
       ON p.id_producto=i.id_producto
     WHERE p.id_producto IS NULL
     LIMIT 20
@@ -219,7 +219,7 @@ try {
 
   const duplicateTcgBranch = await query(`
     SELECT id_inventario,id_sucursal,COUNT(*)::int AS total
-    FROM shiny.tcg_inventario_sucursales
+    FROM gmx.tcg_inventario_sucursales
     GROUP BY id_inventario,id_sucursal
     HAVING COUNT(*)>1
   `);

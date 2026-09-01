@@ -23,7 +23,7 @@ export default function StoreSearchPage() {
   }, [q]);
 
   return <main className="public-page">
-    <div className="public-page-head"><small>{brandText("BÚSQUEDA Shiny")}</small><h1>{q ? `Resultados para “${q}”` : 'Buscar'}</h1><p>Resultados unificados de productos y cartas TCG disponibles.</p></div>
+    <div className="public-page-head"><small>{brandText("BÚSQUEDA GMX")}</small><h1>{q ? `Resultados para “${q}”` : 'Buscar'}</h1><p>Resultados unificados de productos y cartas TCG disponibles.</p></div>
     {loading ? <div className="public-empty">Buscando…</div> : error ? <div className="public-empty">{error}</div> : <>
       <section className="public-search-section">
         <div className="public-section-head"><div><small>PRODUCTOS</small><h2>{data.products?.length || 0} resultados</h2></div></div>

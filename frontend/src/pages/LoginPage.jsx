@@ -59,7 +59,7 @@ export default function LoginPage() {
 
       const role = String(r.data?.user?.rol || '').toUpperCase();
 
-      // Shiny POS R11 — doble modalidad:
+      // GMX POS R11 — doble modalidad:
       // - Web normal: OPERADOR -> /admin/pos y Shiny solicita Fullscreen con un clic.
       // - Launcher/terminal kiosk: /login?kiosk=1 -> /admin/pos?kiosk=1.
       if (role === 'OPERADOR') {
@@ -108,7 +108,7 @@ export default function LoginPage() {
     </div>
     <form className="login-card" onSubmit={submit}>
       <BrandLogo compact className="login-dynamic-brand" />
-      <div className="eyebrow">{brandText("Shiny · ADMIN")}</div>
+      <div className="eyebrow">{brandText("GMX · ADMIN")}</div>
       <h1>Iniciar sesión</h1>
       <p>Acceso administrativo seguro.</p>
       <label>Usuario<input type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} autoCapitalize="none" spellCheck={false} required /></label>

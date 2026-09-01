@@ -8,7 +8,7 @@ import {
   pool } from
 '../db.js';
 
-const ROOT = brandText("C:\\Users\\igarcia\\Videos\\Shiny\\backend");
+const ROOT = brandText("C:\\Users\\igarcia\\Videos\\GMX\\backend");
 
 
 function section(title) {
@@ -26,7 +26,7 @@ function assert(condition, message) {
 
 try {
 
-  section(brandText("Shiny CAJA FINAL SMOKE"));
+  section(brandText("GMX CAJA FINAL SMOKE"));
 
   console.log('CAJA / FINANZAS OPERATIVAS');
   console.log('POST POS + DEV + MP CERTIFICATION');
@@ -43,7 +43,7 @@ try {
   await query(`
       SELECT table_name
       FROM information_schema.tables
-      WHERE table_schema='shiny'
+      WHERE table_schema='gmx'
         AND (
           table_name ILIKE '%caja%'
           OR table_name ILIKE '%cash%'
@@ -296,7 +296,7 @@ try {
       SELECT
         provider_payment_id,
         COUNT(*)::int AS total
-      FROM shiny.payment_transactions
+      FROM gmx.payment_transactions
       WHERE provider_payment_id IS NOT NULL
         AND BTRIM(provider_payment_id)<>''
       GROUP BY provider_payment_id
@@ -313,7 +313,7 @@ try {
       SELECT
         idempotency_key,
         COUNT(*)::int AS total
-      FROM shiny.payment_transactions
+      FROM gmx.payment_transactions
       WHERE idempotency_key IS NOT NULL
         AND BTRIM(idempotency_key)<>''
       GROUP BY idempotency_key
@@ -344,7 +344,7 @@ try {
       SELECT
         refund_id_proveedor,
         COUNT(*)::int AS total
-      FROM shiny.devoluciones_reembolsos
+      FROM gmx.devoluciones_reembolsos
       WHERE refund_id_proveedor IS NOT NULL
         AND BTRIM(refund_id_proveedor)<>''
       GROUP BY refund_id_proveedor
@@ -361,7 +361,7 @@ try {
       SELECT
         idempotency_key,
         COUNT(*)::int AS total
-      FROM shiny.devoluciones_reembolsos
+      FROM gmx.devoluciones_reembolsos
       WHERE idempotency_key IS NOT NULL
         AND BTRIM(idempotency_key)<>''
       GROUP BY idempotency_key
@@ -394,12 +394,12 @@ try {
         p.estado_pago,
         p.payment_provider,
         p.payment_provider_session
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
       WHERE p.estado_pago='PAGADO'
         AND p.payment_provider='MERCADOPAGO'
         AND NOT EXISTS (
           SELECT 1
-          FROM shiny.payment_transactions t
+          FROM gmx.payment_transactions t
           WHERE t.id_pedido=p.id_pedido
             AND t.proveedor='MERCADOPAGO'
             AND t.estado='PAID'
@@ -428,8 +428,8 @@ try {
         pp.id_pedido,
         pp.metodo,
         pp.estado
-      FROM shiny.pedido_pagos pp
-      LEFT JOIN shiny.pedidos p
+      FROM gmx.pedido_pagos pp
+      LEFT JOIN gmx.pedidos p
         ON p.id_pedido=pp.id_pedido
       WHERE p.row_id IS NULL
       LIMIT 20
@@ -455,8 +455,8 @@ try {
       SELECT
         t.id_transaccion,
         t.id_pedido
-      FROM shiny.payment_transactions t
-      LEFT JOIN shiny.pedidos p
+      FROM gmx.payment_transactions t
+      LEFT JOIN gmx.pedidos p
         ON p.id_pedido=t.id_pedido
       WHERE p.row_id IS NULL
       LIMIT 20
@@ -482,8 +482,8 @@ try {
       SELECT
         r.id_reembolso,
         r.id_pedido
-      FROM shiny.devoluciones_reembolsos r
-      LEFT JOIN shiny.pedidos p
+      FROM gmx.devoluciones_reembolsos r
+      LEFT JOIN gmx.pedidos p
         ON p.id_pedido=r.id_pedido
       WHERE p.row_id IS NULL
       LIMIT 20
@@ -507,7 +507,7 @@ try {
   const negativePayments =
   await query(`
       SELECT id_transaccion,monto
-      FROM shiny.payment_transactions
+      FROM gmx.payment_transactions
       WHERE monto<0
       LIMIT 20
     `);
@@ -520,7 +520,7 @@ try {
   const negativeRefunds =
   await query(`
       SELECT id_reembolso,monto
-      FROM shiny.devoluciones_reembolsos
+      FROM gmx.devoluciones_reembolsos
       WHERE monto<0
       LIMIT 20
     `);
@@ -551,7 +551,7 @@ try {
         efectivo_recibido,
         cambio_entregado,
         total
-      FROM shiny.pedidos
+      FROM gmx.pedidos
       WHERE metodo_pago='EFECTIVO'
         AND (
           COALESCE(efectivo_recibido,0)<0
@@ -607,13 +607,13 @@ try {
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedidos
+          FROM gmx.pedidos
           WHERE pos_idempotency_key LIKE 'POS003-MP-%'
         )::int AS pos_orders,
 
         (
           SELECT COUNT(*)
-          FROM shiny.payment_transactions
+          FROM gmx.payment_transactions
           WHERE provider_payment_id LIKE 'POS003-MP-%'
              OR provider_payment_id LIKE 'MP006-%'
              OR provider_payment_id LIKE 'MP007-%'
@@ -622,14 +622,14 @@ try {
 
         (
           SELECT COUNT(*)
-          FROM shiny.devoluciones
+          FROM gmx.devoluciones
           WHERE notas ILIKE '%TEST%'
              OR motivo ILIKE '%TEST%'
         )::int AS devoluciones,
 
         (
           SELECT COUNT(*)
-          FROM shiny.devoluciones_reembolsos
+          FROM gmx.devoluciones_reembolsos
           WHERE id_reembolso LIKE 'REEMB-MP006-%'
              OR id_reembolso LIKE 'REEMB-MP007-%'
              OR payment_id LIKE 'DEV007-MP-%'

@@ -298,7 +298,7 @@ async function searchPokemon(q) {
       };
     });
   } catch (error) {
-    console.warn(brandText('[Shiny][INTERNET_POKEMON_PRIMARY]'), String(error?.message || error));
+    console.warn(brandText('[GMX][INTERNET_POKEMON_PRIMARY]'), String(error?.message || error));
   }
 
   const params = new URLSearchParams({ name: q });
@@ -838,7 +838,7 @@ function adapterError(res, error) {
     'INSTALL_BATCH_TOO_LARGE', 'MASTER_CARD_NOT_FOUND', 'MASTER_GAME_NOT_FOUND'
   ]);
   const schemaUnavailable = error?.code === '42P01' || error?.code === '42703';
-  console.error(brandText('[Shiny][VISUAL_TCG_ADAPTER]'), code, error?.code || '');
+  console.error(brandText('[GMX][VISUAL_TCG_ADAPTER]'), code, error?.code || '');
   return res.status(schemaUnavailable ? 503 : clientErrors.has(code) ? 400 : 500).json({
     success: false,
     error: schemaUnavailable ? 'TCG_MASTER_CATALOG_NOT_AVAILABLE' : code,
@@ -918,7 +918,7 @@ router.get('/search', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(brandText("[Shiny][EXTERNAL_CARD_BETA]"), game, q, error);
+    console.error(brandText("[GMX][EXTERNAL_CARD_BETA]"), game, q, error);
     const status = Number(error?.status || 0);
     res.status(status === 429 ? 429 : 502).json({
       success: false,
@@ -1168,7 +1168,7 @@ router.post('/visual-search', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(brandText('[Shiny][EXTERNAL_PHOTO_SEARCH_R19B]'), game, q, error);
+    console.error(brandText('[GMX][EXTERNAL_PHOTO_SEARCH_R19B]'), game, q, error);
 
     const detail=String(error?.message||error);
     const offline=/fetch failed|aborted|timeout|VISUAL_EXTERNAL_RANK_FAILED/i.test(detail);

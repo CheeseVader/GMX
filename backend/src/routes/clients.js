@@ -129,7 +129,7 @@ router.post('/', async (req, res) => {
   } catch (error) {
     const code = clientErrorCode(error);
     if (code) return res.status(400).json({ success: false, error: code, message: CLIENT_MESSAGES[code] });
-    console.error(brandText("[Shiny][CLIENT_CREATE]"), error);
+    console.error(brandText("[GMX][CLIENT_CREATE]"), error);
     res.status(500).json({ success: false, error: 'CLIENT_CREATE_FAILED', message: 'No fue posible crear el cliente.' });
   }
 });
@@ -153,7 +153,7 @@ router.put('/:rowId', async (req, res) => {
   } catch (error) {
     const code = clientErrorCode(error);
     if (code) return res.status(400).json({ success: false, error: code, message: CLIENT_MESSAGES[code] });
-    console.error(brandText("[Shiny][CLIENT_UPDATE]"), error);
+    console.error(brandText("[GMX][CLIENT_UPDATE]"), error);
     res.status(500).json({ success: false, error: 'CLIENT_UPDATE_FAILED', message: 'No fue posible actualizar el cliente.' });
   }
 });

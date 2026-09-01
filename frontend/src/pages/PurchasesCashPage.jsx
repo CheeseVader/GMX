@@ -760,7 +760,7 @@ export default function PurchasesCashPage() {
               <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 12 }}><small>Proveedor</small><br /><strong>{suppliers.find((x) => x.id_proveedor === supplierId)?.nombre_comercial || suppliers.find((x) => x.id_proveedor === supplierId)?.razon_social || supplierId}</strong></div>
               <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 12 }}><small>Sucursal</small><br /><strong>{branches.find((x) => x.id_sucursal === branchId)?.nombre_sucursal || branchId}</strong></div>
               <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 12 }}><small>Unidades</small><br /><strong>{items.reduce((a, x) => a + Number(x.quantity || 0), 0)}</strong></div>
-              <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 12 }}><small>{brandText("Total Shiny")}</small><br /><strong>{money(total)}</strong></div>
+              <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 12 }}><small>{brandText("Total GMX")}</small><br /><strong>{money(total)}</strong></div>
             </div>
 
             <label style={{ display: 'grid', gap: 6, marginTop: 20 }}>
@@ -780,7 +780,7 @@ export default function PurchasesCashPage() {
                   <div style={{ marginTop: 6, fontSize: 13 }}>XML: {doc.xmlName || 'No adjunto'} · PDF: {doc.documentName || 'No adjunto'}</div>
                 </div> :
               <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                  <strong>Recepción permitida sin XML/PDF</strong><br />{brandText("\n                  Shiny recibirá la mercancía y conservará el estado fiscal seleccionado. Más adelante podrás usar Historial → Gestionar / Adjuntar factura sin volver a modificar inventario.\n                ")}
+                  <strong>Recepción permitida sin XML/PDF</strong><br />{brandText("\n                  GMX recibirá la mercancía y conservará el estado fiscal seleccionado. Más adelante podrás usar Historial → Gestionar / Adjuntar factura sin volver a modificar inventario.\n                ")}
 
               </div>}
 

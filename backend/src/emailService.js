@@ -11,7 +11,7 @@ const bool = (v, def = false) => {
 };
 
 async function smtpSettings() {
-  const r = await query(`SELECT parametro,valor FROM shiny.configuracion
+  const r = await query(`SELECT parametro,valor FROM gmx.configuracion
     WHERE parametro LIKE 'email.smtp.%'`);
   const m = Object.fromEntries(r.rows.map((x) => [x.parametro, x.valor]));
 
@@ -20,7 +20,7 @@ async function smtpSettings() {
   const user = txt(m['email.smtp.user']) || txt(process.env.SHINY_SMTP_USER);
   const pass = String(m['email.smtp.password'] ?? process.env.SHINY_SMTP_PASS ?? '');
   const fromEmail = txt(m['email.smtp.from_email']) || txt(process.env.SHINY_SMTP_FROM) || user;
-  const fromName = txt(m['email.smtp.from_name']) || txt(process.env.SHINY_SMTP_FROM_NAME) || brandText("Shiny");
+  const fromName = txt(m['email.smtp.from_name']) || txt(process.env.SHINY_SMTP_FROM_NAME) || brandText("GMX");
   const port = Number(m['email.smtp.port'] || process.env.SHINY_SMTP_PORT || 587);
   const secure = bool(m['email.smtp.secure'] ?? process.env.SHINY_SMTP_SECURE, false);
   const enabled = bool(m['email.smtp.enabled'], true);
@@ -45,7 +45,7 @@ export async function getSmtpStatus() {
     secure: s.secure,
     user: s.user || '',
     fromEmail: s.fromEmail || '',
-    fromName: s.fromName || brandText("Shiny"),
+    fromName: s.fromName || brandText("GMX"),
     passwordConfigured: !!s.pass,
     source: s.source
   };
@@ -68,7 +68,7 @@ async function smtpConfig() {
 export async function queueAndSendEmail({ to, subject, html, attachments = [], reference = '' }) {
   if (!to) return { queued: false, sent: false, reason: 'NO_RECIPIENT' };
   const id = uid();
-  await query(`INSERT INTO shiny.email_outbox(id_email,destinatario,asunto,html,estado,referencia)
+  await query(`INSERT INTO gmx.email_outbox(id_email,destinatario,asunto,html,estado,referencia)
     VALUES($1,$2,$3,$4,'PENDING',$5)`, [id, to, subject, html, reference || null]);
 
   const cfg = await smtpConfig();
@@ -80,7 +80,7 @@ export async function queueAndSendEmail({ to, subject, html, attachments = [], r
       from: cfg.from,
       to, subject, html, attachments
     });
-    await query(`UPDATE shiny.email_outbox SET estado='SENT',intentos=intentos+1,enviado_at=NOW(),ultimo_error=NULL WHERE id_email=$1`, [id]);
+    await query(`UPDATE gmx.email_outbox SET estado='SENT',intentos=intentos+1,enviado_at=NOW(),ultimo_error=NULL WHERE id_email=$1`, [id]);
     return { queued: true, sent: true, id };
   } catch (e) {
     const diagnostic = {
@@ -91,7 +91,7 @@ export async function queueAndSendEmail({ to, subject, html, attachments = [], r
       message: String(e?.message || e || 'Error SMTP').replace(/[\r\n]+/g, ' ').slice(0, 500)
     };
     // Never return/store credentials. Nodemailer diagnostics above contain protocol/server data only.
-    await query(`UPDATE shiny.email_outbox SET estado='ERROR',intentos=intentos+1,ultimo_error=$2 WHERE id_email=$1`, [
+    await query(`UPDATE gmx.email_outbox SET estado='ERROR',intentos=intentos+1,ultimo_error=$2 WHERE id_email=$1`, [
     id,
     JSON.stringify(diagnostic).slice(0, 1000)]
     );
@@ -99,7 +99,7 @@ export async function queueAndSendEmail({ to, subject, html, attachments = [], r
   }
 }
 
-export function orderConfirmationHtml({ order, receiptUrl, brand = brandText("Shiny") }) {
+export function orderConfirmationHtml({ order, receiptUrl, brand = brandText("GMX") }) {
   const total = Number(order.total || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
   return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:24px">
     <div style="max-width:640px;margin:auto;background:#fff;border-radius:14px;padding:28px">
@@ -114,7 +114,7 @@ export function orderConfirmationHtml({ order, receiptUrl, brand = brandText("Sh
 function escapeHtml(v) {return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);}
 
 
-export function verificationEmailHtml({ name = '', verificationUrl, brand = brandText("Shiny") }) {
+export function verificationEmailHtml({ name = '', verificationUrl, brand = brandText("GMX") }) {
   return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:24px">
     <div style="max-width:640px;margin:auto;background:#fff;border-radius:14px;padding:28px">
       <h1 style="margin-top:0">${escapeHtml(brand)}</h1>
@@ -126,7 +126,7 @@ export function verificationEmailHtml({ name = '', verificationUrl, brand = bran
     </div></body></html>`;
 }
 
-export function paymentReceiptHtml({ order, receiptUrl, brand = brandText("Shiny"), paymentLabel = 'Pago confirmado' }) {
+export function paymentReceiptHtml({ order, receiptUrl, brand = brandText("GMX"), paymentLabel = 'Pago confirmado' }) {
   const total = Number(order.total || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
   return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:24px">
     <div style="max-width:640px;margin:auto;background:#fff;border-radius:14px;padding:28px">
@@ -138,7 +138,7 @@ export function paymentReceiptHtml({ order, receiptUrl, brand = brandText("Shiny
     </div></body></html>`;
 }
 
-export function transferInstructionsHtml({ order, receiptUrl, bank, brand = brandText("Shiny") }) {
+export function transferInstructionsHtml({ order, receiptUrl, bank, brand = brandText("GMX") }) {
   const total = Number(order.total || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
   return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:24px">
     <div style="max-width:640px;margin:auto;background:#fff;border-radius:14px;padding:28px">
@@ -156,7 +156,7 @@ export function transferInstructionsHtml({ order, receiptUrl, bank, brand = bran
 }
 
 
-export function passwordResetEmailHtml({ name = '', resetUrl, brand = brandText("Shiny") }) {
+export function passwordResetEmailHtml({ name = '', resetUrl, brand = brandText("GMX") }) {
   return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:24px">
     <div style="max-width:640px;margin:auto;background:#fff;border-radius:14px;padding:28px">
       <h1 style="margin-top:0">${escapeHtml(brand)}</h1>
@@ -167,19 +167,19 @@ export function passwordResetEmailHtml({ name = '', resetUrl, brand = brandText(
     </div></body></html>`;
 }
 
-export function passwordChangedEmailHtml({ name = '', brand = brandText("Shiny") }) {
+export function passwordChangedEmailHtml({ name = '', brand = brandText("GMX") }) {
   return brandText(`<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:24px">
     <div style="max-width:640px;margin:auto;background:#fff;border-radius:14px;padding:28px">
       <h1 style="margin-top:0">${escapeHtml(brand)}</h1>
       <h2>Tu contraseña fue actualizada</h2>
-      <p>Hola ${escapeHtml(name || '')}, la contraseña de tu cuenta Shiny se modificó correctamente.</p>
+      <p>Hola ${escapeHtml(name || '')}, la contraseña de tu cuenta GMX se modificó correctamente.</p>
       <p>Por seguridad cerramos todas las sesiones anteriores de tu cuenta.</p>
       <p style="color:#667085;font-size:12px">Si tú no realizaste este cambio, contacta a soporte inmediatamente.</p>
     </div></body></html>`);
 }
 
 
-export function adminPasswordResetEmailHtml({ name = '', resetUrl, brand = brandText("Shiny") }) {
+export function adminPasswordResetEmailHtml({ name = '', resetUrl, brand = brandText("GMX") }) {
   return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:24px">
     <div style="max-width:640px;margin:auto;background:#fff;border-radius:14px;padding:28px">
       <h1 style="margin-top:0">${escapeHtml(brand)}</h1>
@@ -190,13 +190,13 @@ export function adminPasswordResetEmailHtml({ name = '', resetUrl, brand = brand
     </div></body></html>`;
 }
 
-export function adminPasswordChangedEmailHtml({ name = '', brand = brandText("Shiny") }) {
+export function adminPasswordChangedEmailHtml({ name = '', brand = brandText("GMX") }) {
   return brandText(`<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:24px">
     <div style="max-width:640px;margin:auto;background:#fff;border-radius:14px;padding:28px">
       <h1 style="margin-top:0">${escapeHtml(brand)}</h1>
       <h2>Contraseña administrativa actualizada</h2>
       <p>Hola ${escapeHtml(name || 'Administrador')}, la contraseña de tu cuenta administrativa fue modificada.</p>
-      <p>Por seguridad, Shiny cerró todas las sesiones administrativas anteriores de esa cuenta.</p>
+      <p>Por seguridad, GMX cerró todas las sesiones administrativas anteriores de esa cuenta.</p>
       <p style="color:#667085;font-size:12px">Si tú no realizaste este cambio, contacta de inmediato al responsable SUPERADMIN.</p>
     </div></body></html>`);
 }
@@ -214,7 +214,7 @@ export async function saveSmtpConfiguration(input = {}, user = null) {
 
   const smtpUser = txt(input.user).toLowerCase();
   const fromEmail = txt(input.fromEmail || smtpUser).toLowerCase();
-  const fromName = txt(input.fromName || brandText("Shiny"));
+  const fromName = txt(input.fromName || brandText("GMX"));
   if (input.enabled !== false) {
     if (!host) throw new Error('SMTP_HOST_REQUIRED');
     if (!smtpUser) throw new Error('SMTP_USER_REQUIRED');
@@ -237,15 +237,15 @@ export async function saveSmtpConfiguration(input = {}, user = null) {
   if (input.clearPassword === true) entries.push(['email.smtp.password', '']);
 
   for (const [key, value] of entries) {
-    await query(`INSERT INTO shiny.configuracion(parametro,valor)
+    await query(`INSERT INTO gmx.configuracion(parametro,valor)
       VALUES($1,$2)
       ON CONFLICT(parametro) DO UPDATE SET valor=EXCLUDED.valor`, [key, value]);
   }
 
-  await query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+  await query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
     VALUES(NOW(),'SISTEMA','SMTP_CONFIG','CORREO',$1,$2)`, [
   `${provider}; host=${host}; port=${port}; secure=${secure}; user=${smtpUser}; password=${password ? 'UPDATED' : input.clearPassword === true ? 'CLEARED' : 'UNCHANGED'}`,
-  user?.email || brandText("Shiny Local")]
+  user?.email || brandText("GMX Local")]
   );
 
   return getSmtpStatus();
@@ -258,12 +258,12 @@ export async function sendSmtpTest({ to } = {}, user = null) {
 
   const result = await queueAndSendEmail({
     to: recipient,
-    subject: brandText("Shiny · Prueba de configuración de correo"),
+    subject: brandText("GMX · Prueba de configuración de correo"),
     html: brandText(`<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:24px">
       <div style="max-width:620px;margin:auto;background:#fff;border-radius:14px;padding:28px">
-        <h1 style="margin-top:0">Shiny</h1>
+        <h1 style="margin-top:0">GMX</h1>
         <h2>Correo configurado correctamente</h2>
-        <p>Este mensaje confirma que la configuración SMTP de Shiny puede enviar correos.</p>
+        <p>Este mensaje confirma que la configuración SMTP de GMX puede enviar correos.</p>
         <p style="color:#667085;font-size:12px">Fecha de prueba: ${new Date().toLocaleString('es-MX')}</p>
       </div></body></html>`),
     reference: 'SMTP-TEST'
@@ -276,14 +276,14 @@ export async function sendSmtpTest({ to } = {}, user = null) {
     throw err;
   }
 
-  await query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+  await query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
     VALUES(NOW(),'SISTEMA','SMTP_TEST_OK','CORREO',$1,$2)`, [
-  `${recipient}; email=${result.id}`, user?.email || brandText("Shiny Local")]
+  `${recipient}; email=${result.id}`, user?.email || brandText("GMX Local")]
   );
   return { sent: true, to: recipient, id: result.id };
 }
 
-export function quoteEmailHtml({ quote, brand = brandText("Shiny") }) {
+export function quoteEmailHtml({ quote, brand = brandText("GMX") }) {
   const money = (v) => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
   const items = Array.isArray(quote.items_json) ?
   quote.items_json :
@@ -361,7 +361,7 @@ export function quoteEmailHtml({ quote, brand = brandText("Shiny") }) {
 }
 
 
-export function posReceiptEmailHtml({ order, brand = brandText("Shiny") }) {
+export function posReceiptEmailHtml({ order, brand = brandText("GMX") }) {
   const money = (v) => Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
   const date = order?.fecha ? new Date(order.fecha) : new Date();
   const lines = Array.isArray(order?.detalles) ? order.detalles : [];

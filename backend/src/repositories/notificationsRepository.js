@@ -23,7 +23,7 @@ export async function notificationSummary(scope) {
     COUNT(*) FILTER(WHERE COALESCE(resuelta,false)=false AND UPPER(COALESCE(prioridad,''))='ALTA')::bigint altas,
     COUNT(*) FILTER(WHERE COALESCE(resuelta,false)=false AND UPPER(COALESCE(prioridad,''))='MEDIA')::bigint medias,
     COUNT(*) FILTER(WHERE COALESCE(resuelta,false)=true)::bigint resueltas
-    FROM shiny.notificaciones_admin ${w}`, vals);
+    FROM gmx.notificaciones_admin ${w}`, vals);
   return r.rows[0];
 }
 
@@ -52,7 +52,7 @@ export async function listNotifications({
   }
   vals.push(Math.min(Math.max(Number(limit) || 500, 1), 1500));
 
-  return query(`SELECT * FROM shiny.notificaciones_admin
+  return query(`SELECT * FROM gmx.notificaciones_admin
     ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
     ORDER BY COALESCE(resuelta,false),
       CASE UPPER(COALESCE(prioridad,'')) WHEN 'CRITICA' THEN 0 WHEN 'ALTA' THEN 1 WHEN 'MEDIA' THEN 2 ELSE 3 END,
@@ -68,7 +68,7 @@ export async function markNotification(rowId, read = true, user, scope) {
 
   const restricted = Array.isArray(allowed);
 
-  const r = await query(`UPDATE shiny.notificaciones_admin
+  const r = await query(`UPDATE gmx.notificaciones_admin
     SET leida=$2,
         leida_por=CASE WHEN $2 THEN $3 ELSE NULL END,
         fecha_lectura=CASE WHEN $2 THEN NOW() ELSE NULL END,
@@ -89,7 +89,7 @@ export async function markNotification(rowId, read = true, user, scope) {
 
   if (!r.rowCount) {
     const existing = await query(`SELECT row_id,id_sucursal
-      FROM shiny.notificaciones_admin
+      FROM gmx.notificaciones_admin
       WHERE row_id=$1
       LIMIT 1`, [rowId]);
 
@@ -129,7 +129,7 @@ scope)
 
   const restricted = Array.isArray(allowed);
 
-  const r = await query(`UPDATE shiny.notificaciones_admin SET
+  const r = await query(`UPDATE gmx.notificaciones_admin SET
     resuelta=$2,
     estado=CASE WHEN $2 THEN 'RESUELTA' ELSE 'ABIERTA' END,
     fecha_resolucion=CASE WHEN $2 THEN NOW() ELSE NULL END,
@@ -146,7 +146,7 @@ scope)
     RETURNING *`, [
   rowId,
   !!resolved,
-  user?.email || brandText("Shiny Local"),
+  user?.email || brandText("GMX Local"),
   txt(note),
   restricted,
   allowed || []]
@@ -154,7 +154,7 @@ scope)
 
   if (!r.rowCount) {
     const existing = await query(`SELECT row_id,id_sucursal
-      FROM shiny.notificaciones_admin
+      FROM gmx.notificaciones_admin
       WHERE row_id=$1
       LIMIT 1`, [rowId]);
 
@@ -179,7 +179,7 @@ scope)
     throw new Error('NOTIFICATION_NOT_FOUND');
   }
 
-  await query(`INSERT INTO shiny.auditoria(
+  await query(`INSERT INTO gmx.auditoria(
       fecha,
       modulo,
       accion,
@@ -198,13 +198,13 @@ scope)
   resolved ? 'RESOLVER' : 'REABRIR',
   r.rows[0].id,
   r.rows[0].titulo,
-  user?.email || brandText("Shiny Local")]
+  user?.email || brandText("GMX Local")]
   );
 
   return r.rows[0];
 }
 async function config(client) {
-  const r = await client.query(`SELECT parametro,valor FROM shiny.configuracion WHERE parametro LIKE 'alerts.%'`);
+  const r = await client.query(`SELECT parametro,valor FROM gmx.configuracion WHERE parametro LIKE 'alerts.%'`);
   return Object.fromEntries(r.rows.map((x) => [x.parametro, x.valor]));
 }
 const enabled = (m, key, def = true) => String(m[key] ?? String(def)).toLowerCase() === 'true';
@@ -213,12 +213,12 @@ const number = (m, key, def) => Number.isFinite(Number(m[key])) ? Number(m[key])
 async function upsertAlert(client, {
   key, type, title, message, module, priority = 'MEDIA', branchId = null, branchName = null, reference = null, route = null, metadata = {}
 }) {
-  const existing = await client.query(`SELECT * FROM shiny.notificaciones_admin
+  const existing = await client.query(`SELECT * FROM gmx.notificaciones_admin
     WHERE clave=$1 AND COALESCE(resuelta,false)=false
     ORDER BY row_id DESC LIMIT 1 FOR UPDATE`, [key]);
 
   if (existing.rowCount) {
-    await client.query(`UPDATE shiny.notificaciones_admin SET
+    await client.query(`UPDATE gmx.notificaciones_admin SET
       titulo=$2,mensaje=$3,prioridad=$4,id_sucursal=$5,sucursal=$6,referencia=$7,ruta=$8,
       metadata=$9::jsonb,ultima_deteccion=NOW(),actualizacion=NOW()
       WHERE row_id=$1`, [
@@ -227,7 +227,7 @@ async function upsertAlert(client, {
     return { created: false, rowId: existing.rows[0].row_id };
   }
 
-  const r = await client.query(`INSERT INTO shiny.notificaciones_admin(
+  const r = await client.query(`INSERT INTO gmx.notificaciones_admin(
     id,fecha,tipo,titulo,mensaje,modulo,prioridad,leida,actualizacion,clave,
     id_sucursal,sucursal,referencia,ruta,estado,resuelta,primera_deteccion,ultima_deteccion,metadata)
     VALUES($1,NOW(),$2,$3,$4,$5,$6,false,NOW(),$7,$8,$9,$10,$11,'ABIERTA',false,NOW(),NOW(),$12::jsonb)
@@ -239,12 +239,12 @@ async function upsertAlert(client, {
 
 async function closeMissing(client, type, activeKeys) {
   if (activeKeys.length) {
-    await client.query(`UPDATE shiny.notificaciones_admin SET
+    await client.query(`UPDATE gmx.notificaciones_admin SET
       resuelta=true,estado='RESUELTA_AUTO',fecha_resolucion=NOW(),resuelta_por='SISTEMA',
       nota_resolucion='La condición dejó de estar activa.',actualizacion=NOW()
       WHERE tipo=$1 AND COALESCE(resuelta,false)=false AND NOT (clave=ANY($2::text[]))`, [type, activeKeys]);
   } else {
-    await client.query(`UPDATE shiny.notificaciones_admin SET
+    await client.query(`UPDATE gmx.notificaciones_admin SET
       resuelta=true,estado='RESUELTA_AUTO',fecha_resolucion=NOW(),resuelta_por='SISTEMA',
       nota_resolucion='La condición dejó de estar activa.',actualizacion=NOW()
       WHERE tipo=$1 AND COALESCE(resuelta,false)=false`, [type]);
@@ -269,7 +269,7 @@ export async function generateAlerts(user, { scope = null } = {}) {
       const params = [threshold],branch = scopeSql(scope, 'i.id_sucursal', 2);params.push(...branch.params);
       const r = await client.query(`SELECT i.id_sucursal,i.sucursal,i.id_producto,i.sku,i.producto,
           COALESCE(i.stock,0)::numeric stock,COALESCE(i.stock_minimo,0)::numeric stock_minimo
-        FROM shiny.inventario_sucursales i
+        FROM gmx.inventario_sucursales i
         WHERE COALESCE(i.stock,0)<=GREATEST(COALESCE(i.stock_minimo,0),$1) ${branch.sql}
         ORDER BY i.sucursal,i.producto`, params);
       const keys = [];
@@ -291,9 +291,9 @@ export async function generateAlerts(user, { scope = null } = {}) {
       const r = await client.query(`SELECT s.id_sucursal,s.sucursal,s.id_inventario,s.sku,
           COALESCE(s.stock,0)-COALESCE(s.stock_reservado,0) disponible,c.nombre carta,
           COALESCE(i.rareza,c.rareza) rareza
-        FROM shiny.tcg_inventario_sucursales s
-        JOIN shiny.tcg_inventario i ON i.id_inventario=s.id_inventario
-        LEFT JOIN shiny.tcg_cartas c ON c.id_carta=i.id_carta
+        FROM gmx.tcg_inventario_sucursales s
+        JOIN gmx.tcg_inventario i ON i.id_inventario=s.id_inventario
+        LEFT JOIN gmx.tcg_cartas c ON c.id_carta=i.id_carta
         WHERE (COALESCE(s.stock,0)-COALESCE(s.stock_reservado,0))<=$1 ${branch.sql}
           AND UPPER(COALESCE(i.estado_venta,'DISPONIBLE'))='DISPONIBLE'
         ORDER BY s.sucursal,c.nombre`, params);
@@ -314,7 +314,7 @@ export async function generateAlerts(user, { scope = null } = {}) {
       const days = Math.max(0, Math.trunc(number(m, 'alerts.payables_due_days', 5)));
       const params = [days],branch = scopeSql(scope, 'c.id_sucursal', 2);params.push(...branch.params);
       const r = await client.query(`SELECT c.id,c.id_sucursal,c.sucursal,c.proveedor,c.documento,c.vencimiento,c.saldo,c.estado
-        FROM shiny.cuentas_por_pagar c
+        FROM gmx.cuentas_por_pagar c
         WHERE COALESCE(c.saldo,0)>0 AND UPPER(COALESCE(c.estado,'')) NOT IN ('PAGADA','CANCELADA')
           AND c.vencimiento IS NOT NULL
           AND c.vencimiento::date<=CURRENT_DATE+$1::int ${branch.sql}
@@ -340,7 +340,7 @@ export async function generateAlerts(user, { scope = null } = {}) {
       const params = [age],branch = scopeSql(scope, 'c.id_sucursal_recepcion', 2);params.push(...branch.params);
       const r = await client.query(`SELECT c.id_compra,c.fecha,c.id_sucursal_recepcion,c.sucursal_recepcion,c.proveedor,
           c.tipo_documento,c.referencia_documento,c.estado,c.total
-        FROM shiny.compras c
+        FROM gmx.compras c
         WHERE UPPER(COALESCE(c.estado,''))<>'CANCELADA'
           AND c.fecha::date<=CURRENT_DATE-$1::int
           AND (
@@ -366,7 +366,7 @@ export async function generateAlerts(user, { scope = null } = {}) {
       const params = [amount],branch = scopeSql(scope, 'c.id_sucursal', 2);params.push(...branch.params);
       const r = await client.query(`SELECT c.id_caja,c.id_sucursal,c.sucursal,c.fecha_cierre,c.saldo_esperado,
           c.efectivo_contado,c.diferencia
-        FROM shiny.caja_sesiones c
+        FROM gmx.caja_sesiones c
         WHERE UPPER(COALESCE(c.estado,''))='CERRADA'
           AND ABS(COALESCE(c.diferencia,0))>$1
           AND c.fecha_cierre>=NOW()-INTERVAL '30 days' ${branch.sql}
@@ -388,7 +388,7 @@ export async function generateAlerts(user, { scope = null } = {}) {
     if (enabled(m, 'alerts.tcg_sync_enabled', true)) {
       const r = await client.query(`SELECT game_code,provider_name,status,last_error,
           GREATEST(last_sets_sync_at,last_cards_sync_at,last_prices_sync_at) last_sync
-        FROM shiny.tcg_sync_providers
+        FROM gmx.tcg_sync_providers
         WHERE NULLIF(TRIM(COALESCE(last_error,'')),'') IS NOT NULL
            OR UPPER(COALESCE(status,'')) IN ('ERROR','FAILED','DEGRADED')
         ORDER BY game_code`);
@@ -403,7 +403,7 @@ export async function generateAlerts(user, { scope = null } = {}) {
       await closeMissing(client, 'TCG_SYNC_ERROR', keys);
     }
 
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'NOTIFICACIONES','GENERAR','AUTOMATICO',$1,$2)`, [
     `${stats.created} nuevas; ${stats.updated} actualizadas`, user?.email || 'SISTEMA']
     );
@@ -417,7 +417,7 @@ export async function generateAlerts(user, { scope = null } = {}) {
 }
 
 export async function getAlertSettings() {
-  const r = await query(`SELECT parametro,valor FROM shiny.configuracion
+  const r = await query(`SELECT parametro,valor FROM gmx.configuracion
     WHERE parametro LIKE 'alerts.%' ORDER BY parametro`);
   return Object.fromEntries(r.rows.map((x) => [x.parametro, x.valor]));
 }
@@ -559,7 +559,7 @@ export async function saveAlertSettings(input, user) {
 
     for (const [key, value] of Object.entries(normalized)) {
       await client.query(`
-        INSERT INTO shiny.configuracion(
+        INSERT INTO gmx.configuracion(
           parametro,
           valor,
           actualizacion
@@ -573,7 +573,7 @@ export async function saveAlertSettings(input, user) {
     }
 
     await client.query(`
-      INSERT INTO shiny.auditoria(
+      INSERT INTO gmx.auditoria(
         fecha,
         modulo,
         accion,
@@ -591,7 +591,7 @@ export async function saveAlertSettings(input, user) {
       )
     `, [
     'Configuracion de alertas actualizada',
-    user?.email || brandText("Shiny Local")]
+    user?.email || brandText("GMX Local")]
     );
 
     await client.query('COMMIT');

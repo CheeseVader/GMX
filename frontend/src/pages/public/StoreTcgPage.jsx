@@ -16,7 +16,7 @@ function themeForGame(game = {}) {
   if (key.includes('magic') || key.includes('mtg')) return 'magic';
   if (key.includes('yugioh') || key.includes('yu-gi')) return 'yugioh';
   if (key.includes('riftbound')) return 'riftbound';
-  return 'shiny';
+  return 'gmx';
 }
 
 export default function StoreTcgPage() {

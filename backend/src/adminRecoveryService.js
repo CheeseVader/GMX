@@ -10,7 +10,7 @@ export async function requestAdminPasswordReset({ email = '', ip = '', baseUrl =
   if (!normalized) return generic;
 
   const r = await query(`SELECT id_admin,nombre,email,rol,activo
-    FROM shiny.administradores
+    FROM gmx.administradores
     WHERE LOWER(email)=$1
     ORDER BY row_id LIMIT 1`, [normalized]);
 
@@ -19,15 +19,15 @@ export async function requestAdminPasswordReset({ email = '', ip = '', baseUrl =
 
   const admin = r.rows[0];
   const token = newToken();
-  const cfg = await query(`SELECT valor FROM shiny.configuracion
+  const cfg = await query(`SELECT valor FROM gmx.configuracion
     WHERE parametro='security.admin_password_reset_minutes'`);
   const minutes = Math.min(Math.max(Number(cfg.rows[0]?.valor || 20), 5), 60);
 
-  await query(`UPDATE shiny.admin_password_reset_tokens
+  await query(`UPDATE gmx.admin_password_reset_tokens
     SET used_at=NOW()
     WHERE id_admin=$1 AND used_at IS NULL`, [admin.id_admin]);
 
-  await query(`INSERT INTO shiny.admin_password_reset_tokens(
+  await query(`INSERT INTO gmx.admin_password_reset_tokens(
     token_hash,id_admin,email,expires_at,requested_ip)
     VALUES($1,$2,$3,NOW()+($4||' minutes')::interval,$5)`, [
   hashToken(token), admin.id_admin, admin.email, String(minutes), txt(ip)]
@@ -38,12 +38,12 @@ export async function requestAdminPasswordReset({ email = '', ip = '', baseUrl =
 
   const mail = await queueAndSendEmail({
     to: admin.email,
-    subject: brandText("Shiny · Recuperación de acceso administrativo"),
+    subject: brandText("GMX · Recuperación de acceso administrativo"),
     html: adminPasswordResetEmailHtml({ name: admin.nombre || '', resetUrl }),
     reference: admin.id_admin
   });
 
-  await query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+  await query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
     VALUES(NOW(),'AUTH','ADMIN_PASSWORD_RESET_REQUEST',$1,$2,$3)`, [
   admin.id_admin,
   `${mail.sent ? 'EMAIL_SENT' : mail.queued ? 'EMAIL_QUEUED' : 'EMAIL_NOT_SENT'}; requestedBy=${requestedBy}`,
@@ -70,8 +70,8 @@ export async function completeAdminPasswordReset({ token = '', password = '', ip
     await client.query('BEGIN');
 
     const r = await client.query(`SELECT t.row_id,t.id_admin,t.email,a.nombre,a.rol,a.activo
-      FROM shiny.admin_password_reset_tokens t
-      JOIN shiny.administradores a ON a.id_admin=t.id_admin
+      FROM gmx.admin_password_reset_tokens t
+      JOIN gmx.administradores a ON a.id_admin=t.id_admin
       WHERE t.token_hash=$1
         AND t.used_at IS NULL
         AND t.expires_at>NOW()
@@ -83,21 +83,21 @@ export async function completeAdminPasswordReset({ token = '', password = '', ip
     if (!r.rowCount) throw new Error('INVALID_OR_EXPIRED_ADMIN_RESET_TOKEN');
     admin = r.rows[0];
 
-    await client.query(`UPDATE shiny.administradores
+    await client.query(`UPDATE gmx.administradores
       SET password_hash=$2,fecha_actualizacion=NOW()
       WHERE id_admin=$1`, [admin.id_admin, hashPassword(p)]);
 
-    await client.query(`UPDATE shiny.admin_password_reset_tokens
+    await client.query(`UPDATE gmx.admin_password_reset_tokens
       SET used_at=NOW(),completed_ip=$2
       WHERE row_id=$1`, [admin.row_id, txt(ip)]);
 
-    const sessions = await client.query(`UPDATE shiny.admin_sessions
+    const sessions = await client.query(`UPDATE gmx.admin_sessions
       SET revoked_at=COALESCE(revoked_at,NOW())
       WHERE id_admin=$1 AND revoked_at IS NULL
       RETURNING id`, [admin.id_admin]);
     revoked = sessions.rowCount;
 
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'AUTH','ADMIN_PASSWORD_RESET_COMPLETE',$1,$2,$3)`, [
     admin.id_admin, `Sesiones revocadas: ${revoked}`, admin.email]
     );
@@ -112,7 +112,7 @@ export async function completeAdminPasswordReset({ token = '', password = '', ip
 
   const mail = await queueAndSendEmail({
     to: admin.email,
-    subject: brandText("Shiny · Contraseña administrativa actualizada"),
+    subject: brandText("GMX · Contraseña administrativa actualizada"),
     html: adminPasswordChangedEmailHtml({ name: admin.nombre || '' }),
     reference: admin.id_admin
   });

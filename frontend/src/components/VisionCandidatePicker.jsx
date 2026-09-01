@@ -11,7 +11,7 @@ export default function VisionCandidatePicker({
   return <div className="modal-backdrop shiny-vision-backdrop">
     <div className="modal shiny-vision-modal" onMouseDown={e=>e.stopPropagation()}>
       <div className="modal-head">
-        <div><div className="eyebrow">Shiny VISION</div><h2>{title}</h2><p className="section-copy">{subtitle}</p></div>
+        <div><div className="eyebrow">GMX VISION</div><h2>{title}</h2><p className="section-copy">{subtitle}</p></div>
         <button type="button" className="icon-btn" onClick={onClose}>×</button>
       </div>
       {items.length?<div className="shiny-vision-results">

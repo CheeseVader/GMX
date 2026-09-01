@@ -11,35 +11,35 @@ const datasets={
     sql:`SELECT i.id_inventario,i.sku,c.nombre AS carta,i.rareza,i.idioma,i.condicion,i.acabado,
       i.costo,i.precio,i.precio_oferta,i.stock AS stock_global,i.stock_reservado AS reservado_global,
       s.id_sucursal,s.sucursal,s.stock,s.stock_reservado
-      FROM shiny.tcg_inventario i
-      LEFT JOIN shiny.tcg_cartas c ON c.id_carta=i.id_carta
-      LEFT JOIN shiny.tcg_inventario_sucursales s ON s.id_inventario=i.id_inventario`
+      FROM gmx.tcg_inventario i
+      LEFT JOIN gmx.tcg_cartas c ON c.id_carta=i.id_carta
+      LEFT JOIN gmx.tcg_inventario_sucursales s ON s.id_inventario=i.id_inventario`
   },
   sales:{
     order:'fecha DESC NULLS LAST,id_pedido',
     sql:`SELECT p.*,COUNT(d.row_id)::bigint AS lineas,COALESCE(SUM(d.cantidad),0)::bigint AS unidades
-      FROM shiny.pedidos p LEFT JOIN shiny.detalle_pedidos d ON d.id_pedido=p.id_pedido
+      FROM gmx.pedidos p LEFT JOIN gmx.detalle_pedidos d ON d.id_pedido=p.id_pedido
       GROUP BY p.row_id`
   },
   buylist:{
     order:'fecha DESC NULLS LAST,id_buylist',
-    sql:`SELECT * FROM shiny.tcg_buylist`
+    sql:`SELECT * FROM gmx.tcg_buylist`
   },
   movements:{
     order:'fecha DESC NULLS LAST,id_movimiento',
-    sql:`SELECT * FROM shiny.tcg_movimientos_sucursales`
+    sql:`SELECT * FROM gmx.tcg_movimientos_sucursales`
   },
   products:{
     order:'nombre,sku,id',
-    sql:`SELECT * FROM shiny.productos`
+    sql:`SELECT * FROM gmx.productos`
   },
   clients:{
     order:'nombre,id_cliente',
-    sql:`SELECT * FROM shiny.clientes`
+    sql:`SELECT * FROM gmx.clientes`
   },
   providers:{
     order:"COALESCE(NULLIF(nombre_comercial,''),razon_social,id_proveedor),id_proveedor",
-    sql:`SELECT * FROM shiny.proveedores`
+    sql:`SELECT * FROM gmx.proveedores`
   }
 };
 

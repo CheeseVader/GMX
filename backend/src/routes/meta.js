@@ -11,19 +11,19 @@ router.get('/', async (req, res) => {
 
     const result = await query(`
       SELECT
-        (SELECT COUNT(*) FROM shiny.productos) AS productos,
-        (SELECT COUNT(*) FROM shiny.clientes) AS clientes,
-        (SELECT COUNT(*) FROM shiny.pedidos p
+        (SELECT COUNT(*) FROM gmx.productos) AS productos,
+        (SELECT COUNT(*) FROM gmx.clientes) AS clientes,
+        (SELECT COUNT(*) FROM gmx.pedidos p
           WHERE $1::boolean=false OR p.id_sucursal=ANY($2::text[])) AS pedidos,
-        (SELECT COUNT(*) FROM shiny.inventario_sucursales i
+        (SELECT COUNT(*) FROM gmx.inventario_sucursales i
           WHERE $1::boolean=false OR i.id_sucursal=ANY($2::text[])) AS inventario_sucursales,
         (SELECT COUNT(DISTINCT ti.id_carta)
-          FROM shiny.tcg_inventario ti
-          LEFT JOIN shiny.tcg_inventario_sucursales ts ON ts.id_inventario=ti.id_inventario
+          FROM gmx.tcg_inventario ti
+          LEFT JOIN gmx.tcg_inventario_sucursales ts ON ts.id_inventario=ti.id_inventario
           WHERE $1::boolean=false OR ts.id_sucursal=ANY($2::text[])) AS tcg_cartas,
         (SELECT COUNT(DISTINCT ti.id_inventario)
-          FROM shiny.tcg_inventario ti
-          LEFT JOIN shiny.tcg_inventario_sucursales ts ON ts.id_inventario=ti.id_inventario
+          FROM gmx.tcg_inventario ti
+          LEFT JOIN gmx.tcg_inventario_sucursales ts ON ts.id_inventario=ti.id_inventario
           WHERE $1::boolean=false OR ts.id_sucursal=ANY($2::text[])) AS tcg_inventario
     `,[Boolean(scoped),branches]);
 

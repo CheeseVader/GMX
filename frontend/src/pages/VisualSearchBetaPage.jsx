@@ -127,7 +127,7 @@ export default function VisualSearchBetaPage() {
       setFacingMode(mode);
       setCameraActive(true);
     } catch (e) {
-      console.error(brandText("[Shiny Visual Beta] camera error"), e);
+      console.error(brandText("[GMX Visual Beta] camera error"), e);
       const name = String(e?.name || '');
       let msg = 'No fue posible abrir la cámara.';
       if (name === 'NotAllowedError') msg = 'Permiso de cámara denegado. Autoriza la cámara para este sitio en el navegador.';
@@ -411,7 +411,7 @@ export default function VisualSearchBetaPage() {
           {matches.map((item, index) => <article className="shiny-visual-match" key={item.row_id || item.id || `${item.sku}-${index}`}>
             <div className="shiny-visual-rank">#{index + 1}</div>
             <div className="shiny-visual-thumb">
-              {item.imagen && !shinyVisualImageError[item.row_id || item.id || item.sku] ? <img src={item.imagen} alt={item.nombre || item.sku || 'Producto'} onError={() => setVisualImageError((x) => ({ ...x, [item.row_id || item.id || item.sku]: true }))} /> : <span>{brandText("Shiny")}</span>}
+              {item.imagen && !shinyVisualImageError[item.row_id || item.id || item.sku] ? <img src={item.imagen} alt={item.nombre || item.sku || 'Producto'} onError={() => setVisualImageError((x) => ({ ...x, [item.row_id || item.id || item.sku]: true }))} /> : <span>{brandText("GMX")}</span>}
             </div>
             <div className="shiny-visual-match-info">
               <strong>{item.nombre || 'Producto sin nombre'}</strong>
@@ -470,7 +470,7 @@ export default function VisualSearchBetaPage() {
       <div className="shiny-visual-pos-cart">
           {betaCart.map((item) => <article className="shiny-visual-pos-line" key={item.key}>
             <div className="shiny-visual-pos-cart-thumb">
-              {item.imagen ? <img src={item.imagen} alt={item.nombre || 'Producto'} /> : <span>{brandText("Shiny")}</span>}
+              {item.imagen ? <img src={item.imagen} alt={item.nombre || 'Producto'} /> : <span>{brandText("GMX")}</span>}
             </div>
 
             <div className="shiny-visual-pos-cart-info">

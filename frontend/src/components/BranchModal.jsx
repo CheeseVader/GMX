@@ -91,7 +91,7 @@ export default function BranchModal({ open, branch, onClose, onSave }) {
       <div className="modal shiny-branch-modal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="modal-head">
           <div>
-            <div className="eyebrow">{brandText("Shiny SUCURSALES")}</div>
+            <div className="eyebrow">{brandText("GMX SUCURSALES")}</div>
             <h2>{branch ? `Editar ${branch.nombre_sucursal}` : 'Nueva sucursal'}</h2>
           </div>
           <button className="icon-btn" type="button" onClick={onClose}>×</button>

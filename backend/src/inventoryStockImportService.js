@@ -44,7 +44,7 @@ async function resolveBranch(client,requestedId,scope){
 
     const r=await client.query(`
       SELECT id_sucursal,nombre_sucursal
-      FROM shiny.sucursales
+      FROM gmx.sucursales
       WHERE id_sucursal=$1::text AND COALESCE(activa,true)=true
       ORDER BY row_id
       LIMIT 1
@@ -56,7 +56,7 @@ async function resolveBranch(client,requestedId,scope){
 
   let sql=`
     SELECT id_sucursal,nombre_sucursal
-    FROM shiny.sucursales
+    FROM gmx.sucursales
     WHERE COALESCE(activa,true)=true
   `;
   const values=[];
@@ -78,7 +78,7 @@ async function resolveBranch(client,requestedId,scope){
 async function productBySku(client,sku){
   const r=await client.query(`
     SELECT row_id,id,sku,nombre,categoria,precio,costo,stock_minimo,estado
-    FROM shiny.productos
+    FROM gmx.productos
     WHERE UPPER(TRIM(COALESCE(sku,'')))=UPPER(TRIM($1::text))
     ORDER BY row_id
     LIMIT 1
@@ -89,7 +89,7 @@ async function productBySku(client,sku){
 async function inventoryRow(client,branchId,productId){
   const r=await client.query(`
     SELECT *
-    FROM shiny.inventario_sucursales
+    FROM gmx.inventario_sucursales
     WHERE id_sucursal=$1::text AND id_producto=$2::text
     ORDER BY row_id
     LIMIT 1
@@ -100,11 +100,11 @@ async function inventoryRow(client,branchId,productId){
 
 async function movement(client,{branch,product,qty,before,after,motive,reference,user}){
   const actorEmail=text(user?.email||user?.usuario);
-  const actorName=text(user?.nombre||user?.name||actorEmail||'Shiny Local');
+  const actorName=text(user?.nombre||user?.name||actorEmail||'GMX Local');
   const actorId=text(user?.id_admin||user?.id);
 
   await client.query(`
-    INSERT INTO shiny.movimientos_inventario_sucursales(
+    INSERT INTO gmx.movimientos_inventario_sucursales(
       id_movimiento,fecha,id_sucursal,sucursal,id_producto,sku,producto,
       tipo,cantidad,stock_anterior,stock_nuevo,motivo,
       id_admin,nombre_usuario,usuario,referencia
@@ -173,14 +173,14 @@ export async function importInventoryStockWorkbook(file,user={},scope=null){
 
         if(inv){
           await client.query(`
-            UPDATE shiny.inventario_sucursales
+            UPDATE gmx.inventario_sucursales
             SET stock=$1,stock_minimo=$2,sku=$3,producto=$4,sucursal=$5,fecha_actualizacion=NOW()
             WHERE row_id=$6
           `,[after,min,product.sku,product.nombre,branch.nombre_sucursal,inv.row_id]);
           result.inventoryRowsUpdated++;
         }else{
           await client.query(`
-            INSERT INTO shiny.inventario_sucursales(
+            INSERT INTO gmx.inventario_sucursales(
               id_registro,id_sucursal,sucursal,id_producto,sku,producto,
               stock,stock_minimo,fecha_actualizacion
             )
@@ -223,14 +223,14 @@ export async function importInventoryStockWorkbook(file,user={},scope=null){
 export async function buildInventoryStockTemplate(){
   const branches=await query(`
     SELECT id_sucursal,nombre_sucursal
-    FROM shiny.sucursales
+    FROM gmx.sucursales
     WHERE COALESCE(activa,true)=true
     ORDER BY nombre_sucursal,id_sucursal
   `);
 
   const products=await query(`
     SELECT sku,nombre,categoria,stock_minimo
-    FROM shiny.productos
+    FROM gmx.productos
     WHERE COALESCE(estado,'Activo')<>'Inactivo'
     ORDER BY nombre,sku
     LIMIT 5000
@@ -258,12 +258,12 @@ export async function buildInventoryStockTemplate(){
 
   const dbaRows=[
     ['Campo Excel','Destino DBA','Regla'],
-    ['id_sucursal','shiny.inventario_sucursales.id_sucursal','Obligatorio cuando existe mas de una sucursal activa.'],
-    ['sku','shiny.productos.sku / shiny.inventario_sucursales.sku','Debe existir en Catalogo de Productos.'],
-    ['cantidad','shiny.inventario_sucursales.stock','SE SUMA al stock actual. Nunca reemplaza existencia.'],
-    ['stock_minimo','shiny.inventario_sucursales.stock_minimo','Opcional. Si viene vacio conserva el minimo actual.'],
-    ['motivo','shiny.movimientos_inventario_sucursales.motivo','Opcional.'],
-    ['referencia','shiny.movimientos_inventario_sucursales.referencia','Opcional.'],
+    ['id_sucursal','gmx.inventario_sucursales.id_sucursal','Obligatorio cuando existe mas de una sucursal activa.'],
+    ['sku','gmx.productos.sku / gmx.inventario_sucursales.sku','Debe existir en Catalogo de Productos.'],
+    ['cantidad','gmx.inventario_sucursales.stock','SE SUMA al stock actual. Nunca reemplaza existencia.'],
+    ['stock_minimo','gmx.inventario_sucursales.stock_minimo','Opcional. Si viene vacio conserva el minimo actual.'],
+    ['motivo','gmx.movimientos_inventario_sucursales.motivo','Opcional.'],
+    ['referencia','gmx.movimientos_inventario_sucursales.referencia','Opcional.'],
     ['SKU repetido','stock = stock actual + cantidad','Cada fila repetida suma unidades, incluso dentro del mismo archivo.'],
     ['SKU inexistente','Sin cambio','La fila se reporta como SKU_NOT_FOUND; no crea productos desde Inventario.']
   ];

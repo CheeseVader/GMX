@@ -1,0 +1,16 @@
+{
+  "CLI-WEB-1787425913919-F20A2833": {
+    "id_cliente": "CLI-WEB-1787425913919-F20A2833",
+    "tcg_favoritos": [
+      "TCGJ-POKEMON",
+      "TCGJ-MAGIC"
+    ],
+    "promociones": true,
+    "lanzamientos": true,
+    "pedidos": true,
+    "idioma": "es",
+    "moneda": "mxn",
+    "configured": true,
+    "fecha_actualizacion": "2026-09-01T19:12:34.860Z"
+  }
+}

@@ -4,8 +4,8 @@ const { Pool } = pg;
 export const pool = new Pool({
   host: process.env.PGHOST || '127.0.0.1',
   port: Number(process.env.PGPORT || 5432),
-  database: process.env.PGDATABASE || 'shiny_db',
-  user: process.env.PGUSER || 'shiny_app',
+  database: process.env.PGDATABASE || 'gmx_db',
+  user: process.env.PGUSER || 'gmx_app',
   password: process.env.PGPASSWORD,
   max: 10,
   idleTimeoutMillis: 30000,
@@ -13,7 +13,7 @@ export const pool = new Pool({
 });
 
 pool.on('error', (error) => {
-  console.error(brandText("[Shiny][PostgreSQL] Pool error:"), error);
+  console.error(brandText("[GMX][PostgreSQL] Pool error:"), error);
 });
 
 export async function query(text, params = []) {

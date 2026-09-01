@@ -14,7 +14,7 @@ SELECT
   p.categoria,
   p.estado,
   p.codigo_barras
-FROM shiny.productos p
+FROM gmx.productos p
 WHERE p.sku=$1
 ORDER BY p.row_id DESC
 LIMIT 1
@@ -40,8 +40,8 @@ SELECT
   i.producto,
   i.stock,
   i.stock_minimo
-FROM shiny.inventario_sucursales i
-LEFT JOIN shiny.sucursales s ON s.id_sucursal=i.id_sucursal
+FROM gmx.inventario_sucursales i
+LEFT JOIN gmx.sucursales s ON s.id_sucursal=i.id_sucursal
 WHERE i.id_producto=$1
    OR i.sku=$2
 ORDER BY i.row_id
@@ -64,7 +64,7 @@ SELECT
   stock_nuevo,
   referencia,
   motivo
-FROM shiny.movimientos_inventario_sucursales
+FROM gmx.movimientos_inventario_sucursales
 WHERE sku=$1
 ORDER BY row_id DESC
 LIMIT 10
@@ -80,8 +80,8 @@ SELECT
   p.stock,
   COALESCE(SUM(i.stock),0) AS stock_sucursales,
   p.stock-COALESCE(SUM(i.stock),0) AS diferencia
-FROM shiny.productos p
-LEFT JOIN shiny.inventario_sucursales i
+FROM gmx.productos p
+LEFT JOIN gmx.inventario_sucursales i
   ON i.id_producto=CAST(p.id AS TEXT)
   OR i.sku=p.sku
 WHERE p.sku=$1

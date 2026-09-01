@@ -383,7 +383,7 @@ function discoverSource() {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-001 DISCOVERY + DB CONTRACT"));
+  section(brandText("GMX — CLIENTES-001 DISCOVERY + DB CONTRACT"));
 
   console.log("MODE=READ_ONLY");
   console.log(`ROOT=${ROOT}`);
@@ -564,7 +564,7 @@ async function main() {
         ON cls.oid=con.conrelid
       JOIN pg_namespace ns
         ON ns.oid=cls.relnamespace
-      WHERE ns.nspname='shiny'
+      WHERE ns.nspname='gmx'
       AND (
         lower(cls.relname) ~
           '(cliente|client|customer|fidel|loyal|point|punto|reward)'
@@ -599,7 +599,7 @@ async function main() {
         indexname AS index_name,
         indexdef AS index_definition
       FROM pg_indexes
-      WHERE schemaname='shiny'
+      WHERE schemaname='gmx'
       AND (
         lower(tablename) ~
           '(cliente|client|customer|fidel|loyal|point|punto|reward)'
@@ -645,8 +645,8 @@ async function main() {
         ON tgt_ns.oid=tgt.relnamespace
       WHERE con.contype='f'
       AND (
-        src_ns.nspname='shiny'
-        OR tgt_ns.nspname='shiny'
+        src_ns.nspname='gmx'
+        OR tgt_ns.nspname='gmx'
       )
       AND (
         lower(src.relname) ~
@@ -698,7 +698,7 @@ async function main() {
       JOIN pg_namespace pn
         ON pn.oid=p.pronamespace
       WHERE NOT t.tgisinternal
-      AND n.nspname='shiny'
+      AND n.nspname='gmx'
       AND (
         lower(c.relname) ~
           '(cliente|fidel)'
@@ -763,7 +763,7 @@ async function main() {
     if (
     await tableExists(
       client,
-      "shiny",
+      "gmx",
       "clientes"
     ))
     {
@@ -790,7 +790,7 @@ async function main() {
             WHERE telefono IS NOT NULL
               AND btrim(telefono)<>''
           )::bigint AS with_phone
-        FROM shiny.clientes
+        FROM gmx.clientes
         `
       );
 
@@ -804,7 +804,7 @@ async function main() {
         SELECT
           id_cliente,
           COUNT(*)::bigint AS occurrences
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE id_cliente IS NOT NULL
           AND btrim(id_cliente)<>''
         GROUP BY id_cliente
@@ -830,7 +830,7 @@ async function main() {
           COUNT(*)::bigint AS occurrences,
           array_agg(id_cliente ORDER BY row_id)
             AS client_ids
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE email IS NOT NULL
           AND btrim(email)<>''
         GROUP BY lower(btrim(email))
@@ -861,7 +861,7 @@ async function main() {
           COUNT(*)::bigint AS occurrences,
           array_agg(id_cliente ORDER BY row_id)
             AS client_ids
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE telefono IS NOT NULL
           AND btrim(telefono)<>''
         GROUP BY
@@ -889,12 +889,12 @@ async function main() {
     if (
     (await tableExists(
       client,
-      "shiny",
+      "gmx",
       "fidelidad_cuentas"
     )) && (
     await tableExists(
       client,
-      "shiny",
+      "gmx",
       "clientes"
     )))
     {
@@ -903,8 +903,8 @@ async function main() {
         `
         SELECT
           f.*
-        FROM shiny.fidelidad_cuentas f
-        LEFT JOIN shiny.clientes c
+        FROM gmx.fidelidad_cuentas f
+        LEFT JOIN gmx.clientes c
           ON c.id_cliente=f.id_cliente
         WHERE c.row_id IS NULL
         ORDER BY f.row_id
@@ -929,12 +929,12 @@ async function main() {
     if (
     (await tableExists(
       client,
-      "shiny",
+      "gmx",
       "fidelidad_movimientos"
     )) && (
     await tableExists(
       client,
-      "shiny",
+      "gmx",
       "clientes"
     )))
     {
@@ -943,8 +943,8 @@ async function main() {
         `
         SELECT
           m.*
-        FROM shiny.fidelidad_movimientos m
-        LEFT JOIN shiny.clientes c
+        FROM gmx.fidelidad_movimientos m
+        LEFT JOIN gmx.clientes c
           ON c.id_cliente=m.id_cliente
         WHERE c.row_id IS NULL
         ORDER BY m.row_id
@@ -969,17 +969,17 @@ async function main() {
     if (
     (await tableExists(
       client,
-      "shiny",
+      "gmx",
       "pedidos"
     )) && (
     await tableExists(
       client,
-      "shiny",
+      "gmx",
       "clientes"
     )) && (
     await columnExists(
       client,
-      "shiny",
+      "gmx",
       "pedidos",
       "id_cliente"
     )))
@@ -993,8 +993,8 @@ async function main() {
           p.id_cliente,
           p.nombre_cliente,
           p.fecha
-        FROM shiny.pedidos p
-        LEFT JOIN shiny.clientes c
+        FROM gmx.pedidos p
+        LEFT JOIN gmx.clientes c
           ON c.id_cliente=p.id_cliente
         WHERE p.id_cliente IS NOT NULL
           AND btrim(p.id_cliente)<>''
@@ -1021,7 +1021,7 @@ async function main() {
     if (
     await tableExists(
       client,
-      "shiny",
+      "gmx",
       "fidelidad_cuentas"
     ))
     {
@@ -1038,7 +1038,7 @@ async function main() {
           nivel,
           fecha_alta,
           fecha_actualizacion
-        FROM shiny.fidelidad_cuentas
+        FROM gmx.fidelidad_cuentas
         ORDER BY id_cliente,row_id
         `
       );
@@ -1051,7 +1051,7 @@ async function main() {
         SELECT
           id_cliente,
           COUNT(*)::bigint AS account_count
-        FROM shiny.fidelidad_cuentas
+        FROM gmx.fidelidad_cuentas
         GROUP BY id_cliente
         HAVING COUNT(*) > 1
         ORDER BY account_count DESC,id_cliente
@@ -1073,7 +1073,7 @@ async function main() {
         client,
         `
         SELECT *
-        FROM shiny.fidelidad_cuentas
+        FROM gmx.fidelidad_cuentas
         WHERE
           puntos_disponibles < 0
           OR puntos_generados < 0
@@ -1100,7 +1100,7 @@ async function main() {
     if (
     await tableExists(
       client,
-      "shiny",
+      "gmx",
       "fidelidad_movimientos"
     ))
     {
@@ -1114,7 +1114,7 @@ async function main() {
             AS points_sum,
           MIN(fecha) AS first_date,
           MAX(fecha) AS last_date
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         GROUP BY tipo
         ORDER BY tipo
         `
@@ -1141,7 +1141,7 @@ async function main() {
               PARTITION BY id_cliente
               ORDER BY fecha,row_id
             ) AS previous_saldo_nuevo
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
         )
         SELECT *
         FROM x
@@ -1177,7 +1177,7 @@ async function main() {
           saldo_nuevo,
           (saldo_nuevo - saldo_anterior)
             AS actual_delta
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         WHERE
           saldo_anterior IS NULL
           OR saldo_nuevo IS NULL
@@ -1199,7 +1199,7 @@ async function main() {
         SELECT
           id_movimiento,
           COUNT(*)::bigint AS occurrences
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         GROUP BY id_movimiento
         HAVING COUNT(*) > 1
         ORDER BY occurrences DESC,id_movimiento
@@ -1223,12 +1223,12 @@ async function main() {
     if (
     (await tableExists(
       client,
-      "shiny",
+      "gmx",
       "fidelidad_cuentas"
     )) && (
     await tableExists(
       client,
-      "shiny",
+      "gmx",
       "fidelidad_movimientos"
     )))
     {
@@ -1241,7 +1241,7 @@ async function main() {
             id_movimiento,
             fecha,
             saldo_nuevo
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           ORDER BY
             id_cliente,
             fecha DESC,
@@ -1259,7 +1259,7 @@ async function main() {
             f.puntos_disponibles
               - l.saldo_nuevo
           ) AS difference
-        FROM shiny.fidelidad_cuentas f
+        FROM gmx.fidelidad_cuentas f
         JOIN latest l
           ON l.id_cliente=f.id_cliente
         WHERE
@@ -1286,17 +1286,17 @@ async function main() {
     if (
     (await tableExists(
       client,
-      "shiny",
+      "gmx",
       "fidelidad_movimientos"
     )) && (
     await tableExists(
       client,
-      "shiny",
+      "gmx",
       "pedidos"
     )) && (
     await columnExists(
       client,
-      "shiny",
+      "gmx",
       "fidelidad_movimientos",
       "id_pedido"
     )))
@@ -1312,8 +1312,8 @@ async function main() {
           m.id_pedido,
           m.puntos,
           m.fecha
-        FROM shiny.fidelidad_movimientos m
-        LEFT JOIN shiny.pedidos p
+        FROM gmx.fidelidad_movimientos m
+        LEFT JOIN gmx.pedidos p
           ON p.id_pedido=m.id_pedido
         WHERE m.id_pedido IS NOT NULL
           AND btrim(m.id_pedido)<>''
@@ -1341,7 +1341,7 @@ async function main() {
     if (
     await tableExists(
       client,
-      "shiny",
+      "gmx",
       "pedidos"
     ))
     {
@@ -1359,7 +1359,7 @@ async function main() {
         existence[col] =
         await columnExists(
           client,
-          "shiny",
+          "gmx",
           "pedidos",
           col
         );
@@ -1406,7 +1406,7 @@ async function main() {
               SUM(puntos_generados),
               0
             )::bigint AS earned_points_total
-          FROM shiny.pedidos
+          FROM gmx.pedidos
           `
         );
 
@@ -1425,7 +1425,7 @@ async function main() {
         indexname,
         indexdef
       FROM pg_indexes
-      WHERE schemaname='shiny'
+      WHERE schemaname='gmx'
       AND (
         lower(indexname) LIKE '%idempot%'
         OR lower(indexname) LIKE '%movimiento%'

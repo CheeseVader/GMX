@@ -63,13 +63,13 @@ export default function TCGSourceSelector({ gameCode, onSaved }) {
       <label className="source-fallback">
         <span>Respaldo automático</span>
         <div><input type="checkbox" checked={prefs.allowFallback !== false} onChange={(e) => setPrefs((p) => ({ ...p, allowFallback: e.target.checked }))} /><b>Usar otra fuente si la elegida falla</b></div>
-        <small>{brandText("Si se desactiva, Shiny reportará el error sin cambiar de proveedor.")}</small>
+        <small>{brandText("Si se desactiva, GMX reportará el error sin cambiar de proveedor.")}</small>
       </label>
     </div>
 
     <div className="source-price-box">
       <b>Fuentes de precio</b>
-      <p>{brandText("Puedes seleccionar varias. Shiny guarda cada proveedor por separado para comparación.")}</p>
+      <p>{brandText("Puedes seleccionar varias. GMX guarda cada proveedor por separado para comparación.")}</p>
       <div className="source-price-options">
         {available.prices.map((x) => <label key={x.code} className={x.enabled === false ? 'source-disabled' : ''}>
           <input

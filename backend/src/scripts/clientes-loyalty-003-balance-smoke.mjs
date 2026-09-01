@@ -123,7 +123,7 @@ function dbConfig() {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-003 MOVEMENTS / BALANCES SMOKE")
+  section(brandText("GMX — CLIENTES-LOYALTY-003 MOVEMENTS / BALANCES SMOKE")
 
   );
 
@@ -169,7 +169,7 @@ async function main() {
       `
       SELECT
         COUNT(*)::bigint AS total
-      FROM shiny.clientes
+      FROM gmx.clientes
       WHERE
         email=$1
         OR telefono=$2
@@ -193,11 +193,11 @@ async function main() {
      */
     const forbiddenBefore = await db.query(`
       SELECT
-        (SELECT COUNT(*) FROM shiny.pedidos)::bigint
+        (SELECT COUNT(*) FROM gmx.pedidos)::bigint
           AS pedidos,
-        (SELECT COUNT(*) FROM shiny.pedido_pagos)::bigint
+        (SELECT COUNT(*) FROM gmx.pedido_pagos)::bigint
           AS pedido_pagos,
-        (SELECT COUNT(*) FROM shiny.caja_movimientos)::bigint
+        (SELECT COUNT(*) FROM gmx.caja_movimientos)::bigint
           AS caja_movimientos
     `);
 
@@ -207,7 +207,7 @@ async function main() {
 
     const created = await db.query(
       `
-      INSERT INTO shiny.clientes(
+      INSERT INTO gmx.clientes(
         nombre,
         telefono,
         email,
@@ -273,7 +273,7 @@ async function main() {
     await db.query(
       `
         SELECT *
-        FROM shiny.fidelidad_cuentas
+        FROM gmx.fidelidad_cuentas
         WHERE id_cliente=$1
         `,
       [clientId]
@@ -468,7 +468,7 @@ async function main() {
           id_admin,
           administrador,
           fecha
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         WHERE
           id_cliente=$1
           AND motivo LIKE $2
@@ -566,7 +566,7 @@ async function main() {
         SELECT
           id_movimiento,
           COUNT(*)::bigint AS occurrences
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         WHERE id_cliente=$1
           AND motivo LIKE $2
         GROUP BY id_movimiento
@@ -609,7 +609,7 @@ async function main() {
             LAG(saldo_nuevo) OVER (
               ORDER BY fecha,row_id
             ) AS previous_saldo_nuevo
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE id_cliente=$1
             AND motivo LIKE $2
         )
@@ -654,7 +654,7 @@ async function main() {
     await db.query(
       `
         SELECT *
-        FROM shiny.fidelidad_cuentas
+        FROM gmx.fidelidad_cuentas
         WHERE id_cliente=$1
         `,
       [clientId]
@@ -716,11 +716,11 @@ async function main() {
     const forbiddenAfter =
     await db.query(`
         SELECT
-          (SELECT COUNT(*) FROM shiny.pedidos)::bigint
+          (SELECT COUNT(*) FROM gmx.pedidos)::bigint
             AS pedidos,
-          (SELECT COUNT(*) FROM shiny.pedido_pagos)::bigint
+          (SELECT COUNT(*) FROM gmx.pedido_pagos)::bigint
             AS pedido_pagos,
-          (SELECT COUNT(*) FROM shiny.caja_movimientos)::bigint
+          (SELECT COUNT(*) FROM gmx.caja_movimientos)::bigint
             AS caja_movimientos
       `);
 
@@ -772,7 +772,7 @@ async function main() {
             nombre,
             telefono,
             email
-          FROM shiny.clientes
+          FROM gmx.clientes
           WHERE
             row_id=$1
             AND id_cliente=$2
@@ -803,7 +803,7 @@ async function main() {
       const deleteMoves =
       await db.query(
         `
-          DELETE FROM shiny.fidelidad_movimientos
+          DELETE FROM gmx.fidelidad_movimientos
           WHERE
             id_cliente=$1
             AND motivo LIKE $2
@@ -830,7 +830,7 @@ async function main() {
       const deleteAccount =
       await db.query(
         `
-          DELETE FROM shiny.fidelidad_cuentas
+          DELETE FROM gmx.fidelidad_cuentas
           WHERE id_cliente=$1
           RETURNING row_id
           `,
@@ -854,7 +854,7 @@ async function main() {
       const deleteClient =
       await db.query(
         `
-          DELETE FROM shiny.clientes
+          DELETE FROM gmx.clientes
           WHERE
             row_id=$1
             AND id_cliente=$2
@@ -886,7 +886,7 @@ async function main() {
       await db.query(
         `
           SELECT COUNT(*)::bigint AS total
-          FROM shiny.clientes
+          FROM gmx.clientes
           WHERE
             id_cliente=$1
             OR email=$2
@@ -903,7 +903,7 @@ async function main() {
       await db.query(
         `
           SELECT COUNT(*)::bigint AS total
-          FROM shiny.fidelidad_cuentas
+          FROM gmx.fidelidad_cuentas
           WHERE id_cliente=$1
           `,
         [clientId]
@@ -913,7 +913,7 @@ async function main() {
       await db.query(
         `
           SELECT COUNT(*)::bigint AS total
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE id_cliente=$1
              OR motivo LIKE $2
           `,
@@ -927,7 +927,7 @@ async function main() {
       await db.query(
         `
           SELECT COUNT(*)::bigint AS total
-          FROM shiny.cliente_identidad_unica
+          FROM gmx.cliente_identidad_unica
           WHERE id_cliente=$1
           `,
         [clientId]
@@ -987,7 +987,7 @@ async function main() {
       SELECT
         (
           SELECT COUNT(*)
-          FROM shiny.clientes
+          FROM gmx.clientes
           WHERE
             nombre LIKE 'CLIENTES LOYALTY003 TEST%'
             OR email LIKE 'clientes.loyalty003.%@example.invalid'
@@ -996,7 +996,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE motivo LIKE $1
         )::bigint
           AS movimientos

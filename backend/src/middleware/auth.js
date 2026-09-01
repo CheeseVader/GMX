@@ -70,7 +70,7 @@ export async function resolveUserAccess(user){
   const role=String(user?.rol||'CONSULTA').toUpperCase();
   const email=String(user?.email||'').toLowerCase();
   const custom=await query(`SELECT modulo,leer,crear,editar,eliminar,autorizar
-    FROM shiny.permisos_admin WHERE LOWER(email)=$1 ORDER BY row_id`,[email]);
+    FROM gmx.permisos_admin WHERE LOWER(email)=$1 ORDER BY row_id`,[email]);
   const byModule=new Map(custom.rows.map(x=>[String(x.modulo).toUpperCase(),x]));
   const permissions={};
 
@@ -104,13 +104,13 @@ export async function requireAuth(req,res,next){
     const r=await query(`
       SELECT s.id AS session_id,s.id_admin,s.email,s.expires_at,a.nombre,a.rol,a.activo,
              a.sucursal_principal,a.sucursales_permitidas
-      FROM shiny.admin_sessions s JOIN shiny.administradores a ON a.id_admin=s.id_admin
+      FROM gmx.admin_sessions s JOIN gmx.administradores a ON a.id_admin=s.id_admin
       WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>NOW() LIMIT 1
     `,[hashToken(token)]);
     if(!r.rowCount||r.rows[0].activo===false)return res.status(401).json({success:false,error:'SESSION_INVALID'});
     req.user=r.rows[0];
     req.access=await resolveUserAccess(req.user);
-    await query(`UPDATE shiny.admin_sessions SET last_seen_at=NOW() WHERE id=$1`,[req.user.session_id]);
+    await query(`UPDATE gmx.admin_sessions SET last_seen_at=NOW() WHERE id=$1`,[req.user.session_id]);
     next();
   }catch(_e){res.status(500).json({success:false,error:'AUTH_CHECK_FAILED'});}
 }
@@ -268,7 +268,7 @@ export function requireModule(module){
 
 export async function audit(req,module,action,reference='',detail=''){
   try{
-    await query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),$1,$2,$3,$4,$5)`,[module,action,reference||null,detail||null,req.user?.email||'system']);
   }catch{}
 }

@@ -81,9 +81,9 @@ export async function listBanners({ zone = '' } = {}) {
   if (zone) {vals.push(zone);f.push(`b.zona=$${vals.length}`);}
   return query(`SELECT b.*,
     md.url AS desktop_library_url,mm.url AS mobile_library_url
-    FROM shiny.cms_banners b
-    LEFT JOIN shiny.multimedia md ON md.id_media=b.id_media_desktop
-    LEFT JOIN shiny.multimedia mm ON mm.id_media=b.id_media_mobile
+    FROM gmx.cms_banners b
+    LEFT JOIN gmx.multimedia md ON md.id_media=b.id_media_desktop
+    LEFT JOIN gmx.multimedia mm ON mm.id_media=b.id_media_mobile
     ${f.length ? 'WHERE ' + f.join(' AND ') : ''}
     ORDER BY b.zona,b.prioridad,b.fecha_inicio NULLS FIRST,b.row_id DESC`, vals);
 }
@@ -112,14 +112,14 @@ export async function saveBanner(rowId, input, user) {
     await client.query('BEGIN');
     let r;
     if (x.fallback_principal) {
-      await client.query(`UPDATE shiny.cms_banners
+      await client.query(`UPDATE gmx.cms_banners
         SET fallback_principal=false
         WHERE zona=$1
           AND fallback_principal=true
           AND ($2::bigint IS NULL OR row_id<>$2)`, [x.zona, rowId || null]);
     }
     if (rowId) {
-      r = await client.query(`UPDATE shiny.cms_banners SET
+      r = await client.query(`UPDATE gmx.cms_banners SET
         nombre=$2,zona=$3,tipo=$4,titulo=$5,subtitulo=$6,texto_cta=$7,ruta_cta=$8,
         id_media_desktop=$9,id_media_mobile=$10,fecha_inicio=$11,fecha_fin=$12,
         prioridad=$13,exclusivo=$14,activo=$15,publicado=$16,overlay_opacity=$17,text_align=$18,notas=$19,
@@ -129,7 +129,7 @@ export async function saveBanner(rowId, input, user) {
         WHERE row_id=$1 RETURNING *`, [rowId, ...vals]);
       if (!r.rowCount) throw new Error('BANNER_NOT_FOUND');
     } else {
-      r = await client.query(`INSERT INTO shiny.cms_banners(
+      r = await client.query(`INSERT INTO gmx.cms_banners(
         id_banner,nombre,zona,tipo,titulo,subtitulo,texto_cta,ruta_cta,id_media_desktop,id_media_mobile,
         fecha_inicio,fecha_fin,prioridad,exclusivo,activo,publicado,overlay_opacity,text_align,notas,
         media_source,url_desktop,url_mobile,object_fit,object_position,altura_desktop,altura_tablet,altura_mobile,
@@ -137,9 +137,9 @@ export async function saveBanner(rowId, input, user) {
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35)
         RETURNING *`, [uid('BNR'), ...vals]);
     }
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'CMS',${rowId ? "'EDITAR_BANNER'" : "'CREAR_BANNER'"},$1,$2,$3)`, [
-    r.rows[0].id_banner, r.rows[0].nombre, user?.email || brandText("Shiny Local")]
+    r.rows[0].id_banner, r.rows[0].nombre, user?.email || brandText("GMX Local")]
     );
     await client.query('COMMIT');
     return r.rows[0];
@@ -147,7 +147,7 @@ export async function saveBanner(rowId, input, user) {
 }
 
 export async function runtimeContent({ zone = 'HOME_HERO' } = {}) {
-  const settings = await query(`SELECT parametro,valor FROM shiny.configuracion
+  const settings = await query(`SELECT parametro,valor FROM gmx.configuracion
     WHERE parametro LIKE 'public.appearance.%'
        OR parametro LIKE 'public.carousel.%'
        OR parametro LIKE 'public.promo_bar.%'
@@ -157,9 +157,9 @@ export async function runtimeContent({ zone = 'HOME_HERO' } = {}) {
 
   const campaigns = await query(`SELECT b.*,
       md.url AS desktop_library_url,mm.url AS mobile_library_url
-    FROM shiny.cms_banners b
-    LEFT JOIN shiny.multimedia md ON md.id_media=b.id_media_desktop
-    LEFT JOIN shiny.multimedia mm ON mm.id_media=b.id_media_mobile
+    FROM gmx.cms_banners b
+    LEFT JOIN gmx.multimedia md ON md.id_media=b.id_media_desktop
+    LEFT JOIN gmx.multimedia mm ON mm.id_media=b.id_media_mobile
     WHERE b.zona=$1 AND b.tipo='CAMPAIGN' AND b.activo=true
       AND b.publicado=true
       AND (b.fecha_inicio IS NULL OR b.fecha_inicio<=NOW())
@@ -173,16 +173,16 @@ export async function runtimeContent({ zone = 'HOME_HERO' } = {}) {
   if (!active.length) {
     const fallback = await query(`SELECT b.*,
         md.url AS desktop_library_url,mm.url AS mobile_library_url
-      FROM shiny.cms_banners b
-      LEFT JOIN shiny.multimedia md ON md.id_media=b.id_media_desktop
-      LEFT JOIN shiny.multimedia mm ON mm.id_media=b.id_media_mobile
+      FROM gmx.cms_banners b
+      LEFT JOIN gmx.multimedia md ON md.id_media=b.id_media_desktop
+      LEFT JOIN gmx.multimedia mm ON mm.id_media=b.id_media_mobile
       WHERE b.zona=$1 AND b.activo=true AND b.publicado=true
         AND (b.fallback_principal=true OR b.tipo='MAIN')
       ORDER BY b.fallback_principal DESC,b.prioridad,b.row_id DESC LIMIT 1`, [zone]);
     active = fallback.rows;
   }
 
-  const promotions = await query(`SELECT * FROM shiny.promociones
+  const promotions = await query(`SELECT * FROM gmx.promociones
     WHERE UPPER(COALESCE(estado,'ACTIVA'))='ACTIVA'
       AND COALESCE(visible_publico,true)=true
       AND (NULLIF(inicio::text,'') IS NULL OR NULLIF(inicio::text,'')::timestamptz<=NOW())
@@ -199,36 +199,36 @@ export async function runtimeContent({ zone = 'HOME_HERO' } = {}) {
 export async function createAppearanceRevision(scope, user, comment = '') {
   scope = String(scope || 'public').toLowerCase() === 'admin' ? 'admin' : 'public';
   const prefix = scope === 'admin' ? 'admin.appearance.' : 'public.appearance.';
-  const r = await query(`SELECT parametro,valor FROM shiny.configuracion WHERE parametro LIKE $1 ORDER BY parametro`, [`${prefix}%`]);
+  const r = await query(`SELECT parametro,valor FROM gmx.configuracion WHERE parametro LIKE $1 ORDER BY parametro`, [`${prefix}%`]);
   const id = uid('THEME');
-  const saved = await query(`INSERT INTO shiny.appearance_revisions(
+  const saved = await query(`INSERT INTO gmx.appearance_revisions(
     id_revision,scope,data_json,comentario,id_admin,administrador)
     VALUES($1,$2,$3::jsonb,$4,$5,$6) RETURNING *`, [
   id, scope, JSON.stringify(Object.fromEntries(r.rows.map((x) => [x.parametro, x.valor]))),
-  comment || null, user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText("Shiny Local")]
+  comment || null, user?.id_admin || 'LOCAL', user?.nombre || user?.email || brandText("GMX Local")]
   );
   return saved.rows[0];
 }
 
 export async function listAppearanceRevisions(scope = 'public') {
   scope = String(scope || 'public').toLowerCase() === 'admin' ? 'admin' : 'public';
-  return query(`SELECT * FROM shiny.appearance_revisions WHERE scope=$1 ORDER BY fecha DESC,row_id DESC LIMIT 50`, [scope]);
+  return query(`SELECT * FROM gmx.appearance_revisions WHERE scope=$1 ORDER BY fecha DESC,row_id DESC LIMIT 50`, [scope]);
 }
 
 export async function restoreAppearanceRevision(id, user) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const r = await client.query(`SELECT * FROM shiny.appearance_revisions WHERE id_revision=$1 FOR UPDATE`, [id]);
+    const r = await client.query(`SELECT * FROM gmx.appearance_revisions WHERE id_revision=$1 FOR UPDATE`, [id]);
     if (!r.rowCount) throw new Error('THEME_REVISION_NOT_FOUND');
     const data = r.rows[0].data_json || {};
     for (const [key, value] of Object.entries(data)) {
-      await client.query(`INSERT INTO shiny.configuracion(parametro,valor) VALUES($1,$2)
+      await client.query(`INSERT INTO gmx.configuracion(parametro,valor) VALUES($1,$2)
         ON CONFLICT(parametro) DO UPDATE SET valor=EXCLUDED.valor`, [key, String(value ?? '')]);
     }
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'APARIENCIA','RESTAURAR',$1,$2,$3)`, [
-    id, `Scope ${r.rows[0].scope}`, user?.email || brandText("Shiny Local")]
+    id, `Scope ${r.rows[0].scope}`, user?.email || brandText("GMX Local")]
     );
     await client.query('COMMIT');
     return r.rows[0];
@@ -245,9 +245,9 @@ async function resolveZone(zone, preview = false) {
     const hero = await query(`SELECT b.*,
       md.url AS desktop_library_url,
       mm.url AS mobile_library_url
-      FROM shiny.cms_banners b
-      LEFT JOIN shiny.multimedia md ON md.id_media=b.id_media_desktop
-      LEFT JOIN shiny.multimedia mm ON mm.id_media=b.id_media_mobile
+      FROM gmx.cms_banners b
+      LEFT JOIN gmx.multimedia md ON md.id_media=b.id_media_desktop
+      LEFT JOIN gmx.multimedia mm ON mm.id_media=b.id_media_mobile
       WHERE b.zona=$1
       AND b.activo=true
       AND b.publicado=true
@@ -256,9 +256,9 @@ async function resolveZone(zone, preview = false) {
   }
   const campaigns = await query(`SELECT b.*,
       md.url AS desktop_library_url,mm.url AS mobile_library_url
-    FROM shiny.cms_banners b
-    LEFT JOIN shiny.multimedia md ON md.id_media=b.id_media_desktop
-    LEFT JOIN shiny.multimedia mm ON mm.id_media=b.id_media_mobile
+    FROM gmx.cms_banners b
+    LEFT JOIN gmx.multimedia md ON md.id_media=b.id_media_desktop
+    LEFT JOIN gmx.multimedia mm ON mm.id_media=b.id_media_mobile
     WHERE b.zona=$1 AND b.tipo='CAMPAIGN' AND b.activo=true
       AND b.publicado=true
       AND (b.fecha_inicio IS NULL OR b.fecha_inicio<=NOW())
@@ -272,9 +272,9 @@ async function resolveZone(zone, preview = false) {
   if (!rows.length) {
     const fallback = await query(`SELECT b.*,
         md.url AS desktop_library_url,mm.url AS mobile_library_url
-      FROM shiny.cms_banners b
-      LEFT JOIN shiny.multimedia md ON md.id_media=b.id_media_desktop
-      LEFT JOIN shiny.multimedia mm ON mm.id_media=b.id_media_mobile
+      FROM gmx.cms_banners b
+      LEFT JOIN gmx.multimedia md ON md.id_media=b.id_media_desktop
+      LEFT JOIN gmx.multimedia mm ON mm.id_media=b.id_media_mobile
       WHERE b.zona=$1 AND b.activo=true AND b.publicado=true
         AND (b.fallback_principal=true OR b.tipo='MAIN')
       ORDER BY b.fallback_principal DESC,b.prioridad,b.row_id DESC LIMIT 1`, [zone]);
@@ -284,10 +284,10 @@ async function resolveZone(zone, preview = false) {
 }
 
 export async function storefrontRuntime({ preview = false } = {}) {
-  const settings = await query(`SELECT parametro,valor FROM shiny.configuracion
+  const settings = await query(`SELECT parametro,valor FROM gmx.configuracion
     WHERE parametro LIKE 'public.%' OR parametro LIKE 'store.%'`);
 
-  const promotions = await query(`SELECT * FROM shiny.promociones
+  const promotions = await query(`SELECT * FROM gmx.promociones
     WHERE UPPER(COALESCE(estado,'ACTIVA'))='ACTIVA'
       AND COALESCE(visible_publico,true)=true
       AND (NULLIF(inicio::text,'') IS NULL OR NULLIF(inicio::text,'')::timestamptz<=NOW())
@@ -314,7 +314,7 @@ export async function storefrontRuntime({ preview = false } = {}) {
 
 export async function getCmsMediaMeta(id) {
   const r = await query(`SELECT id_media,nombre,nombre_archivo,mime_type,ruta,file_id,tamano_bytes,activo
-    FROM shiny.multimedia WHERE id_media=$1 ORDER BY row_id LIMIT 1`, [id]);
+    FROM gmx.multimedia WHERE id_media=$1 ORDER BY row_id LIMIT 1`, [id]);
   return r.rows[0] || null;
 }
 
@@ -324,7 +324,7 @@ export async function deleteBannerSafe(rowId, user) {
   try {
     await client.query('BEGIN');
 
-    const r = await client.query(`SELECT * FROM shiny.cms_banners WHERE row_id=$1 FOR UPDATE`, [rowId]);
+    const r = await client.query(`SELECT * FROM gmx.cms_banners WHERE row_id=$1 FOR UPDATE`, [rowId]);
     if (!r.rowCount) throw new Error('BANNER_NOT_FOUND');
     const banner = r.rows[0];
 
@@ -333,7 +333,7 @@ export async function deleteBannerSafe(rowId, user) {
     if (isPrincipal) {
       const other = await client.query(`
         SELECT row_id,id_banner,nombre
-        FROM shiny.cms_banners
+        FROM gmx.cms_banners
         WHERE zona=$1
           AND row_id<>$2
           AND activo=true
@@ -349,7 +349,7 @@ export async function deleteBannerSafe(rowId, user) {
 
       if (banner.fallback_principal === true) {
         await client.query(`
-          UPDATE shiny.cms_banners
+          UPDATE gmx.cms_banners
           SET fallback_principal=true,
               tipo='MAIN',
               permanente=true,
@@ -361,15 +361,15 @@ export async function deleteBannerSafe(rowId, user) {
       }
     }
 
-    await client.query(`DELETE FROM shiny.cms_banners WHERE row_id=$1`, [rowId]);
+    await client.query(`DELETE FROM gmx.cms_banners WHERE row_id=$1`, [rowId]);
 
     await client.query(`
-      INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+      INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'CMS','ELIMINAR_BANNER',$1,$2,$3)
     `, [
     banner.id_banner,
     `${banner.zona} · ${banner.nombre || banner.titulo || 'slide'}`,
-    user?.email || user?.nombre || brandText("Shiny Local")]
+    user?.email || user?.nombre || brandText("GMX Local")]
     );
 
     await client.query('COMMIT');

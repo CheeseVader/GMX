@@ -171,7 +171,7 @@ async function candidateRows(identities) {
     FROM input i
     JOIN LATERAL (
       SELECT c.*
-      FROM shiny.tcg_master_cards c
+      FROM gmx.tcg_master_cards c
       WHERE c.game_code=i.game_code
         AND (
           (i.external_id<>'' AND (
@@ -205,15 +205,15 @@ async function operationalByIdentity(identities) {
       inv.id_inventario,inv.sku,inv.idioma,inv.condicion,inv.acabado,inv.edicion,
       inv.stock,inv.precio,inv.precio_oferta
     FROM input i
-    JOIN shiny.tcg_juegos g ON UPPER(COALESCE(NULLIF(g.catalogo_codigo,''),NULLIF(g.codigo,'')))=i.game_code
-    JOIN shiny.tcg_cartas c ON c.id_juego=g.id_juego AND (
+    JOIN gmx.tcg_juegos g ON UPPER(COALESCE(NULLIF(g.catalogo_codigo,''),NULLIF(g.codigo,'')))=i.game_code
+    JOIN gmx.tcg_cartas c ON c.id_juego=g.id_juego AND (
       (i.external_id<>'' AND UPPER(COALESCE(c.provider_code,''))=i.provider_code AND c.external_id=i.external_id)
       OR (LOWER(TRIM(c.nombre))=i.name_lower AND (
         i.collector_number='' OR regexp_replace(LOWER(COALESCE(c.numero_completo,c.numero_carta,'')),'[^a-z0-9]','','g')=
         regexp_replace(LOWER(i.collector_number),'[^a-z0-9]','','g')
       ))
     )
-    LEFT JOIN shiny.tcg_inventario inv ON inv.id_carta=c.id_carta
+    LEFT JOIN gmx.tcg_inventario inv ON inv.id_carta=c.id_carta
     ORDER BY i.key,c.row_id,inv.row_id
   `, [JSON.stringify(identities)]);
   const output = new Map();
@@ -236,16 +236,16 @@ async function enrich(masterIds) {
   const ids = [...new Set(masterIds.map(Number).filter(Number.isFinite))];
   if (!ids.length) return new Map();
   const [priceResult, operationResult, configResult] = await Promise.all([
-    query(`SELECT * FROM shiny.tcg_card_price_current WHERE master_card_id=ANY($1::bigint[])
+    query(`SELECT * FROM gmx.tcg_card_price_current WHERE master_card_id=ANY($1::bigint[])
       ORDER BY master_card_id,CASE WHEN LOWER(price_provider)='tcgplayer' THEN 0 ELSE 1 END,price_provider,variant`, [ids]),
     query(`SELECT c.master_card_id,c.id_carta,c.row_id AS card_row_id,c.estado_catalogo,
         i.id_inventario,i.sku,i.idioma,i.condicion,i.acabado,i.edicion,i.stock,i.precio,i.precio_oferta
-      FROM shiny.tcg_cartas c
-      LEFT JOIN shiny.tcg_inventario i ON i.id_carta=c.id_carta
+      FROM gmx.tcg_cartas c
+      LEFT JOIN gmx.tcg_inventario i ON i.id_carta=c.id_carta
       WHERE c.master_card_id=ANY($1::bigint[])
       ORDER BY c.master_card_id,c.row_id,i.row_id`, [ids]),
     query(`SELECT game_code,auto_sync_frequency,auto_sync_enabled,sync_prices
-      FROM shiny.tcg_sync_game_config`)
+      FROM gmx.tcg_sync_game_config`)
   ]);
   const configs = new Map(configResult.rows.map((row) => [text(row.game_code, 30).toUpperCase(), row]));
   const prices = new Map();
@@ -387,30 +387,30 @@ function slug(value) {
 }
 
 async function ensureOne(client, masterCardId) {
-  const result = await client.query(`SELECT * FROM shiny.tcg_master_cards WHERE row_id=$1 LIMIT 1 FOR UPDATE`, [masterCardId]);
+  const result = await client.query(`SELECT * FROM gmx.tcg_master_cards WHERE row_id=$1 LIMIT 1 FOR UPDATE`, [masterCardId]);
   if (!result.rowCount) throw new Error('MASTER_CARD_NOT_FOUND');
   const card = result.rows[0];
-  const gameResult = await client.query(`SELECT * FROM shiny.tcg_master_juegos WHERE codigo=$1 AND activo=true LIMIT 1`, [card.game_code]);
+  const gameResult = await client.query(`SELECT * FROM gmx.tcg_master_juegos WHERE codigo=$1 AND activo=true LIMIT 1`, [card.game_code]);
   if (!gameResult.rowCount) throw new Error('MASTER_GAME_NOT_FOUND');
   const masterGame = gameResult.rows[0];
-  let game = (await client.query(`SELECT * FROM shiny.tcg_juegos
+  let game = (await client.query(`SELECT * FROM gmx.tcg_juegos
     WHERE catalogo_codigo=$1 OR UPPER(COALESCE(codigo,''))=UPPER($1)
     ORDER BY CASE WHEN catalogo_codigo=$1 THEN 0 ELSE 1 END,row_id LIMIT 1 FOR UPDATE`, [card.game_code])).rows[0];
   if (!game) {
-    game = (await client.query(`INSERT INTO shiny.tcg_juegos(
+    game = (await client.query(`INSERT INTO gmx.tcg_juegos(
       id_juego,nombre,codigo,catalogo_codigo,publisher,sitio_oficial,activo,visible_portal,orden)
       VALUES($1,$2,$3,$3,$4,$5,true,false,$6) RETURNING *`, [
       `TCGJ-${card.game_code}`, masterGame.nombre, card.game_code, masterGame.publisher,
       masterGame.sitio_oficial, masterGame.orden
     ])).rows[0];
   }
-  const masterSet = (await client.query(`SELECT * FROM shiny.tcg_master_sets
+  const masterSet = (await client.query(`SELECT * FROM gmx.tcg_master_sets
     WHERE id_juego=$1 AND codigo=$2 LIMIT 1`, [card.game_code, card.set_code])).rows[0];
-  let set = (await client.query(`SELECT * FROM shiny.tcg_sets
+  let set = (await client.query(`SELECT * FROM gmx.tcg_sets
     WHERE id_juego=$1 AND UPPER(COALESCE(codigo,''))=UPPER($2)
     ORDER BY row_id LIMIT 1 FOR UPDATE`, [game.id_juego, card.set_code])).rows[0];
   if (!set) {
-    set = (await client.query(`INSERT INTO shiny.tcg_sets(
+    set = (await client.query(`INSERT INTO gmx.tcg_sets(
       id_set,id_juego,nombre,codigo,fecha_lanzamiento,total_cartas,activo,orden,fuente_oficial)
       VALUES($1,$2,$3,$4,$5,$6,true,0,$7) RETURNING *`, [
       `${card.game_code}-${slug(card.set_code)}`, game.id_juego, masterSet?.nombre || card.set_code,
@@ -419,23 +419,23 @@ async function ensureOne(client, masterCardId) {
     ])).rows[0];
   }
   if (card.rarity) {
-    const rarity = (await client.query(`SELECT * FROM shiny.tcg_master_rarezas
+    const rarity = (await client.query(`SELECT * FROM gmx.tcg_master_rarezas
       WHERE id_juego=$1 AND (LOWER(nombre)=LOWER($2) OR LOWER(codigo)=LOWER($2)) LIMIT 1`, [card.game_code, card.rarity])).rows[0];
     if (rarity) {
-      const existing = await client.query(`SELECT row_id FROM shiny.tcg_rarezas
+      const existing = await client.query(`SELECT row_id FROM gmx.tcg_rarezas
         WHERE id_juego=$1 AND (LOWER(nombre)=LOWER($2) OR LOWER(codigo)=LOWER($3)) LIMIT 1`,
       [game.id_juego, rarity.nombre, rarity.codigo]);
-      if (!existing.rowCount) await client.query(`INSERT INTO shiny.tcg_rarezas(id_rareza,id_juego,codigo,nombre,orden,activo)
+      if (!existing.rowCount) await client.query(`INSERT INTO gmx.tcg_rarezas(id_rareza,id_juego,codigo,nombre,orden,activo)
         VALUES($1,$2,$3,$4,$5,true)`, [`${card.game_code}-${slug(rarity.codigo)}`, game.id_juego, rarity.codigo, rarity.nombre, rarity.orden]);
     }
   }
-  const existing = await client.query(`SELECT * FROM shiny.tcg_cartas
+  const existing = await client.query(`SELECT * FROM gmx.tcg_cartas
     WHERE master_card_id=$1 OR (UPPER(COALESCE(provider_code,''))=UPPER($2) AND external_id=$3 AND id_set=$4)
     ORDER BY CASE WHEN master_card_id=$1 THEN 0 ELSE 1 END,row_id LIMIT 1 FOR UPDATE`,
   [card.row_id, card.provider_code, card.external_id, set.id_set]);
   const image = card.image_local_url || card.image_large_url || card.image_small_url || null;
   if (existing.rowCount) {
-    return (await client.query(`UPDATE shiny.tcg_cartas SET
+    return (await client.query(`UPDATE gmx.tcg_cartas SET
       master_card_id=$2,provider_code=$3,external_id=$4,id_juego=$5,id_set=$6,nombre=$7,
       numero_carta=$8,numero_completo=$9,rareza=$10,tipo_carta=$11,subtipo=$12,artista=$13,
       descripcion=$14,imagen_principal=$15,image_source_url=$16,estado_catalogo='ACTIVA',fecha_actualizacion=NOW()
@@ -445,7 +445,7 @@ async function ensureOne(client, masterCardId) {
       card.artist, card.description, image, card.image_large_url || card.image_small_url
     ])).rows[0];
   }
-  return (await client.query(`INSERT INTO shiny.tcg_cartas(
+  return (await client.query(`INSERT INTO gmx.tcg_cartas(
     id_carta,master_card_id,provider_code,external_id,id_juego,id_set,nombre,numero_carta,
     numero_completo,rareza,tipo_carta,subtipo,artista,descripcion,imagen_principal,image_source_url,
     estado_catalogo,fecha_creacion,fecha_actualizacion)
@@ -457,7 +457,7 @@ async function ensureOne(client, masterCardId) {
 }
 
 async function masterForInternetIdentity(client, identity) {
-  const result = await client.query(`SELECT * FROM shiny.tcg_master_cards c
+  const result = await client.query(`SELECT * FROM gmx.tcg_master_cards c
     WHERE c.game_code=$1 AND (
       ($2<>'' AND ((UPPER(c.provider_code)=$3 AND c.external_id=$2) OR COALESCE(c.source_refs->>$3,'')=$2))
       OR LOWER(TRIM(c.name))=LOWER(TRIM($4))
@@ -477,12 +477,12 @@ async function ensureInternetOne(client, identity) {
   if (master) return ensureOne(client, Number(master.row_id));
 
   const gameNames = { POKEMON: 'Pokémon', YUGIOH: 'Yu-Gi-Oh!', MAGIC: 'Magic: The Gathering' };
-  let game = (await client.query(`SELECT * FROM shiny.tcg_juegos
+  let game = (await client.query(`SELECT * FROM gmx.tcg_juegos
     WHERE UPPER(COALESCE(NULLIF(catalogo_codigo,''),NULLIF(codigo,'')))=$1
     ORDER BY CASE WHEN catalogo_codigo=$1 THEN 0 ELSE 1 END,row_id LIMIT 1 FOR UPDATE`,
   [identity.game_code])).rows[0];
   if (!game) {
-    game = (await client.query(`INSERT INTO shiny.tcg_juegos(
+    game = (await client.query(`INSERT INTO gmx.tcg_juegos(
       id_juego,nombre,codigo,catalogo_codigo,activo,visible_portal,orden)
       VALUES($1,$2,$3,$3,true,false,0) RETURNING *`, [
       `TCGJ-${identity.game_code}`, gameNames[identity.game_code] || identity.game_code, identity.game_code
@@ -490,11 +490,11 @@ async function ensureInternetOne(client, identity) {
   }
 
   const setCode = identity.set_code || slug(identity.set_name || 'INTERNET');
-  let set = (await client.query(`SELECT * FROM shiny.tcg_sets
+  let set = (await client.query(`SELECT * FROM gmx.tcg_sets
     WHERE id_juego=$1 AND UPPER(COALESCE(codigo,''))=UPPER($2)
     ORDER BY row_id LIMIT 1 FOR UPDATE`, [game.id_juego, setCode])).rows[0];
   if (!set) {
-    set = (await client.query(`INSERT INTO shiny.tcg_sets(
+    set = (await client.query(`INSERT INTO gmx.tcg_sets(
       id_set,id_juego,nombre,codigo,total_cartas,activo,orden,fuente_oficial)
       VALUES($1,$2,$3,$4,0,true,0,$5) RETURNING *`, [
       `${identity.game_code}-${slug(setCode)}`, game.id_juego, identity.set_name || setCode,
@@ -503,16 +503,16 @@ async function ensureInternetOne(client, identity) {
   }
 
   if (identity.rarity) {
-    const rarity = await client.query(`SELECT row_id FROM shiny.tcg_rarezas
+    const rarity = await client.query(`SELECT row_id FROM gmx.tcg_rarezas
       WHERE id_juego=$1 AND (LOWER(COALESCE(nombre,''))=LOWER($2) OR LOWER(COALESCE(codigo,''))=LOWER($2))
       LIMIT 1`, [game.id_juego, identity.rarity]);
-    if (!rarity.rowCount) await client.query(`INSERT INTO shiny.tcg_rarezas(
+    if (!rarity.rowCount) await client.query(`INSERT INTO gmx.tcg_rarezas(
       id_rareza,id_juego,codigo,nombre,orden,activo) VALUES($1,$2,$3,$4,0,true)`, [
       `TCGR-${identity.game_code}-${slug(identity.rarity)}`, game.id_juego, slug(identity.rarity).toUpperCase(), identity.rarity
     ]);
   }
 
-  const existing = await client.query(`SELECT * FROM shiny.tcg_cartas c
+  const existing = await client.query(`SELECT * FROM gmx.tcg_cartas c
     WHERE c.id_juego=$1 AND c.id_set=$2 AND (
       ($3<>'' AND UPPER(COALESCE(c.provider_code,''))=$4 AND c.external_id=$3)
       OR (LOWER(TRIM(c.nombre))=LOWER(TRIM($5)) AND
@@ -522,7 +522,7 @@ async function ensureInternetOne(client, identity) {
     game.id_juego, set.id_set, identity.external_id, identity.provider_code, identity.name, identity.collector_number
   ]);
   if (existing.rowCount) {
-    return (await client.query(`UPDATE shiny.tcg_cartas SET
+    return (await client.query(`UPDATE gmx.tcg_cartas SET
       provider_code=$2,external_id=$3,nombre=$4,numero_carta=$5,numero_completo=$5,
       rareza=$6,tipo_carta=$7,descripcion=$8,imagen_principal=COALESCE(NULLIF($9,''),imagen_principal),
       image_source_url=COALESCE(NULLIF($9,''),image_source_url),estado_catalogo='ACTIVA',fecha_actualizacion=NOW()
@@ -531,7 +531,7 @@ async function ensureInternetOne(client, identity) {
       identity.collector_number, identity.rarity, identity.card_type, identity.description, identity.image
     ])).rows[0];
   }
-  return (await client.query(`INSERT INTO shiny.tcg_cartas(
+  return (await client.query(`INSERT INTO gmx.tcg_cartas(
     id_carta,provider_code,external_id,id_juego,id_set,nombre,numero_carta,numero_completo,
     rareza,tipo_carta,descripcion,imagen_principal,image_source_url,estado_catalogo,fecha_creacion,fecha_actualizacion)
     VALUES($1,$2,$3,$4,$5,$6,$7,$7,$8,$9,$10,$11,$11,'ACTIVA',NOW(),NOW()) RETURNING *`, [

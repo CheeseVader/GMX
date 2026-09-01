@@ -77,13 +77,13 @@ try {
     SELECT
       (
         SELECT COUNT(*)
-        FROM shiny.pedidos
+        FROM gmx.pedidos
         WHERE pos_idempotency_key LIKE 'LOYALTY007-%'
       )::bigint AS pedidos,
 
       (
         SELECT COUNT(*)
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE
           nombre LIKE 'CLIENTES LOYALTY007 TEST %'
           OR email LIKE 'clientes.loyalty007.%@example.invalid'

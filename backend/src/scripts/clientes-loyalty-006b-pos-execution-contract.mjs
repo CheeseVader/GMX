@@ -64,7 +64,7 @@ function contexts(text, patterns, radius = 8) {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-006B POS EXECUTION CONTRACT")
+  section(brandText("GMX — CLIENTES-LOYALTY-006B POS EXECUTION CONTRACT")
 
   );
 

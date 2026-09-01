@@ -45,7 +45,7 @@ router.post('/search', async (req, res) => {
 
     const rows = await query(`
       SELECT row_id,id,sku,nombre,categoria,imagen,precio,stock
-      FROM shiny.productos
+      FROM gmx.productos
       WHERE imagen IS NOT NULL
         AND BTRIM(imagen)<>''
         AND imagen LIKE '/uploads/products/%'
@@ -111,7 +111,7 @@ router.post('/search', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(brandText("[Shiny][VISUAL_BETA_SEARCH]"), error);
+    console.error(brandText("[GMX][VISUAL_BETA_SEARCH]"), error);
     const offline = /fetch failed|ECONNREFUSED|aborted|timeout/i.test(String(error?.message || error));
     res.status(offline ? 503 : 500).json({
       success: false,

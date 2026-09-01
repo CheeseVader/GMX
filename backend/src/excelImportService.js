@@ -69,7 +69,7 @@ function addXlsxDataValidations(buffer, sheetNumber, validations = []) {
 
 async function logImport(client, { type, fileName, read = 0, created = 0, updated = 0, errors = [], meta = {} }, user = '') {
   const id = uid('IMP');
-  await client.query(`INSERT INTO shiny.importaciones(
+  await client.query(`INSERT INTO gmx.importaciones(
     id_importacion,tipo,archivo,filas_leidas,filas_creadas,filas_actualizadas,filas_error,detalle,usuario)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)`, [
   id, type, txt(fileName) || null, read, created, updated, errors.length, JSON.stringify({ ...meta, errors: errors.slice(0, 200) }), txt(user) || null]
@@ -78,7 +78,7 @@ async function logImport(client, { type, fileName, read = 0, created = 0, update
 }
 
 export async function buildProductsTemplate({ includeCost = false } = {}) {
-  const categoriesR = await query(`SELECT TRIM(nombre) nombre FROM shiny.categorias
+  const categoriesR = await query(`SELECT TRIM(nombre) nombre FROM gmx.categorias
     WHERE LOWER(TRIM(COALESCE(estado,'Activo')))='activo'
     ORDER BY TRIM(nombre)`);
   const wb = XLSX.utils.book_new();
@@ -113,9 +113,9 @@ export async function buildProductsTemplate({ includeCost = false } = {}) {
 
 export async function buildInventoryEntryTemplate({ includeCost = false } = {}) {
   const [branchesR, productsR] = await Promise.all([
-    query(`SELECT id_sucursal,nombre_sucursal FROM shiny.sucursales
+    query(`SELECT id_sucursal,nombre_sucursal FROM gmx.sucursales
       WHERE COALESCE(activa,true)=true ORDER BY nombre_sucursal`),
-    query(`SELECT sku,nombre FROM shiny.productos
+    query(`SELECT sku,nombre FROM gmx.productos
       WHERE LOWER(COALESCE(estado,'Activo'))='activo' ORDER BY nombre`)
   ]);
   const wb = XLSX.utils.book_new();
@@ -165,7 +165,7 @@ export async function importInventoryEntriesWorkbook(file, user = {}, { includeC
   let updated = 0;
   try {
     await client.query('BEGIN');
-    const duplicate = await client.query(`SELECT id_importacion FROM shiny.importaciones
+    const duplicate = await client.query(`SELECT id_importacion FROM gmx.importaciones
       WHERE tipo='INVENTARIO_ENTRADAS_EXCEL' AND detalle->>'sha256'=$1 LIMIT 1`, [sha256]);
     if (duplicate.rowCount) throw new Error('IMPORT_FILE_ALREADY_PROCESSED');
     for (let idx = 0; idx < rows.length; idx++) {
@@ -179,39 +179,39 @@ export async function importInventoryEntriesWorkbook(file, user = {}, { includeC
         if (!sku) throw new Error('SKU_REQUIRED');
         if (!branchValue) throw new Error('BRANCH_REQUIRED');
         if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('QUANTITY_MUST_BE_POSITIVE');
-        const productR = await client.query(`SELECT id,sku,nombre,costo,stock_minimo FROM shiny.productos
+        const productR = await client.query(`SELECT id,sku,nombre,costo,stock_minimo FROM gmx.productos
           WHERE UPPER(TRIM(COALESCE(sku,'')))=UPPER(TRIM($1)) LIMIT 1`, [sku]);
         if (!productR.rowCount) throw new Error('PRODUCT_SKU_NOT_FOUND');
-        const branchR = await client.query(`SELECT id_sucursal,nombre_sucursal FROM shiny.sucursales
+        const branchR = await client.query(`SELECT id_sucursal,nombre_sucursal FROM gmx.sucursales
           WHERE COALESCE(activa,true)=true AND (id_sucursal=$1 OR LOWER(TRIM(nombre_sucursal))=LOWER(TRIM($1))) LIMIT 1`, [branchValue]);
         if (!branchR.rowCount) throw new Error('BRANCH_NOT_FOUND');
         const product = productR.rows[0], branch = branchR.rows[0];
         await client.query(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, [branch.id_sucursal, product.id]);
-        let locked = await client.query(`SELECT row_id,stock FROM shiny.inventario_sucursales
+        let locked = await client.query(`SELECT row_id,stock FROM gmx.inventario_sucursales
           WHERE id_sucursal=$1 AND id_producto=$2 ORDER BY row_id LIMIT 1 FOR UPDATE`, [branch.id_sucursal, product.id]);
         if (!locked.rowCount) {
-          locked = await client.query(`INSERT INTO shiny.inventario_sucursales(
+          locked = await client.query(`INSERT INTO gmx.inventario_sucursales(
               id_registro,id_sucursal,sucursal,id_producto,sku,producto,stock,stock_minimo,fecha_actualizacion)
             VALUES('INV-BULK-'||$1||'-'||$2,$2,$3,$1,$4,$5,0,$6,NOW())
             RETURNING row_id,stock`, [product.id, branch.id_sucursal, branch.nombre_sucursal, product.sku, product.nombre, Number(product.stock_minimo || 0)]);
         }
         if (!locked.rowCount) throw new Error('INVENTORY_ROW_NOT_AVAILABLE');
         const before = Number(locked.rows[0].stock || 0), after = before + quantity;
-        await client.query(`UPDATE shiny.inventario_sucursales SET stock=$1,fecha_actualizacion=NOW() WHERE row_id=$2`, [after, locked.rows[0].row_id]);
+        await client.query(`UPDATE gmx.inventario_sucursales SET stock=$1,fecha_actualizacion=NOW() WHERE row_id=$2`, [after, locked.rows[0].row_id]);
         const costText = txt(r.costo_unitario);
         if (includeCost && costText !== '') {
           const cost = Number(costText);
           if (!Number.isFinite(cost) || cost < 0) throw new Error('COST_INVALID');
-          await client.query(`UPDATE shiny.productos SET costo=$1,fecha_actualizacion=NOW() WHERE id=$2`, [cost, product.id]);
+          await client.query(`UPDATE gmx.productos SET costo=$1,fecha_actualizacion=NOW() WHERE id=$2`, [cost, product.id]);
         }
         const priceText = txt(r.precio_venta);
         if (priceText !== '') {
           const price = Number(priceText);
           if (!Number.isFinite(price) || price < 0) throw new Error('SALE_PRICE_INVALID');
-          await client.query(`UPDATE shiny.productos SET precio=$1,fecha_actualizacion=NOW() WHERE id=$2`, [price, product.id]);
+          await client.query(`UPDATE gmx.productos SET precio=$1,fecha_actualizacion=NOW() WHERE id=$2`, [price, product.id]);
         }
         const reference = [txt(r.referencia), txt(r.lote)].filter(Boolean).join(' · ') || `IMPORT:${sha256.slice(0, 12)}`;
-        await client.query(`INSERT INTO shiny.movimientos_inventario_sucursales(
+        await client.query(`INSERT INTO gmx.movimientos_inventario_sucursales(
           id_movimiento,fecha,id_sucursal,sucursal,id_producto,sku,producto,tipo,cantidad,
           stock_anterior,stock_nuevo,motivo,id_admin,nombre_usuario,usuario,referencia)
           VALUES('MOV-BULK-'||floor(extract(epoch from clock_timestamp())*1000)::text||'-'||$1,NOW(),
@@ -479,7 +479,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
 
         const categoryR = await client.query(`
           SELECT TRIM(nombre) AS nombre
-          FROM shiny.categorias
+          FROM gmx.categorias
           WHERE LOWER(TRIM(COALESCE(nombre,'')))=LOWER(TRIM($1::text))
             AND LOWER(TRIM(COALESCE(estado,'Activo')))= 'activo'
           LIMIT 1
@@ -491,7 +491,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
 
         const existing = await client.query(`
           SELECT row_id,id,stock,costo
-          FROM shiny.productos
+          FROM gmx.productos
           WHERE UPPER(TRIM(COALESCE(sku,'')))=
                 UPPER(TRIM($1::text))
           ORDER BY row_id
@@ -520,7 +520,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
 
 
           await client.query(`
-            UPDATE shiny.productos SET
+            UPDATE gmx.productos SET
               nombre=$2::text,
               descripcion=NULLIF($3::text,''),
               categoria=NULLIF($4::text,''),
@@ -539,7 +539,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
           if (branchId) {
             const branchR = await client.query(`
               SELECT id_sucursal,nombre_sucursal
-              FROM shiny.sucursales
+              FROM gmx.sucursales
               WHERE id_sucursal=$1::text
                 AND COALESCE(activa,true)=true
               LIMIT 1
@@ -550,7 +550,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
           } else {
             const existingInventory = await client.query(`
               SELECT id_sucursal
-              FROM shiny.inventario_sucursales
+              FROM gmx.inventario_sucursales
               WHERE id_producto=$1::text
               LIMIT 1
             `, [existingProduct.id]);
@@ -562,7 +562,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
             if (!existingInventory.rowCount) {
               const activeBranches = await client.query(`
                 SELECT id_sucursal,nombre_sucursal
-                FROM shiny.sucursales
+                FROM gmx.sucursales
                 WHERE COALESCE(activa,true)=true
                 ORDER BY id_sucursal
               `);
@@ -573,7 +573,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
 
           for (const branch of branches) {
             await client.query(`
-              INSERT INTO shiny.inventario_sucursales(
+              INSERT INTO gmx.inventario_sucursales(
                 id_registro,id_sucursal,sucursal,id_producto,sku,producto,
                 stock,stock_minimo,fecha_actualizacion
               )
@@ -589,7 +589,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
                 NOW()
               WHERE NOT EXISTS (
                 SELECT 1
-                FROM shiny.inventario_sucursales x
+                FROM gmx.inventario_sucursales x
                 WHERE x.id_sucursal=$2::text
                   AND x.id_producto=$4::text
               )
@@ -613,7 +613,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
           const initialStock = Math.max(0, Math.trunc(num(r.stock)));
 
           const inserted = await client.query(`
-            INSERT INTO shiny.productos(
+            INSERT INTO gmx.productos(
               sku,nombre,descripcion,categoria,precio,costo,
               stock,stock_minimo,estado,imagen,fecha_creacion,fecha_actualizacion
             )
@@ -657,7 +657,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
             if (branchId) {
               const branchR = await client.query(`
                 SELECT id_sucursal,nombre_sucursal
-                FROM shiny.sucursales
+                FROM gmx.sucursales
                 WHERE id_sucursal=$1::text
                   AND COALESCE(activa,true)=true
                 LIMIT 1
@@ -668,7 +668,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
             } else {
               const branches = await client.query(`
                 SELECT id_sucursal,nombre_sucursal
-                FROM shiny.sucursales
+                FROM gmx.sucursales
                 WHERE COALESCE(activa,true)=true
                 ORDER BY id_sucursal
                 LIMIT 2
@@ -679,7 +679,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
             }
 
             await client.query(`
-              INSERT INTO shiny.inventario_sucursales(
+              INSERT INTO gmx.inventario_sucursales(
                 id_registro,id_sucursal,sucursal,id_producto,sku,producto,
                 stock,stock_minimo,fecha_actualizacion
               )
@@ -706,7 +706,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
             );
 
             await client.query(`
-              INSERT INTO shiny.movimientos_inventario_sucursales(
+              INSERT INTO gmx.movimientos_inventario_sucursales(
                 id_movimiento,fecha,id_sucursal,sucursal,id_producto,sku,producto,
                 tipo,cantidad,stock_anterior,stock_nuevo,motivo,nombre_usuario,usuario,referencia
               )
@@ -751,7 +751,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
             if (branchId) {
               const branchR = await client.query(`
                 SELECT id_sucursal,nombre_sucursal
-                FROM shiny.sucursales
+                FROM gmx.sucursales
                 WHERE id_sucursal=$1::text
                   AND COALESCE(activa,true)=true
                 LIMIT 1
@@ -762,7 +762,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
             } else {
               const activeBranches = await client.query(`
                 SELECT id_sucursal,nombre_sucursal
-                FROM shiny.sucursales
+                FROM gmx.sucursales
                 WHERE COALESCE(activa,true)=true
                 ORDER BY id_sucursal
               `);
@@ -772,7 +772,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
 
             for (const branch of branches) {
               await client.query(`
-                INSERT INTO shiny.inventario_sucursales(
+                INSERT INTO gmx.inventario_sucursales(
                   id_registro,id_sucursal,sucursal,id_producto,sku,producto,
                   stock,stock_minimo,fecha_actualizacion
                 )
@@ -788,7 +788,7 @@ export async function importProductsWorkbook(file, user = '', { includeCost = fa
                   NOW()
                 WHERE NOT EXISTS (
                   SELECT 1
-                  FROM shiny.inventario_sucursales x
+                  FROM gmx.inventario_sucursales x
                   WHERE x.id_sucursal=$2::text
                     AND x.id_producto=$4::text
                 )
@@ -862,19 +862,19 @@ export async function importCardsWorkbook(file, user = '') {
       const name = txt(r.nombre);
       if (!game || !setCode || !number || !name) {errors.push({ row: idx + 2, error: 'GAME_SET_NUMBER_NAME_REQUIRED' });continue;}
       try {
-        const gj = await client.query(`SELECT id_juego FROM shiny.tcg_juegos
+        const gj = await client.query(`SELECT id_juego FROM gmx.tcg_juegos
           WHERE UPPER(COALESCE(catalogo_codigo,codigo,id_juego))=$1 OR UPPER(id_juego)=$1
           ORDER BY row_id LIMIT 1`, [game]);
         if (!gj.rowCount) throw new Error('GAME_NOT_ENABLED');
         const gameId = gj.rows[0].id_juego;
 
-        const st = await client.query(`SELECT id_set FROM shiny.tcg_sets
+        const st = await client.query(`SELECT id_set FROM gmx.tcg_sets
           WHERE id_juego=$1 AND (UPPER(COALESCE(codigo,''))=UPPER($2) OR id_set=$2)
           ORDER BY row_id LIMIT 1`, [gameId, setCode]);
         if (!st.rowCount) throw new Error('SET_NOT_ENABLED');
         const setId = st.rows[0].id_set;
 
-        const existing = await client.query(`SELECT row_id FROM shiny.tcg_cartas
+        const existing = await client.query(`SELECT row_id FROM gmx.tcg_cartas
           WHERE id_juego=$1 AND id_set=$2 AND UPPER(COALESCE(numero_completo,''))=UPPER($3)
           ORDER BY row_id LIMIT 1`, [gameId, setId, number]);
 
@@ -883,13 +883,13 @@ export async function importCardsWorkbook(file, user = '') {
         txt(r.tipo_carta), txt(r.subtipo), txt(r.artista), txt(r.descripcion), txt(r.imagen_url), txt(r.estado_catalogo) || 'ACTIVA'];
 
         if (existing.rowCount) {
-          await client.query(`UPDATE shiny.tcg_cartas SET id_juego=$2,id_set=$3,nombre=$4,numero_carta=$5,numero_set=$6,
+          await client.query(`UPDATE gmx.tcg_cartas SET id_juego=$2,id_set=$3,nombre=$4,numero_carta=$5,numero_set=$6,
             numero_completo=$7,rareza=$8,tipo_carta=$9,subtipo=$10,artista=$11,descripcion=$12,imagen_principal=$13,
             estado_catalogo=$14,fecha_actualizacion=NOW() WHERE row_id=$1`, [existing.rows[0].row_id, ...vals]);
           updated++;
         } else {
           const id = txt(r.id_carta) || `TCGC-${Date.now()}-${idx}-${crypto.randomBytes(2).toString('hex')}`;
-          await client.query(`INSERT INTO shiny.tcg_cartas(
+          await client.query(`INSERT INTO gmx.tcg_cartas(
             id_carta,id_juego,id_set,nombre,numero_carta,numero_set,numero_completo,rareza,tipo_carta,subtipo,
             artista,descripcion,imagen_principal,estado_catalogo,fecha_creacion,fecha_actualizacion)
             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW(),NOW())`, [id, ...vals]);
@@ -918,8 +918,8 @@ export async function importTcgMasterWorkbook(file, user = '') {
     for (const [idx, r] of games.entries()) {
       const code = txt(r.codigo).toUpperCase(),name = txt(r.nombre);
       if (!code || !name) {errors.push({ sheet: 'TCG_Juegos', row: idx + 2, error: 'CODE_NAME_REQUIRED' });continue;}
-      const ex = await client.query(`SELECT row_id FROM shiny.tcg_master_juegos WHERE codigo=$1`, [code]);
-      await client.query(`INSERT INTO shiny.tcg_master_juegos(codigo,nombre,publisher,sitio_oficial,activo,orden)
+      const ex = await client.query(`SELECT row_id FROM gmx.tcg_master_juegos WHERE codigo=$1`, [code]);
+      await client.query(`INSERT INTO gmx.tcg_master_juegos(codigo,nombre,publisher,sitio_oficial,activo,orden)
         VALUES($1,$2,NULLIF($3,''),NULLIF($4,''),$5,$6)
         ON CONFLICT(codigo) DO UPDATE SET nombre=EXCLUDED.nombre,publisher=EXCLUDED.publisher,
         sitio_oficial=EXCLUDED.sitio_oficial,activo=EXCLUDED.activo,orden=EXCLUDED.orden,fecha_actualizacion=NOW()`, [
@@ -931,8 +931,8 @@ export async function importTcgMasterWorkbook(file, user = '') {
     for (const [idx, r] of sets.entries()) {
       const game = txt(r.id_juego).toUpperCase(),code = txt(r.codigo),name = txt(r.nombre);
       if (!game || !code || !name) {errors.push({ sheet: 'TCG_Sets', row: idx + 2, error: 'GAME_CODE_NAME_REQUIRED' });continue;}
-      const ex = await client.query(`SELECT row_id FROM shiny.tcg_master_sets WHERE id_juego=$1 AND codigo=$2`, [game, code]);
-      await client.query(`INSERT INTO shiny.tcg_master_sets(id_juego,codigo,nombre,fecha_lanzamiento,total_cartas,activo,fuente_oficial)
+      const ex = await client.query(`SELECT row_id FROM gmx.tcg_master_sets WHERE id_juego=$1 AND codigo=$2`, [game, code]);
+      await client.query(`INSERT INTO gmx.tcg_master_sets(id_juego,codigo,nombre,fecha_lanzamiento,total_cartas,activo,fuente_oficial)
         VALUES($1,$2,$3,NULLIF($4,'')::date,$5,$6,NULLIF($7,''))
         ON CONFLICT(id_juego,codigo) DO UPDATE SET nombre=EXCLUDED.nombre,fecha_lanzamiento=EXCLUDED.fecha_lanzamiento,
         total_cartas=EXCLUDED.total_cartas,activo=EXCLUDED.activo,fuente_oficial=EXCLUDED.fuente_oficial,fecha_actualizacion=NOW()`, [
@@ -944,8 +944,8 @@ export async function importTcgMasterWorkbook(file, user = '') {
     for (const [idx, r] of rarities.entries()) {
       const game = txt(r.id_juego).toUpperCase(),code = txt(r.codigo),name = txt(r.nombre);
       if (!game || !code || !name) {errors.push({ sheet: 'TCG_Rarezas', row: idx + 2, error: 'GAME_CODE_NAME_REQUIRED' });continue;}
-      const ex = await client.query(`SELECT row_id FROM shiny.tcg_master_rarezas WHERE id_juego=$1 AND codigo=$2`, [game, code]);
-      await client.query(`INSERT INTO shiny.tcg_master_rarezas(id_juego,codigo,nombre,activo,orden)
+      const ex = await client.query(`SELECT row_id FROM gmx.tcg_master_rarezas WHERE id_juego=$1 AND codigo=$2`, [game, code]);
+      await client.query(`INSERT INTO gmx.tcg_master_rarezas(id_juego,codigo,nombre,activo,orden)
         VALUES($1,$2,$3,$4,$5)
         ON CONFLICT(id_juego,codigo) DO UPDATE SET nombre=EXCLUDED.nombre,activo=EXCLUDED.activo,
         orden=EXCLUDED.orden,fecha_actualizacion=NOW()`, [
@@ -980,18 +980,18 @@ export async function buildDynamicImportTemplate() {
         m.codigo,m.nombre,m.publisher,m.sitio_oficial,
         COALESCE(j.visible_portal,false) AS visible_portal,
         m.activo,m.orden
-      FROM shiny.tcg_master_juegos m
-      LEFT JOIN shiny.tcg_juegos j ON j.catalogo_codigo=m.codigo
+      FROM gmx.tcg_master_juegos m
+      LEFT JOIN gmx.tcg_juegos j ON j.catalogo_codigo=m.codigo
       ORDER BY COALESCE(m.orden,999999),m.nombre`),
   query(`SELECT id_juego,codigo,nombre,
         COALESCE(TO_CHAR(fecha_lanzamiento,'YYYY-MM-DD'),'') AS fecha_lanzamiento,
         total_cartas,activo,fuente_oficial
-      FROM shiny.tcg_master_sets
+      FROM gmx.tcg_master_sets
       ORDER BY id_juego,COALESCE(fecha_lanzamiento,'1900-01-01'::date),codigo`),
   query(`SELECT id_juego,codigo,nombre,activo,orden
-      FROM shiny.tcg_master_rarezas
+      FROM gmx.tcg_master_rarezas
       ORDER BY id_juego,COALESCE(orden,999999),nombre`),
-  query(`SELECT DISTINCT categoria FROM shiny.productos
+  query(`SELECT DISTINCT categoria FROM gmx.productos
       WHERE NULLIF(TRIM(COALESCE(categoria,'')),'') IS NOT NULL
       ORDER BY categoria`)]
   );
@@ -999,7 +999,7 @@ export async function buildDynamicImportTemplate() {
   const wb = XLSX.utils.book_new();
 
   const instructions = [
-  [brandText("Shiny · Plantilla dinámica de importación")],
+  [brandText("GMX · Plantilla dinámica de importación")],
   [],
   ['Hoja', 'Uso', 'Clave / regla', 'Obligatorio', 'Notas', 'Ejemplo'],
   ['Productos', 'Alta/actualización masiva de productos', 'sku', 'Sí', 'SKU existente actualiza; SKU nuevo crea.', 'CAM001'],
@@ -1142,12 +1142,12 @@ export async function buildTcgReceiptTemplate() {
       c.numero_completo,
       c.nombre AS carta,
       c.rareza
-    FROM shiny.tcg_cartas c
-    LEFT JOIN shiny.tcg_juegos j ON j.id_juego=c.id_juego
-    LEFT JOIN shiny.tcg_sets s ON s.id_set=c.id_set
+    FROM gmx.tcg_cartas c
+    LEFT JOIN gmx.tcg_juegos j ON j.id_juego=c.id_juego
+    LEFT JOIN gmx.tcg_sets s ON s.id_set=c.id_set
     ORDER BY tcg,expansion,c.numero_completo,c.nombre`),
   query(`SELECT id_sucursal,nombre_sucursal
-      FROM shiny.sucursales
+      FROM gmx.sucursales
       WHERE COALESCE(activa,true)=true
       ORDER BY nombre_sucursal`)]
   );
@@ -1155,7 +1155,7 @@ export async function buildTcgReceiptTemplate() {
   const wb = XLSX.utils.book_new();
 
   const guide = [
-  [brandText("Shiny · Recepción TCG masiva")],
+  [brandText("GMX · Recepción TCG masiva")],
   ['La plantilla se genera desde la DBA actual. No cambies los encabezados.'],
   [],
   ['tipo_origen', 'INVENTARIO_INICIAL = existencia física previa; ADQUISICION = mercancía que estás recibiendo.'],
@@ -1163,10 +1163,10 @@ export async function buildTcgReceiptTemplate() {
   ['id_sucursal', 'Usa una sucursal existente de la hoja Sucursales.'],
   ['cantidad', 'Entero mayor a 0.'],
   ['costo_unitario', 'Costo real por unidad.'],
-  ['precio_venta', brandText("Precio tienda Shiny.")],
+  ['precio_venta', brandText("Precio tienda GMX.")],
   ['precio_oferta', 'Opcional. Precio promocional/oferta.'],
   [],
-  ['Archivos grandes', brandText("No hay límite fijo de filas. Shiny valida el archivo completo y procesa en bloques de 500.")]];
+  ['Archivos grandes', brandText("No hay límite fijo de filas. GMX valida el archivo completo y procesa en bloques de 500.")]];
 
   const guideWs = XLSX.utils.aoa_to_sheet(guide);
   guideWs['!cols'] = [{ wch: 25 }, { wch: 90 }];

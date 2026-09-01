@@ -9,13 +9,26 @@ import MixedPaymentsPanel from '../components/MixedPaymentsPanel.jsx';
 import StoreSlideshow from '../components/public/StoreSlideshow.jsx';
 import { R23BarList } from '../components/VisualKitR23.jsx';
 import '../phase_shiny_exact_views_r23.css';
+import '../pos_client_required_r5b.css';
 import './OrdersPagePOSClassic.css';
 import useAdminBrand from '../hooks/useAdminBrand.js';
 
 import './OrdersPageOrdersR62.css';
 import './OrdersPageR75Integration.css';
 import '../return_pin_authorization_r77.css';
-import './OrdersPagePOSRecommendedR78.css';
+import './OrdersPagePOSRecommendedR78.css';
+// GMX_POS_CARD_CATALOG_R1
+const GMX_POS_BANKS = [
+  ['BBVA','BBVA'],['BANAMEX','Banamex'],['BANORTE','Banorte'],['SANTANDER','Santander'],
+  ['HSBC','HSBC'],['SCOTIABANK','Scotiabank'],['BANCO_AZTECA','Banco Azteca'],
+  ['BANREGIO','Banregio'],['HEY_BANCO','Hey Banco'],['INBURSA','Inbursa'],['AFIRME','Afirme'],
+  ['BANBAJIO','BanBajio'],['MIFEL','Banca Mifel'],['MULTIVA','Banco Multiva'],['INVEX','INVEX'],
+  ['NU','Nu'],['KLAR','Klar'],['UALA','Uala'],['MERCADO_PAGO','Mercado Pago'],['STORI','Stori'],
+  ['PLATA','Plata'],['RAPPI','RappiCard'],['AMEX','American Express'],['OTRO','Otro banco / emisor']
+];
+const GMX_POS_CARD_BRANDS = [['VISA','Visa'],['MASTERCARD','Mastercard'],['AMEX','American Express'],['CARNET','Carnet'],['OTRA','Otra']];
+const GMX_POS_CARD_TYPES = [['CREDITO','Crédito'],['DEBITO','Débito'],['PREPAGO','Prepago'],['OTRO','Otro']];
+
 function money(value) {
   if (value === null || value === '' || typeof value === 'undefined') return '—';
   return Number(value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
@@ -56,8 +69,68 @@ export default function OrdersPage({ mode = '' }) {
   const [orders, setOrders] = useState([]);
   const [branchId, setBranchId] = useState('');
   const [clientId, setClientId] = useState('');
+  const [selectedPosClient, setSelectedPosClient] = useState(null);
+  // GMX_POS_RESET_CLIENT_AFTER_SALE_R5J
+  // GMX_POS_NEW_SALE_RESET_R5M
+  function resetPosClientAfterSale() {
+    setClientId('');
+    setClientSearch('');
+    setSelectedPosClient(null);
+    setLoyalty(null);
+    setPointsToRedeem(0);
+    setClientSearchOpen(false);
+    setClientModalOpen(false);
+
+    setPaymentMethod('EFECTIVO');
+    setPaymentReference('');
+    setPayments([{ method: 'EFECTIVO', amount: 0, cashReceived: 0, reference: '' }]);
+    setNotes('');
+    setPromoCode('');
+    setBenefitPreview(null);
+    setManualDiscountType('PORCENTAJE');
+    setManualDiscountValue(0);
+    setManualDiscountReason('');
+    setManualDiscountPin('');
+    setDiscountModalOpen(false);
+    setNotesModalOpen(false);
+    setPromoModalOpen(false);
+    setPointsModalOpen(false);
+    setCheckoutModalOpen(false);
+    setProductSearch('');
+    setSaleAttempt({ key: '', fingerprint: '' });
+    setPosSource(null);
+    setCart([]);
+
+    try {
+      const current = new URL(window.location.href);
+      current.searchParams.delete('client');
+      current.searchParams.delete('membershipSku');
+      window.history.replaceState({}, '', current.pathname + (current.searchParams.toString() ? '?' + current.searchParams.toString() : ''));
+    } catch {}
+  }
   const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
+  // GMX_POS_SELECTED_CLIENT_INFO_R5B
+  useEffect(() => {
+    let alive = true;
+    if (!clientId) {
+      setSelectedPosClient(null);
+      return () => { alive = false; };
+    }
+    api('/api/v1/clients?limit=20&search=' + encodeURIComponent(clientId))
+      .then((body) => {
+        if (!alive) return;
+        const rows = Array.isArray(body?.data) ? body.data : [];
+        const exact = rows.find((row) => String(row.id_cliente) === String(clientId)) || rows[0] || null;
+        setSelectedPosClient(exact);
+      })
+      .catch(() => { if (alive) setSelectedPosClient(null); });
+    return () => { alive = false; };
+  }, [clientId]);
   const [paymentReference, setPaymentReference] = useState('');
+  // GMX_POS_CARD_STATE_R1
+  const [cardBank, setCardBank] = useState('');
+  const [cardBrand, setCardBrand] = useState('');
+  const [cardType, setCardType] = useState('');
   const [payments, setPayments] = useState([{ method: 'EFECTIVO', amount: 0, cashReceived: 0, reference: '' }]);
   const [notes, setNotes] = useState('');
   const [productSearch, setProductSearch] = useState('');
@@ -86,6 +159,7 @@ export default function OrdersPage({ mode = '' }) {
   const posFullscreenEnteredRef = useRef(false);
   const posExitAuthorizedRef = useRef(false);
   const posLongPressRef = useRef(null);
+  const membershipUrlLoadedRef = useRef(false);
   const [posStandalone, setPosStandalone] = useState(() => {
     if (typeof window === 'undefined') return false;
     return Boolean(window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator?.standalone);
@@ -98,7 +172,7 @@ export default function OrdersPage({ mode = '' }) {
   async function enterPosFullscreen() {
     if (!isOperator || posStandalone || posKioskMode || posFullscreen) return;
     if (!fullscreenCapable) {
-      setMessage(brandText("Este navegador no permite pantalla completa desde la página. Abre Shiny como aplicación/PWA o en modo kiosco."));
+      setMessage(brandText("Este navegador no permite pantalla completa desde la página. Abre GMX como aplicación/PWA o en modo kiosco."));
       return;
     }
     try {
@@ -193,6 +267,7 @@ export default function OrdersPage({ mode = '' }) {
   const [catalogOpen, setCatalogOpen] = useState(false);
   // POS-UX-004 — selector de cliente en modal y catálogo/existencias unificados con filtro de sucursal.
   const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [membershipClientRequiredOpen, setMembershipClientRequiredOpen] = useState(false);
   const [catalogBranchId, setCatalogBranchId] = useState('');
   // POS-UX-002B — feedback inmediato al agregar artículos desde el catálogo.
   const [catalogAddFeedback, setCatalogAddFeedback] = useState(null);
@@ -215,7 +290,7 @@ export default function OrdersPage({ mode = '' }) {
   const [posSource, setPosSource] = useState(null);
   const [storefrontRuntime, setStorefrontRuntime] = useState({ zones: {}, settings: {}, promotions: [] });
   const posBrand = useAdminBrand();
-  const posBrandName = String(posBrand?.name || 'Shiny').trim() || 'Shiny';
+  const posBrandName = String(posBrand?.name || 'GMX').trim() || 'GMX';
   const [returnLauncherOpen, setReturnLauncherOpen] = useState(false);
   const scanInputRef = useRef(null);
   const cameraVideoRef = useRef(null);
@@ -242,12 +317,25 @@ export default function OrdersPage({ mode = '' }) {
     if (!catalogBranchId && body.data[0]) setCatalogBranchId(body.data[0].id_sucursal);
   }
 
+  // GMX_POS_LOAD_ALL_CLIENTS_R5C
   async function loadClients(term = '') {
     setClientLoading(true);
     try {
-      const params = new URLSearchParams({ limit: '20', search: String(term || '').trim() });
-      const body = await api(`/api/v1/clients?${params}`);
-      setClients(body.data || []);
+      const all = [];
+      let offset = 0;
+      for (let page = 0; page < 100; page += 1) {
+        const params = new URLSearchParams({
+          limit: '200',
+          offset: String(offset),
+          search: String(term || '').trim()
+        });
+        const body = await api(`/api/v1/clients?${params}`);
+        const batch = Array.isArray(body.data) ? body.data : [];
+        all.push(...batch);
+        if (batch.length < 200) break;
+        offset += 200;
+      }
+      setClients(all);
     } finally {
       setClientLoading(false);
     }
@@ -469,6 +557,57 @@ export default function OrdersPage({ mode = '' }) {
     if (forcedMode !== 'pos') return;
     loadExternalPosContext();
   }, [forcedMode]);
+  // GMX_MEMBERSHIP_URL_CONTEXT_R3A
+  useEffect(() => {
+    if (typeof window === 'undefined' || forcedMode !== 'pos' || !branchId || membershipUrlLoadedRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const requestedClientId = String(params.get('client') || '').trim();
+    const requestedMembershipSku = String(params.get('membershipSku') || '').trim();
+
+    if (!requestedClientId && !requestedMembershipSku) return;
+    membershipUrlLoadedRef.current = true;
+
+    (async () => {
+      if (requestedClientId) {
+        setClientId(requestedClientId);
+        try {
+          const clientBody = await api('/api/v1/clients?limit=20&search=' + encodeURIComponent(requestedClientId));
+          const foundClient = (clientBody.data || []).find((x) => String(x.id_cliente) === requestedClientId) || (clientBody.data || [])[0];
+          if (foundClient) {
+            setClientSearch(foundClient.nombre || foundClient.email || foundClient.telefono || foundClient.id_cliente);
+          }
+        } catch {}
+      }
+
+      if (requestedMembershipSku) {
+        const paramsCatalog = new URLSearchParams({
+          branchId: String(branchId),
+          type: 'ALL',
+          search: requestedMembershipSku,
+          gameId: '',
+          setId: '',
+          category: '',
+          limit: '40'
+        });
+        const catalogBody = await api('/api/v1/orders/pos/catalog?' + paramsCatalog.toString());
+        const rows = Array.isArray(catalogBody.data) ? catalogBody.data : [];
+        const target = requestedMembershipSku.toUpperCase();
+        const item = rows.find((x) => String(x.sku || '').trim().toUpperCase() === target);
+
+        if (!item) {
+          throw new Error('No se encontro el SKU de membresia ' + requestedMembershipSku + ' en el catalogo POS.');
+        }
+
+        addToCart(item);
+        setProductSearch('');
+        setMessage('Membresia ' + requestedMembershipSku + ' cargada para el cliente seleccionado.');
+      }
+    })().catch((error) => {
+      membershipUrlLoadedRef.current = false;
+      setMessage(error?.message || 'No fue posible cargar la membresia seleccionada en POS.');
+    });
+  }, [forcedMode, branchId]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return undefined;
@@ -724,7 +863,7 @@ export default function OrdersPage({ mode = '' }) {
 
     if (candidates.length === 1 && candidates[0].score >= 0.90) {
       addToCart(candidates[0]);
-      setMessage(brandText(`${candidates[0].name || candidates[0].sku} reconocido por Shiny Vision y agregado al carrito.`));
+      setMessage(brandText(`${candidates[0].name || candidates[0].sku} reconocido por GMX Vision y agregado al carrito.`));
       return;
     }
 
@@ -988,16 +1127,38 @@ export default function OrdersPage({ mode = '' }) {
   }
 
   function checkout() {
+    // GMX_MEMBERSHIP_CLIENT_POPUP_CHECKOUT_R5S4
+    const membershipInCart = cart.some((item) => String(item.sku || '').trim().toUpperCase().startsWith('MEM-'));
+    if (membershipInCart && !clientId) {
+      setMessage('');
+      setMembershipClientRequiredOpen(true);
+      return;
+    }
+
+
+    // GMX_MEMBERSHIP_CHECKOUT_GUARD_R5
+    const hasMembershipSku = cart.some((item) => String(item.sku || '').trim().toUpperCase().startsWith('MEM-'));
+    if (hasMembershipSku && !clientId) { setMessage('Una membresia requiere seleccionar un cliente GMX existente antes de cobrar.'); return; }
+    if (hasMembershipSku && cart.some((item) => String(item.sku || '').trim().toUpperCase().startsWith('MEM-') && Number(item.quantity || 0) !== 1)) { setMessage('Cada SKU de membresia debe venderse con cantidad 1.'); return; }
     setMessage('');
     if (!cart.length) {setMessage('El carrito está vacío.');return;}
     const availablePoints = Math.max(0, Number(loyalty?.puntos_disponibles || 0));
-    if (false && clientId && availablePoints > 0 && Number(pointsToRedeem || 0) === 0) {
+    if (clientId && availablePoints > 0 && Number(pointsToRedeem || 0) === 0) {
       setPointsModalOpen(true);return;
     }
     setCheckoutModalOpen(true);
   }
 
   async function performCheckout() {
+    // GMX_MEMBERSHIP_CLIENT_POPUP_PERFORM_R5S4
+    const membershipInCart = cart.some((item) => String(item.sku || '').trim().toUpperCase().startsWith('MEM-'));
+    if (membershipInCart && !clientId) {
+      setCheckoutModalOpen(false);
+      setMembershipClientRequiredOpen(true);
+      return;
+    }
+
+
     setMessage('');
     if (!branchId) {
       setMessage('Selecciona una sucursal.');
@@ -1012,6 +1173,14 @@ export default function OrdersPage({ mode = '' }) {
     if (Number(manualDiscountValue || 0) > 0 && manualDiscountError) {
       setMessage(manualDiscountError);
       return;
+    }
+
+    // GMX_POS_CARD_VALIDATE_R1
+    if (paymentMethod === 'TARJETA') {
+      if (!String(cardBank || '').trim()) { setMessage('Selecciona el banco emisor.'); return; }
+      if (!String(cardBrand || '').trim()) { setMessage('Selecciona la marca / red de la tarjeta.'); return; }
+      if (!String(cardType || '').trim()) { setMessage('Selecciona el tipo de tarjeta.'); return; }
+      if (!String(paymentReference || '').trim()) { setMessage('Captura la referencia / folio del pago.'); return; }
     }
 
     try {
@@ -1029,7 +1198,8 @@ export default function OrdersPage({ mode = '' }) {
         setCheckoutModalOpen(false);
         setPosSource(null);
         setCart([]);
-        await Promise.all([loadOrders(''), loadInventory(branchId)]);
+        // GMX_POS_RESET_AFTER_ORDER_PAYMENT_R5J
+        resetPosClientAfterSale();        await Promise.all([loadOrders(''), loadInventory(branchId)]);
         return;
       }
 
@@ -1049,7 +1219,9 @@ export default function OrdersPage({ mode = '' }) {
           method: index === 0 ? paymentMethod : row.method,
           amount: Number(sanitizeMoneyInput(row.amount) || 0),
           cashReceived: (index === 0 ? paymentMethod : row.method) === 'EFECTIVO' ? Number(sanitizeMoneyInput(row.cashReceived) || 0) : null,
-          reference: index === 0 ? paymentMethod === 'EFECTIVO' ? '' : sanitizePaymentReference(paymentReference) : sanitizePaymentReference(row.reference)
+          reference: index === 0 ? paymentMethod === 'EFECTIVO' ? '' : sanitizePaymentReference(paymentReference) : sanitizePaymentReference(row.reference),
+          // GMX_POS_CARD_PROVIDER_R1
+          provider: (index === 0 ? paymentMethod : row.method) === 'TARJETA' ? `BANK=;BRAND=;TYPE=` : ''
         })),
         notes,
         promoCode,
@@ -1084,7 +1256,8 @@ export default function OrdersPage({ mode = '' }) {
       setCheckoutModalOpen(false);
       setMessage(`Venta ${body.data.id_pedido} registrada correctamente.`);
       setCompletedOrder(body.data);
-      setSaleAttempt({ key: '', fingerprint: '' });
+      // GMX_POS_RESET_AFTER_NEW_SALE_R5J
+      resetPosClientAfterSale();      setSaleAttempt({ key: '', fingerprint: '' });
       setCart([]);
       setPaymentReference('');
       setPayments([{ method: 'EFECTIVO', amount: 0, cashReceived: 0, reference: '' }]);
@@ -1398,11 +1571,11 @@ export default function OrdersPage({ mode = '' }) {
     const paymentRows = Array.isArray(order?.pagos) ? order.pagos : [];
     const discounts = Number(order?.descuento_promocion || 0) + Number(order?.descuento_puntos || 0);
     const rows = details.map((x) => `<tr><td><b>${esc(x.producto || 'Artículo')}</b>${x.sku ? `<small>${esc(x.sku)}</small>` : ''}${String(x.tipo || '').toUpperCase() === 'TCG' && x.detalle ? `<small>${esc(x.detalle)}</small>` : ''}</td><td class="center">${Number(x.cantidad || 0)}</td><td class="right">${moneyLocal(x.precio_unitario || x.precio)}</td><td class="right"><b>${moneyLocal(x.subtotal)}</b></td></tr>`).join('');
-    return brandText(`<!doctype html><html><head><meta charset="utf-8"><title>Shiny · ${esc(order?.id_pedido || 'Comprobante')}</title><style>
+    return brandText(`<!doctype html><html><head><meta charset="utf-8"><title>GMX · ${esc(order?.id_pedido || 'Comprobante')}</title><style>
       *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0;padding:18px}.ticket{max-width:760px;margin:auto}.brand{text-align:center}.brand h1{margin:0;font-size:24px}.muted{color:#666;font-size:12px}
       .meta{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:16px 0;padding:10px;border:1px solid #ddd;border-radius:8px}table{width:100%;border-collapse:collapse}th,td{padding:8px 5px;border-bottom:1px solid #ddd;font-size:12px;text-align:left}th{font-size:10px;text-transform:uppercase}.center{text-align:center}.right{text-align:right}small{display:block;color:#666;margin-top:2px}
       .totals{margin:16px 0 0 auto;max-width:300px}.totals div{display:flex;justify-content:space-between;padding:4px 0}.total{font-size:20px;border-top:2px solid #111;margin-top:4px;padding-top:9px!important}.pay{margin-top:16px;padding:10px;border:1px solid #ddd;border-radius:8px}.thanks{text-align:center;margin-top:20px;font-size:11px;color:#666}@media print{body{padding:0}.ticket{max-width:none}}@page{margin:10mm}
-      </style></head><body><div class="ticket"><div class="brand"><h1>Shiny</h1><div>Ticket / comprobante de venta</div><div class="muted">${esc(order?.id_pedido || '')}</div></div>
+      </style></head><body><div class="ticket"><div class="brand"><h1>GMX</h1><div>Ticket / comprobante de venta</div><div class="muted">${esc(order?.id_pedido || '')}</div></div>
       <div class="meta"><div><b>Fecha</b><br>${order?.fecha ? new Date(order.fecha).toLocaleString('es-MX') : '—'}</div><div><b>Sucursal</b><br>${esc(order?.sucursal || '—')}</div><div><b>Cliente</b><br>${esc(order?.nombre_cliente || 'Público general')}</div><div><b>Estado</b><br>${esc(order?.estado_pedido || '')}</div></div>
       <table><thead><tr><th>Artículo</th><th class="center">Cant.</th><th class="right">Precio</th><th class="right">Importe</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="totals"><div><span>Subtotal</span><b>${moneyLocal(order?.subtotal)}</b></div>${discounts > 0 ? `<div><span>Descuentos</span><b>-${moneyLocal(discounts)}</b></div>` : ''}<div class="total"><b>Total</b><b>${moneyLocal(order?.total)}</b></div></div>
@@ -1411,7 +1584,7 @@ export default function OrdersPage({ mode = '' }) {
 
   function printReceipt(order, { pdf = false } = {}) {
     const win = window.open('', '_blank', 'width=900,height=760');
-    if (!win) {setMessage(brandText("El navegador bloqueó la ventana del comprobante. Permite ventanas emergentes para Shiny."));return;}
+    if (!win) {setMessage(brandText("El navegador bloqueó la ventana del comprobante. Permite ventanas emergentes para GMX."));return;}
     win.document.open();win.document.write(receiptHtml(order));win.document.close();win.focus();
     setTimeout(() => {if (pdf) setMessage('En el diálogo de impresión selecciona “Guardar como PDF”.');win.print();}, 250);
   }
@@ -1537,9 +1710,9 @@ export default function OrdersPage({ mode = '' }) {
         <div className="tcg_store_template-pos-fullscreen-card">
           <div className="tcg_store_template-pos-fullscreen-logo">{`${posBrandName} POS`}</div>
           <h2>Iniciar Punto de Venta</h2>
-          <p>{brandText("Shiny necesita una confirmación del operador para activar la pantalla completa del navegador.")}</p>
+          <p>{brandText("GMX necesita una confirmación del operador para activar la pantalla completa del navegador.")}</p>
           <button type="button" onClick={enterPosFullscreen}>⛶ Iniciar POS</button>
-          <small>{brandText("Desktop: Ctrl + Alt + X abre la salida protegida sin abandonar pantalla completa. Tablet/móvil: mantén presionado Shiny POS durante 5 segundos. La salida requiere contraseña.")}</small>
+          <small>{brandText("Desktop: Ctrl + Alt + X abre la salida protegida sin abandonar pantalla completa. Tablet/móvil: mantén presionado GMX POS durante 5 segundos. La salida requiere contraseña.")}</small>
         </div>
       </div> : null}
       {forcedMode === 'pos' && isOperator && posExitOpen ? <div
@@ -1685,7 +1858,7 @@ export default function OrdersPage({ mode = '' }) {
                           <td>{index + 1}</td>
                           <td>
                             <div className="tcg_store_template-pos-cart-product">
-                              <div className="tcg_store_template-pos-cart-thumb">{item.image_url ? <img src={item.image_url} alt="" /> : <span>{item.item_type === 'TCG' ? 'TCG' : brandText("Shiny")}</span>}</div>
+                              <div className="tcg_store_template-pos-cart-thumb">{item.image_url ? <img src={item.image_url} alt="" /> : <span>{item.item_type === 'TCG' ? 'TCG' : brandText("GMX")}</span>}</div>
                               <div><strong>{item.name}</strong><small>{item.sku || item.item_id || ''}</small></div>
                             </div>
                           </td>
@@ -1743,9 +1916,7 @@ export default function OrdersPage({ mode = '' }) {
                       </div>}
                 </section>
               </aside>
-            </div>
-
-            <div className="tcg_store_template-pos-actions shiny-r78-pos-actions">
+            </div>                                    <div className="tcg_store_template-pos-actions shiny-r78-pos-actions">
               <button type="button" className="tcg_store_template-pos-action" onClick={() => {setCatalogBranchId(branchId);setProductSearch('');setCatalogOpen(true);}}><span className="shiny-r78-action-icon">◇</span>Catálogo / Existencias</button>
               <button type="button" className="tcg_store_template-pos-action" onClick={() => {setClientSearch('');setClientSearchOpen(false);setClientModalOpen(true);}}><span className="shiny-r78-action-icon">◉</span>{clientId ? 'Cliente seleccionado' : 'Cliente'}</button>
               <button type="button" className="tcg_store_template-pos-action" disabled={!canUseManualDiscount} onClick={() => setDiscountModalOpen(true)}><span className="shiny-r78-action-icon">%</span>Descuento</button>
@@ -1783,15 +1954,66 @@ export default function OrdersPage({ mode = '' }) {
               <div className="tcg_store_template-pos-checkout-help">Para dividir el pago, usa <b>+ Agregar método</b>. Si no, captura solamente el método principal.</div>
               <MixedPaymentsPanel total={saleTotal} primaryMethod={paymentMethod} payments={payments} setPayments={setPaymentsSafe} />
               {paymentMethod !== 'EFECTIVO' ? <label className="tcg_store_template-pos-primary-reference">Referencia / folio<input value={paymentReference} onChange={(e) => setPaymentReference(sanitizePaymentReference(e.target.value))} placeholder={paymentMethod === 'TRANSFERENCIA' ? 'Referencia bancaria' : 'Referencia'} /></label> : null}
-              {paymentMethod === 'TARJETA' ? <div className="tcg_store_template-pos-card-warning">Tarjeta está preparada para Mercado Pago. La venta no se marcará como autorizada hasta validar la integración del proveedor.</div> : null}
+              {paymentMethod === 'TARJETA' ? (
+                <div className="gmx-pos-card-manual-r1" style={{display:'grid',gap:'10px',marginTop:'10px'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1.25fr 1fr 1fr',gap:'10px'}}>
+                    <label>Banco emisor
+                      <select value={cardBank} onChange={(e) => setCardBank(e.target.value)}>
+                        <option value="">Selecciona banco</option>
+                        {GMX_POS_BANKS.map(([code,name]) => <option key={code} value={code}>{name}</option>)}
+                      </select>
+                    </label>
+                    <label>Marca / red
+                      <select value={cardBrand} onChange={(e) => setCardBrand(e.target.value)}>
+                        <option value="">Selecciona tarjeta</option>
+                        {GMX_POS_CARD_BRANDS.map(([code,name]) => <option key={code} value={code}>{name}</option>)}
+                      </select>
+                    </label>
+                    <label>Tipo
+                      <select value={cardType} onChange={(e) => setCardType(e.target.value)}>
+                        <option value="">Selecciona tipo</option>
+                        {GMX_POS_CARD_TYPES.map(([code,name]) => <option key={code} value={code}>{name}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="tcg_store_template-pos-card-warning">
+                    El cobro se realiza en la terminal bancaria externa. GMX registra banco, marca, tipo y referencia / folio.
+                  </div>
+                </div>
+              ) : null}
               <div className="tcg_store_template-pos-checkout-actions"><button type="button" className="secondary" onClick={() => setCheckoutModalOpen(false)}>Volver</button><button type="button" className="tcg_store_template-pos-confirm-charge" onClick={performCheckout}>CONFIRMAR COBRO · {money(saleTotal)}</button></div>
             </div></div> : null}
 
+            {/* GMX_MEMBERSHIP_CLIENT_REQUIRED_POPUP_R5S4 */}
+            {membershipClientRequiredOpen ? <div className="modal-backdrop" onMouseDown={() => setMembershipClientRequiredOpen(false)}>
+              <div className="modal tcg_store_template-pos-action-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
+                <div className="modal-head">
+                  <div>
+                    <div className="eyebrow">MEMBRESIA</div>
+                    <h2>Favor de asignar un cliente</h2>
+                    <p>La membres&iacute;a debe quedar asociada a un cliente registrado en GMX.</p>
+                  </div>
+                  <button className="icon-btn" type="button" onClick={() => setMembershipClientRequiredOpen(false)}>X</button>
+                </div>
+                <div className="tcg_store_template-pos-checkout-help">
+                  Selecciona un cliente para continuar. Las ventas normales pueden cobrarse como P&uacute;blico general.
+                </div>
+                <div className="tcg_store_template-pos-modal-actions">
+                  <button type="button" className="secondary" onClick={() => setMembershipClientRequiredOpen(false)}>Cancelar</button>
+                  <button type="button" onClick={() => {setMembershipClientRequiredOpen(false);setClientSearch('');setClientSearchOpen(false);loadClients('').catch((error) => setMessage(error.message));setClientModalOpen(true);}}>Seleccionar cliente</button>
+                </div>
+              </div>
+            </div> : null}
             {clientModalOpen ? <div className="modal-backdrop" onMouseDown={() => setClientModalOpen(false)}><div className="modal tcg_store_template-pos-client-modal" onMouseDown={(e) => e.stopPropagation()}>
               <div className="modal-head"><div><div className="eyebrow">CLIENTE</div><h2>Seleccionar cliente</h2></div><button className="icon-btn" type="button" onClick={() => setClientModalOpen(false)}>×</button></div>
               <div className="tcg_store_template-pos-client-search"><input autoFocus value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Buscar por nombre, teléfono, email o ID..." /></div>
               <div className="tcg_store_template-pos-client-list">
-                <button type="button" className={`tcg_store_template-pos-client-row ${!clientId ? 'selected' : ''}`} onClick={() => {setClientId('');setClientSearch('');setLoyalty(null);setPointsToRedeem(0);setClientModalOpen(false);}}><strong>Público general</strong><span>Venta sin cliente asociado</span></button>
+              {/* GMX_POS_ALL_CLIENTS_CAPTION_R5C */}
+              <div className="tcg_store_template-pos-empty" style={{paddingTop:0}}>
+                {clientLoading ? 'Cargando clientes...' : `${clients.length} clientes disponibles`}
+              </div>
+                {/* GMX_POS_PUBLIC_GENERAL_R5M */}
+                <button type="button" className={`tcg_store_template-pos-client-row ${!clientId ? 'selected' : ''}`} onClick={() => {setClientId('');setClientSearch('');setSelectedPosClient(null);setLoyalty(null);setPointsToRedeem(0);setClientModalOpen(false);}}><strong>Publico general</strong><span>Venta sin cliente asociado</span></button>
                 {clientLoading ? <div className="tcg_store_template-pos-empty">Buscando clientes…</div> : null}
                 {!clientLoading && clients.map((client) => <button type="button" className={`tcg_store_template-pos-client-row ${clientId === client.id_cliente ? 'selected' : ''}`} key={client.row_id} onClick={() => {setClientId(client.id_cliente);setClientSearch(client.nombre || client.email || client.telefono || client.id_cliente);setClientModalOpen(false);}}>
                   <strong>{client.nombre || client.id_cliente}</strong><span>{[client.telefono, client.email, client.id_cliente].filter(Boolean).join(' · ')}</span>
@@ -1981,7 +2203,7 @@ export default function OrdersPage({ mode = '' }) {
                   const viewingOtherBranch = !isOperator && Boolean(catalogBranchId && branchId && catalogBranchId !== branchId);
                   const fresh = catalogAddFeedback?.key === key && !catalogAddFeedback?.blocked;
                   return <article className={`tcg_store_template-pos-modal-item ${fresh ? 'just-added' : ''} ${qty > 0 ? 'in-cart' : ''}`} key={key}>
-                      <div className="tcg_store_template-pos-modal-thumb">{item.image_url ? <img src={item.image_url} alt={item.name} /> : <span>{item.item_type === 'TCG' ? 'TCG' : brandText("Shiny")}</span>}</div>
+                      <div className="tcg_store_template-pos-modal-thumb">{item.image_url ? <img src={item.image_url} alt={item.name} /> : <span>{item.item_type === 'TCG' ? 'TCG' : brandText("GMX")}</span>}</div>
                       <div className="tcg_store_template-pos-modal-main"><small>{item.item_type === 'TCG' ? 'CARTA TCG' : 'PRODUCTO'}</small><strong>{item.name}</strong><span>{[item.sku, item.game_name, item.set_name, item.card_number].filter(Boolean).join(' · ')}</span><em>Existencia {item.stock ?? 0}{qty > 0 ? ` · En carrito ${qty}` : ''}</em></div>
                       <strong className="tcg_store_template-pos-modal-price">{money(item.price)}</strong>
                       <button
@@ -2224,7 +2446,7 @@ export default function OrdersPage({ mode = '' }) {
             </label>
           </div>
 
-          <div className="pos-payment-warning">{brandText("\n            Al confirmar, Shiny volverá a validar el stock, descontará el inventario y cambiará el pedido a PAGADO.\n          ")}
+          <div className="pos-payment-warning">{brandText("\n            Al confirmar, GMX volverá a validar el stock, descontará el inventario y cambiará el pedido a PAGADO.\n          ")}
 
           </div>
 

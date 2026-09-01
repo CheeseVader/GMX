@@ -70,10 +70,10 @@ export default function GlobalTheme(){
         document.body.dataset.tcg_store_templateDensity=a('density','comfortable');
         try {
           localStorage.setItem('Shiny_ADMIN_BRAND', JSON.stringify({
-            name: String(a('brand_name', 'Shiny') || 'Shiny').replace(/^Shiny$/i, 'Shiny'),
+            name: String(a('brand_name', 'GMX') || 'GMX').replace(/^Shiny$/i, 'GMX'),
             logoText: (() => {
-              const raw = String(a('logo_text', a('brand_name', 'Shiny')) || 'Shiny');
-              return /^Shiny$/i.test(raw) ? 'Shiny' : raw;
+              const raw = String(a('logo_text', a('brand_name', 'GMX')) || 'GMX');
+              return /^Shiny$/i.test(raw) ? 'GMX' : raw;
             })(),
             descriptor: a('brand_descriptor', 'LOCAL')
           }));

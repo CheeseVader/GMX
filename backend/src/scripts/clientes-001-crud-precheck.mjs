@@ -57,7 +57,7 @@ const files = {
   auth: "src/middleware/auth.js"
 };
 
-section(brandText("Shiny — CLIENTES-001 CRUD PRECHECK"));
+section(brandText("GMX — CLIENTES-001 CRUD PRECHECK"));
 
 console.log("MODE=READ_ONLY");
 console.log("DATABASE_CONNECTION=NOT_USED");

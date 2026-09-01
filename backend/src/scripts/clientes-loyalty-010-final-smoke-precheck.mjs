@@ -130,7 +130,7 @@ async function q(db, sql, params = []) {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-010 FINAL SMOKE PRECHECK")
+  section(brandText("GMX — CLIENTES-LOYALTY-010 FINAL SMOKE PRECHECK")
 
   );
 
@@ -250,7 +250,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.clientes
+          FROM gmx.clientes
           WHERE
             nombre ILIKE '%CLIENTES001%'
             OR nombre ILIKE '%LOYALTY00%'
@@ -261,7 +261,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedidos
+          FROM gmx.pedidos
           WHERE
             pos_idempotency_key LIKE 'LOYALTY007-%'
             OR id_pedido LIKE 'PED-LOYALTY%'
@@ -270,7 +270,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE
             id_admin LIKE 'TEST-LOYALTY%'
             OR motivo LIKE 'LOYALTY00%'
@@ -280,10 +280,10 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_cuentas fc
+          FROM gmx.fidelidad_cuentas fc
           WHERE EXISTS (
             SELECT 1
-            FROM shiny.clientes c
+            FROM gmx.clientes c
             WHERE
               c.id_cliente=fc.id_cliente
               AND (
@@ -322,8 +322,8 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedidos p
-          LEFT JOIN shiny.clientes c
+          FROM gmx.pedidos p
+          LEFT JOIN gmx.clientes c
             ON c.id_cliente=p.id_cliente
           WHERE
             p.id_cliente IS NOT NULL
@@ -334,8 +334,8 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_cuentas fc
-          LEFT JOIN shiny.clientes c
+          FROM gmx.fidelidad_cuentas fc
+          LEFT JOIN gmx.clientes c
             ON c.id_cliente=fc.id_cliente
           WHERE c.id_cliente IS NULL
         )::bigint
@@ -343,8 +343,8 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos f
-          LEFT JOIN shiny.clientes c
+          FROM gmx.fidelidad_movimientos f
+          LEFT JOIN gmx.clientes c
             ON c.id_cliente=f.id_cliente
           WHERE c.id_cliente IS NULL
         )::bigint
@@ -366,8 +366,8 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos f
-          LEFT JOIN shiny.pedidos p
+          FROM gmx.fidelidad_movimientos f
+          LEFT JOIN gmx.pedidos p
             ON p.id_pedido=f.id_pedido
           WHERE
             f.id_pedido IS NOT NULL
@@ -378,8 +378,8 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos f
-          JOIN shiny.pedidos p
+          FROM gmx.fidelidad_movimientos f
+          JOIN gmx.pedidos p
             ON p.id_pedido=f.id_pedido
           WHERE
             f.id_cliente
@@ -426,7 +426,7 @@ async function main() {
             0
           )::bigint AS redeemed
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
 
         WHERE
           id_pedido IS NOT NULL
@@ -437,7 +437,7 @@ async function main() {
 
       SELECT COUNT(*)::bigint AS mismatches
 
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
 
       LEFT JOIN ledger l
         ON l.id_pedido=p.id_pedido
@@ -489,7 +489,7 @@ async function main() {
             )
             AS previous_balance
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
       )
 
       SELECT COUNT(*)::bigint AS broken
@@ -517,7 +517,7 @@ async function main() {
     const arithmetic = await q(db, `
       SELECT COUNT(*)::bigint AS errors
 
-      FROM shiny.fidelidad_movimientos
+      FROM gmx.fidelidad_movimientos
 
       WHERE
         saldo_anterior IS NULL
@@ -548,7 +548,7 @@ async function main() {
           FROM (
             SELECT
               pos_idempotency_key
-            FROM shiny.pedidos
+            FROM gmx.pedidos
             WHERE
               pos_idempotency_key IS NOT NULL
               AND btrim(pos_idempotency_key)<>''
@@ -562,7 +562,7 @@ async function main() {
           FROM (
             SELECT
               id_movimiento
-            FROM shiny.fidelidad_movimientos
+            FROM gmx.fidelidad_movimientos
             GROUP BY id_movimiento
             HAVING COUNT(*) > 1
           ) x
@@ -573,7 +573,7 @@ async function main() {
           FROM (
             SELECT
               reversa_de
-            FROM shiny.fidelidad_movimientos
+            FROM gmx.fidelidad_movimientos
             WHERE
               reversa_de IS NOT NULL
               AND btrim(reversa_de)<>''
@@ -601,7 +601,7 @@ async function main() {
           id_cliente,
           saldo_nuevo
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
 
         ORDER BY
           id_cliente,
@@ -610,7 +610,7 @@ async function main() {
 
       SELECT COUNT(*)::bigint AS mismatches
 
-      FROM shiny.fidelidad_cuentas fc
+      FROM gmx.fidelidad_cuentas fc
 
       JOIN latest l
         ON l.id_cliente=fc.id_cliente
@@ -638,7 +638,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE
             id_movimiento IS NULL
             OR btrim(id_movimiento)=''
@@ -647,14 +647,14 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE fecha IS NULL
         )::bigint
           AS missing_date,
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE
             id_admin IS NULL
             OR btrim(id_admin)=''
@@ -665,7 +665,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE
             tipo='AJUSTE'
             AND (
@@ -693,7 +693,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE
             tipo='REVERSA'
             AND (
@@ -706,9 +706,9 @@ async function main() {
         (
           SELECT COUNT(*)
 
-          FROM shiny.fidelidad_movimientos r
+          FROM gmx.fidelidad_movimientos r
 
-          LEFT JOIN shiny.fidelidad_movimientos o
+          LEFT JOIN gmx.fidelidad_movimientos o
             ON o.id_movimiento=r.reversa_de
 
           WHERE
@@ -758,14 +758,14 @@ async function main() {
             WHERE tipo='REVERSA'
           )::bigint AS reversal_rows
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
 
         GROUP BY id_pedido
       )
 
       SELECT COUNT(*)::bigint AS suspicious
 
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
 
       LEFT JOIN state s
         ON s.id_pedido=p.id_pedido

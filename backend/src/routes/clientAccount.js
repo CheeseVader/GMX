@@ -1,8 +1,8 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireClientAuth,setClientSessionCookie,clearClientSessionCookie } from '../middleware/clientAuth.js';
 import {
-  registerClient,verifyClientEmail,loginClient,logoutClient,clientProfile,clientOrders,clientLoyalty,listAddresses,saveAddress,requestPasswordReset,completePasswordReset
+  registerClient,verifyClientEmail,loginClient,logoutClient,clientProfile,clientOrders,clientLoyalty,listAddresses,saveAddress,requestPasswordReset,completePasswordReset,clientPreferences,saveClientPreferences
 } from '../repositories/clientAccountRepository.js';
 
 const router=Router();
@@ -17,7 +17,7 @@ router.post('/auth/register',rateLimit({keyPrefix:'CLIENT_REGISTER',max:10}),asy
     const baseUrl=`${req.protocol}://${req.get('host')}`.replace(':8787',':5173');
     const r=await registerClient({...req.body,ip:req.ip,userAgent:req.headers['user-agent'],baseUrl});
     res.status(201).json({success:true,data:r});
-  }catch(e){bad(res,e,e.message==='CLIENT_ACCOUNT_EXISTS'?409:400);}
+  }catch(e){const duplicate=['CLIENT_ACCOUNT_EXISTS','CLIENT_EMAIL_ALREADY_REGISTERED','CLIENT_PHONE_ALREADY_REGISTERED','CLIENT_IDENTITY_EXISTS'].includes(e.message);bad(res,e,duplicate?409:400);}
 });
 
 router.post('/auth/verify',rateLimit({keyPrefix:'CLIENT_VERIFY',max:20}),async(req,res)=>{
@@ -37,10 +37,10 @@ router.post('/auth/recover',rateLimit({keyPrefix:'CLIENT_RECOVER',max:8}),async(
       ip:req.ip,
       baseUrl
     });
-    // Nunca indicar al público si el correo existe.
+    // Nunca indicar al pÃºblico si el correo existe.
     res.json({success:true,data:r});
   }catch(_e){
-    // Incluso ante ciertos fallos internos, evitamos enumeración de cuentas.
+    // Incluso ante ciertos fallos internos, evitamos enumeraciÃ³n de cuentas.
     res.json({success:true,data:{accepted:true}});
   }
 });
@@ -76,8 +76,42 @@ router.get('/me',requireClientAuth,async(req,res)=>{
   res.json({success:true,data:{user:{...req.clientUser,...profile}}});
 });
 router.get('/orders',requireClientAuth,async(req,res)=>{try{const r=await clientOrders(req.clientUser.id_cliente);res.json({success:true,data:r.rows});}catch(e){bad(res,e,500);}});
-router.get('/loyalty',requireClientAuth,async(req,res)=>{if(process.env.SHINY_FEATURE_LOYALTY!=='true')return res.status(404).json({success:false,error:'FEATURE_DISABLED'});try{res.json({success:true,data:await clientLoyalty(req.clientUser.id_cliente)});}catch(e){bad(res,e,500);}});
+router.get('/loyalty',requireClientAuth,async(req,res)=>{try{res.json({success:true,data:await clientLoyalty(req.clientUser.id_cliente)});}catch(e){bad(res,e,500);}});
 router.get('/addresses',requireClientAuth,async(req,res)=>{try{const r=await listAddresses(req.clientUser.id_cliente);res.json({success:true,data:r.rows});}catch(e){bad(res,e,500);}});
 router.post('/addresses',requireClientAuth,async(req,res)=>{try{res.status(201).json({success:true,data:await saveAddress(req.clientUser.id_cliente,req.body||{})});}catch(e){bad(res,e);}});
 
+router.get('/preferences',requireClientAuth,async(req,res)=>{
+  try{
+    const data=await clientPreferences(req.clientUser.id_cliente);
+    res.json({success:true,data});
+  }catch(e){
+    console.error('[CLIENT_PREFERENCES_GET]',e);
+    res.status(500).json({
+      success:false,
+      error:'CLIENT_PREFERENCES_FAILED',
+      message:'No fue posible cargar tus preferencias.'
+    });
+  }
+});
+
+router.put('/preferences',requireClientAuth,async(req,res)=>{
+  try{
+    const data=await saveClientPreferences(
+      req.clientUser.id_cliente,
+      req.body || {}
+    );
+
+    res.json({success:true,data});
+  }catch(e){
+    console.error('[CLIENT_PREFERENCES_PUT]',e);
+    res.status(500).json({
+      success:false,
+      error:'CLIENT_PREFERENCES_FAILED',
+      message:'No fue posible guardar tus preferencias.'
+    });
+  }
+});
 export default router;
+
+
+

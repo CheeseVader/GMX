@@ -377,7 +377,7 @@ router.post('/', async (req, res) => {
     };
     if (error?.code === '23505') return res.status(409).json({ success: false, error: 'PRODUCT_SKU_DUPLICATE', message: 'El SKU ya existe. Usa un SKU diferente.' });
     if (messages[code]) return res.status(code === 'PRODUCT_SKU_DUPLICATE' ? 409 : 400).json({ success: false, error: code, message: messages[code], existing: error.existing || undefined });
-    console.error(brandText("[Shiny][PRODUCT_CREATE]"), error);
+    console.error(brandText("[GMX][PRODUCT_CREATE]"), error);
     res.status(500).json({ success: false, error: 'PRODUCT_CREATE_FAILED', message: 'No fue posible crear el producto.' });
   }
 });

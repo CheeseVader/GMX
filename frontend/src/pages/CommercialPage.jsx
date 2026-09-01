@@ -440,7 +440,7 @@ export default function CommercialPage() {
   async function loadReturnOrder() {
     const operationId = window.tcg_store_templateOperation?.start?.({
       title: 'Buscando pedido',
-      detail: brandText("Shiny está validando el pedido y el alcance de sucursal.")
+      detail: brandText("GMX está validando el pedido y el alcance de sucursal.")
     });
     try {
       const r = await api(`/api/v1/commercial/returns-order/${encodeURIComponent(returnOrderId)}`);
@@ -486,7 +486,7 @@ export default function CommercialPage() {
       if (!hasReturnableItems) {
         const operationId = window.tcg_store_templateOperation?.start?.({
           title: 'Validando devolución',
-          detail: brandText("Shiny está validando las unidades disponibles para devolución.")
+          detail: brandText("GMX está validando las unidades disponibles para devolución.")
         });
 
         if (operationId) {

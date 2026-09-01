@@ -24,13 +24,13 @@ export default function StoreProductPage() {
   const stock = Number(item.stock_disponible || 0);
   return <main className="public-page">
     <div className="product-detail">
-      <div className="product-detail-image">{item.imagen ? <img src={item.imagen} alt={item.nombre} /> : <div className="public-image-placeholder">{brandText("Shiny")}</div>}</div>
+      <div className="product-detail-image">{item.imagen ? <img src={item.imagen} alt={item.nombre} /> : <div className="public-image-placeholder">{brandText("GMX")}</div>}</div>
       <div className="product-detail-info">
         <Link to="/tienda/catalogo">← Volver al catálogo</Link>
         <small>{item.categoria || 'Producto'} · {item.sku || item.id}</small>
         <h1>{item.nombre}</h1>
         <div className="product-detail-price">{money(item.precio, currency)}</div>
-        <p>{item.descripcion || brandText("Producto disponible en Shiny.")}</p>
+        <p>{item.descripcion || brandText("Producto disponible en GMX.")}</p>
         <div className={`stock-pill ${stock > 0 ? 'ok' : 'out'}`}>{stock > 0 ? `${stock} disponibles` : 'Agotado'}</div>
         <button disabled={stock <= 0} onClick={() => cart.addItem({ type: 'PRODUCT', id: item.id, rowId: item.row_id, name: item.nombre, sku: item.sku, price: Number(item.precio), image: item.imagen || '', stock })}>Agregar al carrito</button>
       </div>

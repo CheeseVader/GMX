@@ -111,7 +111,7 @@ async function q(db, sql, params = []) {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-004B REVERSAL MISMATCH DIAGNOSTIC R2")
+  section(brandText("GMX — CLIENTES-LOYALTY-004B REVERSAL MISMATCH DIAGNOSTIC R2")
 
   );
 
@@ -204,7 +204,7 @@ async function main() {
         column_default
       FROM information_schema.columns
       WHERE
-        table_schema='shiny'
+        table_schema='gmx'
         AND table_name='pedidos'
       ORDER BY ordinal_position
       `
@@ -271,7 +271,7 @@ async function main() {
           )::bigint
             AS redeemed_points_movements
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
 
         WHERE id_pedido IS NOT NULL
 
@@ -356,7 +356,7 @@ async function main() {
         )::bigint
           AS redeemed_points_movements
 
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
 
       LEFT JOIN movement_state m
         ON m.id_pedido=p.id_pedido
@@ -396,7 +396,7 @@ async function main() {
         SELECT
           p.id_pedido
 
-        FROM shiny.pedidos p
+        FROM gmx.pedidos p
 
         LEFT JOIN (
           SELECT
@@ -407,7 +407,7 @@ async function main() {
             )::bigint
               AS reversal_rows
 
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
 
           GROUP BY id_pedido
         ) m
@@ -436,7 +436,7 @@ async function main() {
         f.reversa_de,
         f.fecha
 
-      FROM shiny.fidelidad_movimientos f
+      FROM gmx.fidelidad_movimientos f
 
       JOIN target t
         ON t.id_pedido=f.id_pedido
@@ -474,7 +474,7 @@ async function main() {
         SELECT 1
         FROM information_schema.tables
         WHERE
-          table_schema='shiny'
+          table_schema='gmx'
           AND table_name='promociones_redenciones'
       ) AS exists
       `
@@ -501,7 +501,7 @@ async function main() {
           SELECT
             p.id_pedido
 
-          FROM shiny.pedidos p
+          FROM gmx.pedidos p
 
           LEFT JOIN (
             SELECT
@@ -512,7 +512,7 @@ async function main() {
               )::bigint
                 AS reversal_rows
 
-            FROM shiny.fidelidad_movimientos
+            FROM gmx.fidelidad_movimientos
 
             GROUP BY id_pedido
           ) m
@@ -529,7 +529,7 @@ async function main() {
 
         SELECT r.*
 
-        FROM shiny.promociones_redenciones r
+        FROM gmx.promociones_redenciones r
 
         JOIN target t
           ON t.id_pedido=r.id_pedido
@@ -597,7 +597,7 @@ async function main() {
           )::bigint
             AS partial_return_rows
 
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
 
         GROUP BY id_pedido
       ),
@@ -619,7 +619,7 @@ async function main() {
           )::bigint
             AS promo_reverted_rows
 
-        FROM shiny.promociones_redenciones
+        FROM gmx.promociones_redenciones
 
         GROUP BY id_pedido
       )
@@ -757,7 +757,7 @@ async function main() {
         END
           AS classification
 
-      FROM shiny.pedidos p
+      FROM gmx.pedidos p
 
       LEFT JOIN movement_state m
         ON m.id_pedido=p.id_pedido

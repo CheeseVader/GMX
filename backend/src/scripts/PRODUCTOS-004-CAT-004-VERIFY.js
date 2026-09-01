@@ -5,7 +5,7 @@ const sku="TEST-PRODUCTOS-004-CAT003";
 
 const p=await query(`
 SELECT row_id,id,sku,nombre,precio,costo,stock,stock_minimo,categoria,estado
-FROM shiny.productos
+FROM gmx.productos
 WHERE id=$1 OR sku=$2
 ORDER BY row_id DESC
 LIMIT 1
@@ -16,7 +16,7 @@ console.table(p.rows);
 
 const inv=await query(`
 SELECT row_id,id_sucursal,id_producto,sku,producto,stock,stock_minimo
-FROM shiny.inventario_sucursales
+FROM gmx.inventario_sucursales
 WHERE id_producto=$1 OR sku=$2
 ORDER BY row_id
 `,[id,sku]);
@@ -27,7 +27,7 @@ console.table(inv.rows);
 const mov=await query(`
 SELECT row_id,id_movimiento,tipo,id_sucursal,id_producto,sku,cantidad,
        stock_anterior,stock_nuevo,referencia,motivo
-FROM shiny.movimientos_inventario_sucursales
+FROM gmx.movimientos_inventario_sucursales
 WHERE id_producto=$1 OR sku=$2
 ORDER BY row_id
 `,[id,sku]);

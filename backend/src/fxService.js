@@ -12,7 +12,7 @@ const parseBanxicoDate = (value) => {
 };
 
 async function configMap(client) {
-  const r = await client.query(`SELECT parametro,valor FROM shiny.configuracion
+  const r = await client.query(`SELECT parametro,valor FROM gmx.configuracion
     WHERE parametro LIKE 'finance.fx.%'`);
   return Object.fromEntries(r.rows.map((x) => [x.parametro, x.valor]));
 }
@@ -27,7 +27,7 @@ async function latestRate(client, { source = '', operational = null } = {}) {
 
   if (source) {values.push(source);filters.push(`source=$${values.length}`);}
   if (operational !== null) {values.push(!!operational);filters.push(`is_operational=$${values.length}`);}
-  const r = await client.query(`SELECT * FROM shiny.fx_rates
+  const r = await client.query(`SELECT * FROM gmx.fx_rates
     WHERE ${filters.join(' AND ')}
     ORDER BY rate_date DESC,fetched_at DESC LIMIT 1`, values);
   return r.rows[0] || null;
@@ -38,7 +38,7 @@ async function latestRateForDate(client, date, { operational = null } = {}) {
   `base_currency=$1`, `quote_currency=$2`, `rate_date=$3`];
 
   if (operational !== null) {values.push(!!operational);filters.push(`is_operational=$${values.length}`);}
-  const r = await client.query(`SELECT * FROM shiny.fx_rates
+  const r = await client.query(`SELECT * FROM gmx.fx_rates
     WHERE ${filters.join(' AND ')}
     ORDER BY is_operational DESC,fetched_at DESC LIMIT 1`, values);
   return r.rows[0] || null;
@@ -52,7 +52,7 @@ function ageDays(rateDate) {
 }
 
 export async function financeFxConfig() {
-  const r = await query(`SELECT parametro,valor FROM shiny.configuracion
+  const r = await query(`SELECT parametro,valor FROM gmx.configuracion
     WHERE parametro LIKE 'finance.fx.%' ORDER BY parametro`);
   const m = Object.fromEntries(r.rows.map((x) => [x.parametro, x.valor]));
   return {
@@ -85,13 +85,13 @@ export async function saveFinanceFxConfig(input, user) {
       entries.push(['finance.fx.banxico_token', '']);
     }
     for (const [key, value] of entries) {
-      await client.query(`INSERT INTO shiny.configuracion(parametro,valor)
+      await client.query(`INSERT INTO gmx.configuracion(parametro,valor)
         VALUES($1,$2) ON CONFLICT(parametro) DO UPDATE SET valor=EXCLUDED.valor`, [key, value]);
     }
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'FINANZAS','ACTUALIZAR','TIPO_CAMBIO',$1,$2)`, [
     `Fuente Banxico ${input.banxicoEnabled !== false ? 'activa' : 'inactiva'}; Tijuana ${input.tijuanaEnabled !== false ? 'activo' : 'inactivo'}; prioridad ${txt(input.priority) || 'TIJUANA_THEN_BANXICO'}`,
-    user?.email || brandText("Shiny Local")]
+    user?.email || brandText("GMX Local")]
     );
     await client.query('COMMIT');
     return financeFxConfig();
@@ -108,14 +108,14 @@ export async function saveBanxicoToken({ token = '', clear = false } = {}, user)
     if (!/^[A-Za-z0-9_-]{40,200}$/.test(value)) throw new Error('BANXICO_TOKEN_INVALID');
   }
   const stored = clear ? '' : value;
-  await query(`INSERT INTO shiny.configuracion(parametro,valor)
+  await query(`INSERT INTO gmx.configuracion(parametro,valor)
     VALUES('finance.fx.banxico_token',$1)
     ON CONFLICT(parametro) DO UPDATE SET valor=EXCLUDED.valor`, [stored]);
-  await query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+  await query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
     VALUES(NOW(),'FINANZAS',$1,'BANXICO_TOKEN',$2,$3)`, [
   clear ? 'ELIMINAR_TOKEN' : 'GUARDAR_TOKEN',
   clear ? 'Token SIE eliminado' : 'Token SIE guardado/reemplazado',
-  user?.email || brandText("Shiny Local")]
+  user?.email || brandText("GMX Local")]
   );
   return { configured: !clear };
 }
@@ -140,7 +140,7 @@ export async function fetchBanxicoUsdMxn() {
     if (!Number.isFinite(rate) || rate <= 0 || !rateDate) throw new Error('BANXICO_INVALID_RATE');
 
     const saved = await client.query(`
-      INSERT INTO shiny.fx_rates(
+      INSERT INTO gmx.fx_rates(
         base_currency,quote_currency,rate_date,rate,source,location,is_operational,fetched_at,notes
       ) VALUES('USD','MXN',$1,$2,'BANXICO_FIX','MEXICO',false,NOW(),'Serie SF43718')
       ON CONFLICT(base_currency,quote_currency,rate_date,source,(COALESCE(location,''))) DO UPDATE SET
@@ -159,16 +159,16 @@ export async function saveTijuanaUsdMxn({ rate, rateDate = '', notes = '' } = {}
   try {
     await client.query('BEGIN');
     const saved = await client.query(`
-      INSERT INTO shiny.fx_rates(
+      INSERT INTO gmx.fx_rates(
         base_currency,quote_currency,rate_date,rate,source,location,is_operational,fetched_at,notes
       ) VALUES('USD','MXN',$1,$2,'TIJUANA_OPERATIVO','TIJUANA',true,NOW(),NULLIF($3,''))
       ON CONFLICT(base_currency,quote_currency,rate_date,source,(COALESCE(location,''))) DO UPDATE SET
         rate=EXCLUDED.rate,is_operational=true,fetched_at=NOW(),notes=EXCLUDED.notes
       RETURNING *
     `, [date, value, txt(notes)]);
-    await client.query(`INSERT INTO shiny.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
+    await client.query(`INSERT INTO gmx.auditoria(fecha,modulo,accion,referencia,detalle,usuario)
       VALUES(NOW(),'FINANZAS','TC_MANUAL','USD_MXN',$1,$2)`, [
-    `${date} · ${value} MXN/USD · Tijuana`, user?.email || brandText("Shiny Local")]
+    `${date} · ${value} MXN/USD · Tijuana`, user?.email || brandText("GMX Local")]
     );
     await client.query('COMMIT');
     return saved.rows[0];
@@ -178,7 +178,7 @@ export async function saveTijuanaUsdMxn({ rate, rateDate = '', notes = '' } = {}
 export async function listUsdMxnHistory(limit = 30) {
   const n = Math.min(Math.max(Math.trunc(num(limit) || 30), 1), 200);
   const r = await query(`SELECT row_id,rate_date,rate,source,location,is_operational,fetched_at,notes
-    FROM shiny.fx_rates WHERE base_currency='USD' AND quote_currency='MXN'
+    FROM gmx.fx_rates WHERE base_currency='USD' AND quote_currency='MXN'
     ORDER BY rate_date DESC,fetched_at DESC LIMIT $1`, [n]);
   return r.rows;
 }

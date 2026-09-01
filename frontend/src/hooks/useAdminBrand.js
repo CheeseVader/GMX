@@ -5,7 +5,7 @@ import { api } from '../services/api.js';
 const CACHE_KEY = 'Shiny_ADMIN_BRAND';
 
 function normalize(value = {}) {
-  const name = String(value.name || brand.shortName || brand.name || 'Shiny').trim() || 'Shiny';
+  const name = String(value.name || brand.shortName || brand.name || 'GMX').trim() || 'GMX';
   const logoText = String(value.logoText || name.slice(0, 1)).trim().slice(0, 4) || name.slice(0, 1);
   const descriptor = String(value.descriptor || 'LOCAL').trim().toUpperCase() || 'LOCAL';
   return { name, logoText, descriptor };

@@ -5,7 +5,7 @@ let confirmExternal = null;
 
 export function notify(message, options = {}) {
   if (notifyExternal) return notifyExternal(message, options);
-  console.info(brandText("[Shiny]"), message);
+  console.info(brandText("[GMX]"), message);
 }
 export function confirmAction(message, options = {}) {
   if (confirmExternal) return confirmExternal(message, options);

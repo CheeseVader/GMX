@@ -44,9 +44,13 @@ import { initStorefrontLiveSync, storefrontMutationPublisher, stopStorefrontLive
 import { publicApiRateLimit, authRateLimit } from './middleware/publicRateLimit.js';
 import trafficHealthRouter from './routes/trafficHealth.js';
 import dashboardRouter from './routes/dashboard.js';
+import membershipsRouter from './routes/memberships.js';
+import publicMembershipsRouter from './routes/publicMemberships.js';
+import clientMembershipsRouter from './routes/clientMemberships.js';
 import productImagesRouter from './routes/productImages.js';
 import { startProductImageEnrichmentScheduler } from './productImageEnrichmentService.js';
 
+import transferPaymentsAdminRouter from './routes/transferPaymentsAdmin.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -108,14 +112,16 @@ app.use('/api/public/product-images', express.static(path.resolve(__dirname, '..
 app.get('/api/health', async (_req, res) => {
   try {
     const r = await query(`SELECT current_database() AS database,current_user AS db_user,current_schema() AS schema,NOW() AS server_time`);
-    res.json({ success: true, service: brandText("Shiny Local API"), mode: 'LOCAL_SECURE', database: r.rows[0], db_ms: r.ms });
+    res.json({ success: true, service: brandText("GMX Local API"), mode: 'LOCAL_SECURE', database: r.rows[0], db_ms: r.ms });
   } catch (e) {res.status(503).json({ success: false, error: 'DATABASE_UNAVAILABLE', message: e.message });}
 });
 
 app.use('/api/auth', authRateLimit, authRouter);
 app.use('/api/public', publicApiRateLimit);
 app.use('/api/public/live-sync', storefrontLiveRouter);
+app.use('/api/public', publicMembershipsRouter);
 app.use('/api/public', publicStoreRouter);
+app.use('/api/client', clientMembershipsRouter);
 app.use('/api/client', clientAccountRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/v1', requireAuth);
@@ -142,6 +148,7 @@ app.use('/api/v1/branches', requireModule('SUCURSALES'), branchesRouter);
 app.use('/api/v1/inventory',requireModule('INVENTARIO'),inventoryStockImportRouter);
 app.use('/api/v1/inventory', requireModule('INVENTARIO'), inventoryRouter);
 app.use('/api/v1/orders', requireModule('PEDIDOS'), ordersRouter);
+app.use('/api/v1/transfer-payments', requireModule('PEDIDOS'), transferPaymentsAdminRouter);
 app.use('/api/v1/purchases', requireModule('COMPRAS'), purchasesRouter);
 app.use('/api/v1/cash', requireModule('CAJA'), cashRouter);
 app.use('/api/v1/tcg', requireModule('TCG'), tcgRouter);
@@ -154,6 +161,7 @@ app.use('/api/v1/content', requireModule('CONTENIDO'), contentRouter);
 app.use('/api/v1/notifications', requireModule('NOTIFICACIONES'), notificationsRouter);
 app.use('/api/v1/export', requireModule('REPORTES'), dataExportRouter);
 app.use('/api/v1/benefits', requireModule('COMERCIAL'), benefitsRouter);
+app.use('/api/v1/memberships', requireModule('COMERCIAL'), membershipsRouter);
 app.use('/api/v1/cms', requireModule('CONTENIDO'), cmsRouter);
 
 if (process.env.NODE_ENV === 'production') {
@@ -163,11 +171,11 @@ if (process.env.NODE_ENV === 'production') {
 
 const server = app.listen(PORT, '127.0.0.1', () => {
   console.log(brandText(`[Shiny] API local segura: http://localhost:${PORT}`));
-  console.log(brandText("[Shiny] API mode: LOCAL_SECURE"));
+  console.log(brandText("[GMX] API mode: LOCAL_SECURE"));
   startTcgSyncScheduler();
   startProductImageEnrichmentScheduler();
   startAlertScheduler();
-  initStorefrontLiveSync().catch((e) => console.error(brandText("[Shiny] Storefront live sync:"), e.message));
+  initStorefrontLiveSync().catch((e) => console.error(brandText("[GMX] Storefront live sync:"), e.message));
 });
 
 async function shutdown(signal) {

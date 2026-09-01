@@ -100,7 +100,7 @@ async function tableExists(db, table) {
       SELECT 1
       FROM information_schema.tables
       WHERE
-        table_schema='shiny'
+        table_schema='gmx'
         AND table_name=$1
     ) AS exists
     `,
@@ -117,7 +117,7 @@ async function columnExists(db, table, column) {
       SELECT 1
       FROM information_schema.columns
       WHERE
-        table_schema='shiny'
+        table_schema='gmx'
         AND table_name=$1
         AND column_name=$2
     ) AS exists
@@ -129,7 +129,7 @@ async function columnExists(db, table, column) {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-007 R6D CONTROLLED CLEANUP")
+  section(brandText("GMX — CLIENTES-LOYALTY-007 R6D CONTROLLED CLEANUP")
 
   );
 
@@ -162,7 +162,7 @@ async function main() {
         inventario_liberado,
         beneficios_revertidos,
         pos_idempotency_key
-      FROM shiny.pedidos
+      FROM gmx.pedidos
       WHERE id_pedido=$1
       `,
       [TARGET_ORDER]
@@ -281,7 +281,7 @@ async function main() {
           const r = await db.query(
             `
             SELECT COUNT(*)::bigint AS total
-            FROM shiny.caja_movimientos
+            FROM gmx.caja_movimientos
             WHERE ${clauses.join(" OR ")}
             `,
             params
@@ -304,7 +304,7 @@ async function main() {
         const r = await db.query(
           `
           SELECT COUNT(*)::bigint AS total
-          FROM shiny.${table}
+          FROM gmx.${table}
           WHERE id_pedido=$1
           `,
           [TARGET_ORDER]
@@ -348,7 +348,7 @@ async function main() {
       {
         const r = await db.query(
           `
-          DELETE FROM shiny.promociones_redenciones
+          DELETE FROM gmx.promociones_redenciones
           WHERE id_pedido=$1
           `,
           [TARGET_ORDER]
@@ -365,7 +365,7 @@ async function main() {
      */
     const loyalty = await db.query(
       `
-      DELETE FROM shiny.fidelidad_movimientos
+      DELETE FROM gmx.fidelidad_movimientos
       WHERE id_pedido=$1
       `,
       [TARGET_ORDER]
@@ -393,7 +393,7 @@ async function main() {
       {
         const r = await db.query(
           `
-          DELETE FROM shiny.payment_transactions
+          DELETE FROM gmx.payment_transactions
           WHERE id_pedido=$1
           `,
           [TARGET_ORDER]
@@ -446,7 +446,7 @@ async function main() {
     if (cajaClauses.length) {
       const r = await db.query(
         `
-        DELETE FROM shiny.caja_movimientos
+        DELETE FROM gmx.caja_movimientos
         WHERE ${cajaClauses.join(" OR ")}
         `,
         cajaParams
@@ -462,7 +462,7 @@ async function main() {
      */
     const payments = await db.query(
       `
-      DELETE FROM shiny.pedido_pagos
+      DELETE FROM gmx.pedido_pagos
       WHERE id_pedido=$1
       `,
       [TARGET_ORDER]
@@ -477,7 +477,7 @@ async function main() {
      */
     const details = await db.query(
       `
-      DELETE FROM shiny.detalle_pedidos
+      DELETE FROM gmx.detalle_pedidos
       WHERE id_pedido=$1
       `,
       [TARGET_ORDER]
@@ -493,7 +493,7 @@ async function main() {
     const deletedOrder =
     await db.query(
       `
-        DELETE FROM shiny.pedidos
+        DELETE FROM gmx.pedidos
         WHERE
           id_pedido=$1
           AND estado_pedido='CANCELADO'
@@ -531,7 +531,7 @@ async function main() {
           id_cliente,
           nombre,
           email
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE id_cliente=$1
         `,
         [clientId]
@@ -564,7 +564,7 @@ async function main() {
         await db.query(
           `
             SELECT COUNT(*)::bigint AS total
-            FROM shiny.pedidos
+            FROM gmx.pedidos
             WHERE id_cliente=$1
             `,
           [clientId]
@@ -583,7 +583,7 @@ async function main() {
         const account =
         await db.query(
           `
-            DELETE FROM shiny.fidelidad_cuentas
+            DELETE FROM gmx.fidelidad_cuentas
             WHERE id_cliente=$1
             `,
           [clientId]
@@ -596,7 +596,7 @@ async function main() {
         const deletedClient =
         await db.query(
           `
-            DELETE FROM shiny.clientes
+            DELETE FROM gmx.clientes
             WHERE
               row_id=$1
               AND id_cliente=$2
@@ -640,7 +640,7 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedidos
+          FROM gmx.pedidos
           WHERE id_pedido=$1
              OR pos_idempotency_key
                 LIKE 'LOYALTY007-%'
@@ -649,28 +649,28 @@ async function main() {
 
         (
           SELECT COUNT(*)
-          FROM shiny.detalle_pedidos
+          FROM gmx.detalle_pedidos
           WHERE id_pedido=$1
         )::bigint
           AS detalles,
 
         (
           SELECT COUNT(*)
-          FROM shiny.pedido_pagos
+          FROM gmx.pedido_pagos
           WHERE id_pedido=$1
         )::bigint
           AS pagos,
 
         (
           SELECT COUNT(*)
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
           WHERE id_pedido=$1
         )::bigint
           AS loyalty,
 
         (
           SELECT COUNT(*)
-          FROM shiny.clientes
+          FROM gmx.clientes
           WHERE
             nombre LIKE
               'CLIENTES LOYALTY007 TEST %'

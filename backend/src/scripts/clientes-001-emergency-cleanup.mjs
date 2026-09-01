@@ -99,7 +99,7 @@ const EMAIL = "clientes001.1787233193475@example.invalid";
 const PHONE = "5553193475";
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-001 EMERGENCY CLEANUP"));
+  section(brandText("GMX — CLIENTES-001 EMERGENCY CLEANUP"));
 
   console.log(`TARGET_ROW_ID=${ROW_ID}`);
   console.log(`TARGET_ID_CLIENTE=${ID_CLIENTE}`);
@@ -131,7 +131,7 @@ async function main() {
         nombre,
         telefono,
         email
-      FROM shiny.clientes
+      FROM gmx.clientes
       WHERE row_id=$1
       `,
       [ROW_ID]
@@ -184,7 +184,7 @@ async function main() {
             tipo,
             valor_normalizado,
             id_cliente
-          FROM shiny.cliente_identidad_unica
+          FROM gmx.cliente_identidad_unica
           WHERE id_cliente=$1
           ORDER BY row_id
           `,
@@ -214,7 +214,7 @@ async function main() {
             nombre,
             telefono,
             email
-          FROM shiny.clientes
+          FROM gmx.clientes
           WHERE row_id=$1
           FOR UPDATE
           `,
@@ -245,7 +245,7 @@ async function main() {
       const deleted =
       await client.query(
         `
-          DELETE FROM shiny.clientes
+          DELETE FROM gmx.clientes
           WHERE row_id=$1
             AND id_cliente=$2
             AND email=$3
@@ -286,7 +286,7 @@ async function main() {
       await client.query(
         `
           SELECT COUNT(*)::bigint AS total
-          FROM shiny.clientes
+          FROM gmx.clientes
           WHERE row_id=$1
              OR id_cliente=$2
              OR email=$3
@@ -298,7 +298,7 @@ async function main() {
       await client.query(
         `
           SELECT COUNT(*)::bigint AS total
-          FROM shiny.cliente_identidad_unica
+          FROM gmx.cliente_identidad_unica
           WHERE id_cliente=$1
           `,
         [ID_CLIENTE]
@@ -348,7 +348,7 @@ async function main() {
           nombre,
           telefono,
           email
-        FROM shiny.clientes
+        FROM gmx.clientes
         WHERE
           row_id=$1
           OR id_cliente=$2
@@ -368,7 +368,7 @@ async function main() {
           tipo,
           valor_normalizado,
           id_cliente
-        FROM shiny.cliente_identidad_unica
+        FROM gmx.cliente_identidad_unica
         WHERE id_cliente=$1
         ORDER BY row_id
         `,

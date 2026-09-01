@@ -4,7 +4,7 @@ import { query, pool } from "../db.js";
 try {
 
   console.log("============================================================");
-  console.log(brandText("Shiny CHECKPOINT FINAL - DATABASE PRECHECK"));
+  console.log(brandText("GMX CHECKPOINT FINAL - DATABASE PRECHECK"));
   console.log("============================================================");
 
   const info = await query(`
@@ -12,12 +12,12 @@ try {
       current_database() AS database,
       current_user AS usuario,
       NOW() AS fecha,
-      (SELECT COUNT(*) FROM shiny.pedidos)::int AS pedidos,
-      (SELECT COUNT(*) FROM shiny.payment_transactions)::int AS payment_transactions,
-      (SELECT COUNT(*) FROM shiny.devoluciones)::int AS devoluciones,
-      (SELECT COUNT(*) FROM shiny.devoluciones_reembolsos)::int AS reembolsos,
-      (SELECT COUNT(*) FROM shiny.productos)::int AS productos,
-      (SELECT COUNT(*) FROM shiny.tcg_buylist)::int AS buylist
+      (SELECT COUNT(*) FROM gmx.pedidos)::int AS pedidos,
+      (SELECT COUNT(*) FROM gmx.payment_transactions)::int AS payment_transactions,
+      (SELECT COUNT(*) FROM gmx.devoluciones)::int AS devoluciones,
+      (SELECT COUNT(*) FROM gmx.devoluciones_reembolsos)::int AS reembolsos,
+      (SELECT COUNT(*) FROM gmx.productos)::int AS productos,
+      (SELECT COUNT(*) FROM gmx.tcg_buylist)::int AS buylist
   `);
 
   console.table(info.rows);
@@ -32,7 +32,7 @@ try {
 
       (
         SELECT COUNT(*)
-        FROM shiny.payment_transactions
+        FROM gmx.payment_transactions
         WHERE COALESCE(provider_payment_id,'') LIKE 'POS003-%'
            OR COALESCE(provider_payment_id,'') LIKE 'MP006-%'
            OR COALESCE(provider_payment_id,'') LIKE 'MP007-%'
@@ -42,14 +42,14 @@ try {
 
       (
         SELECT COUNT(*)
-        FROM shiny.devoluciones
+        FROM gmx.devoluciones
         WHERE UPPER(COALESCE(motivo,'')) = 'TEST'
            OR UPPER(COALESCE(notas,'')) LIKE '%TEST%'
       )::int AS return_test_rows,
 
       (
         SELECT COUNT(*)
-        FROM shiny.productos
+        FROM gmx.productos
         WHERE UPPER(COALESCE(sku,'')) LIKE 'TEST-%'
            OR UPPER(COALESCE(nombre,'')) LIKE '%PRODUCT TEST%'
            OR UPPER(COALESCE(nombre,'')) LIKE '%TEST PRODUCTOS%'
@@ -57,7 +57,7 @@ try {
 
       (
         SELECT COUNT(*)
-        FROM shiny.devoluciones_reembolsos
+        FROM gmx.devoluciones_reembolsos
         WHERE COALESCE(id_reembolso,'') LIKE 'REEMB-MP006-%'
            OR COALESCE(id_reembolso,'') LIKE 'REEMB-MP007-%'
            OR COALESCE(payment_id,'') LIKE 'DEV007-%'

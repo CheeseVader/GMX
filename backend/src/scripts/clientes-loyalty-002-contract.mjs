@@ -230,7 +230,7 @@ function searchContexts(text, patterns, radius = 8) {
 }
 
 async function main() {
-  section(brandText("Shiny — CLIENTES-LOYALTY-002 CONTRACT DEEP-DIVE")
+  section(brandText("GMX — CLIENTES-LOYALTY-002 CONTRACT DEEP-DIVE")
 
   );
 
@@ -392,7 +392,7 @@ async function main() {
           column_default
         FROM information_schema.columns
         WHERE
-          table_schema='shiny'
+          table_schema='gmx'
           AND table_name='fidelidad_movimientos'
         ORDER BY ordinal_position
       `);
@@ -414,7 +414,7 @@ async function main() {
           column_default
         FROM information_schema.columns
         WHERE
-          table_schema='shiny'
+          table_schema='gmx'
           AND table_name='fidelidad_cuentas'
         ORDER BY ordinal_position
       `);
@@ -442,7 +442,7 @@ async function main() {
           referencia,
           motivo,
           reversa_de
-        FROM shiny.fidelidad_movimientos
+        FROM gmx.fidelidad_movimientos
         WHERE tipo IN (
           'DEVOLUCION_RETIRO',
           'REVERSA'
@@ -498,7 +498,7 @@ async function main() {
             0
           ) AS reversed_points
 
-        FROM shiny.fidelidad_movimientos g
+        FROM gmx.fidelidad_movimientos g
 
         WHERE
           g.id_pedido IS NOT NULL
@@ -550,7 +550,7 @@ async function main() {
               0
             ) AS removed
 
-          FROM shiny.fidelidad_movimientos
+          FROM gmx.fidelidad_movimientos
 
           WHERE id_pedido IS NOT NULL
 
@@ -592,9 +592,9 @@ async function main() {
             AS original_tipo,
           original.puntos
             AS original_puntos
-        FROM shiny.fidelidad_movimientos r
+        FROM gmx.fidelidad_movimientos r
 
-        LEFT JOIN shiny.fidelidad_movimientos original
+        LEFT JOIN gmx.fidelidad_movimientos original
           ON original.id_movimiento=r.reversa_de
 
         WHERE r.reversa_de IS NOT NULL

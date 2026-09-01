@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
     res.setHeader('Cache-Control', 'private, max-age=10');
     res.json({ success: true, data });
   } catch (e) {
-    console.error(brandText("[Shiny Dashboard]"), e);
+    console.error(brandText("[GMX Dashboard]"), e);
     res.status(500).json({ success: false, error: 'DASHBOARD_REQUEST_FAILED', message: e.message });
   }
 });
@@ -19,7 +19,7 @@ router.get('/details/:kind', async (req,res)=>{
     res.setHeader('Cache-Control','private, max-age=10');
     res.json({success:true,data});
   }catch(e){
-    console.error(brandText("[Shiny Dashboard detail]"),e);
+    console.error(brandText("[GMX Dashboard detail]"),e);
     res.status(e.status||500).json({success:false,error:e.message==='DASHBOARD_DETAIL_KIND_INVALID'?e.message:'DASHBOARD_DETAIL_REQUEST_FAILED',message:e.message});
   }
 });

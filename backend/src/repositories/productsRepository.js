@@ -45,14 +45,14 @@ export async function listProducts({ search = '', category = '', status = '', li
   }
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const count = await query(`SELECT COUNT(*)::bigint total FROM shiny.productos ${whereSql}`, values);
+  const count = await query(`SELECT COUNT(*)::bigint total FROM gmx.productos ${whereSql}`, values);
 
   values.push(limit, offset);
   const li = values.length - 1,oi = values.length;
 
   const rows = await query(`
     SELECT ${LIST_COLUMNS}
-    FROM shiny.productos
+    FROM gmx.productos
     ${whereSql}
     ORDER BY COALESCE(nombre,''),row_id
     LIMIT $${li} OFFSET $${oi}
@@ -67,7 +67,7 @@ export async function productStats() {
       SELECT id_producto,
         COALESCE(SUM(stock),0)::bigint stock_total,
         COALESCE(SUM(stock_minimo),0)::bigint minimum_total
-      FROM shiny.inventario_sucursales
+      FROM gmx.inventario_sucursales
       GROUP BY id_producto
     )
     SELECT
@@ -79,7 +79,7 @@ export async function productStats() {
       COALESCE(SUM(COALESCE(inv.stock_total,0)),0)::bigint unidades,
       COALESCE(SUM(COALESCE(inv.stock_total,0)*COALESCE(p.costo,0)),0)::numeric valor_costo,
       COALESCE(SUM(COALESCE(inv.stock_total,0)*COALESCE(p.precio,0)),0)::numeric valor_venta
-    FROM shiny.productos p
+    FROM gmx.productos p
     LEFT JOIN inv ON inv.id_producto=p.id
   `);
 }
@@ -90,8 +90,8 @@ export async function productCategories() {
       TRIM(c.nombre) AS nombre,
       c.estado,
       COUNT(p.row_id)::bigint AS total
-    FROM shiny.categorias c
-    LEFT JOIN shiny.productos p
+    FROM gmx.categorias c
+    LEFT JOIN gmx.productos p
       ON LOWER(TRIM(COALESCE(p.categoria,'')))=LOWER(TRIM(COALESCE(c.nombre,'')))
     WHERE NULLIF(TRIM(COALESCE(c.nombre,'')),'') IS NOT NULL
       AND LOWER(TRIM(COALESCE(c.estado,'Activo')))='activo'
@@ -106,7 +106,7 @@ async function canonicalActiveCategory(client, category) {
 
   const found = await client.query(`
     SELECT id,TRIM(nombre) nombre,estado
-    FROM shiny.categorias
+    FROM gmx.categorias
     WHERE LOWER(TRIM(COALESCE(nombre,'')))=LOWER(TRIM($1))
       AND LOWER(TRIM(COALESCE(estado,'Activo')))='activo'
     LIMIT 1
@@ -121,7 +121,7 @@ export async function getProduct(identifier) {
 
   const r = await query(`
     SELECT ${LIST_COLUMNS}
-    FROM shiny.productos
+    FROM gmx.productos
     WHERE row_id = CASE
       WHEN $1 ~ '^[0-9]+$' THEN $1::bigint
       ELSE NULL
@@ -140,7 +140,7 @@ export async function productIntegrity() {
            ARRAY_AGG(row_id ORDER BY row_id) row_ids,
            ARRAY_AGG(COALESCE(id,'') ORDER BY row_id) ids,
            ARRAY_AGG(COALESCE(nombre,'') ORDER BY row_id) nombres
-    FROM shiny.productos
+    FROM gmx.productos
     WHERE NULLIF(TRIM(COALESCE(sku,'')),'') IS NOT NULL
     GROUP BY UPPER(TRIM(sku))
     HAVING COUNT(*)>1
@@ -153,7 +153,7 @@ async function assertSkuAvailable(client, sku, excludeRowId = null) {
   const normalized = String(sku || '').trim();
   if (!normalized) throw new Error('PRODUCT_SKU_REQUIRED');
   const values = [normalized];
-  let sql = `SELECT row_id,id,sku,nombre FROM shiny.productos
+  let sql = `SELECT row_id,id,sku,nombre FROM gmx.productos
            WHERE UPPER(TRIM(COALESCE(sku,'')))=UPPER(TRIM($1))`;
   if (excludeRowId !== null) {values.push(excludeRowId);sql += ` AND row_id<>$2`;}
   sql += ` LIMIT 1`;
@@ -172,7 +172,7 @@ export async function createProduct(input, context = {}) {
     const canonicalCategory = await canonicalActiveCategory(client, input.categoria);
 
     const created = await client.query(`
-      INSERT INTO shiny.productos(
+      INSERT INTO gmx.productos(
         sku,codigo_barras,nombre,descripcion,precio,costo,
         stock,stock_minimo,categoria,imagen,estado,fecha_creacion,fecha_actualizacion,
         moneda_precio,precio_origen,tcg_game_code
@@ -197,7 +197,7 @@ export async function createProduct(input, context = {}) {
 
       const branch = await client.query(`
         SELECT id_sucursal,nombre_sucursal
-        FROM shiny.sucursales
+        FROM gmx.sucursales
         WHERE id_sucursal=$1 AND COALESCE(activa,true)=true
         LIMIT 1
       `, [input.initial_branch_id]);
@@ -206,7 +206,7 @@ export async function createProduct(input, context = {}) {
       const b = branch.rows[0];
 
       await client.query(`
-        INSERT INTO shiny.inventario_sucursales(
+        INSERT INTO gmx.inventario_sucursales(
           id_registro,id_sucursal,sucursal,
           id_producto,sku,producto,
           stock,stock_minimo,fecha_actualizacion
@@ -227,7 +227,7 @@ export async function createProduct(input, context = {}) {
        * que crea producto e inventario por sucursal.
        */
       await client.query(`
-        INSERT INTO shiny.movimientos_inventario_sucursales(
+        INSERT INTO gmx.movimientos_inventario_sucursales(
           id_movimiento,
           fecha,
           id_sucursal,
@@ -292,7 +292,7 @@ export async function updateProduct(identifier, input) {
 
     const target = await client.query(`
       SELECT row_id
-      FROM shiny.productos
+      FROM gmx.productos
       WHERE row_id = CASE
         WHEN $1 ~ '^[0-9]+$' THEN $1::bigint
         ELSE NULL
@@ -312,7 +312,7 @@ export async function updateProduct(identifier, input) {
     await assertSkuAvailable(client, input.sku, rowId);
     const canonicalCategory = await canonicalActiveCategory(client, input.categoria);
     const r = await client.query(`
-      UPDATE shiny.productos SET
+      UPDATE gmx.productos SET
         sku=NULLIF($1,''),
         codigo_barras=NULLIF($2,''),
         nombre=NULLIF($3,''),
@@ -349,7 +349,7 @@ export async function updateProduct(identifier, input) {
        * y sera auditado por separado.
        */
       await client.query(`
-        UPDATE shiny.inventario_sucursales
+        UPDATE gmx.inventario_sucursales
         SET sku=$1,
             producto=$2,
             fecha_actualizacion=NOW()
@@ -375,7 +375,7 @@ async function productHistoryReferences(client, idProducto) {
   const catalog = await client.query(`
     SELECT table_name
     FROM information_schema.columns
-    WHERE table_schema='shiny'
+    WHERE table_schema='gmx'
       AND column_name='id_producto'
       AND table_name NOT IN ('productos','inventario_sucursales')
     ORDER BY table_name
@@ -389,7 +389,7 @@ async function productHistoryReferences(client, idProducto) {
     if (!/^[a-zA-Z0-9_]+$/.test(table)) continue;
 
     const count = await client.query(
-      `SELECT COUNT(*)::bigint total FROM shiny."${table}" WHERE id_producto=$1`,
+      `SELECT COUNT(*)::bigint total FROM gmx."${table}" WHERE id_producto=$1`,
       [idProducto]
     );
     const n = Number(count.rows[0]?.total || 0);
@@ -417,7 +417,7 @@ export async function deleteProduct(identifier, context = {}) {
 
     const productResult = await client.query(`
       SELECT row_id,id,sku,nombre,estado
-      FROM shiny.productos
+      FROM gmx.productos
       WHERE row_id = CASE
         WHEN $1 ~ '^[0-9]+$' THEN $1::bigint
         ELSE NULL
@@ -436,7 +436,7 @@ export async function deleteProduct(identifier, context = {}) {
 
     const inventory = await client.query(`
       SELECT row_id,id_sucursal,sucursal,COALESCE(stock,0)::bigint stock
-      FROM shiny.inventario_sucursales
+      FROM gmx.inventario_sucursales
       WHERE id_producto=$1
       FOR UPDATE
     `, [product.id]);
@@ -470,7 +470,7 @@ export async function deleteProduct(identifier, context = {}) {
      */
     if (history.total > 0) {
       const deactivated = await client.query(`
-        UPDATE shiny.productos
+        UPDATE gmx.productos
         SET estado='Inactivo',
             fecha_actualizacion=NOW()
         WHERE row_id=$1
@@ -493,13 +493,13 @@ export async function deleteProduct(identifier, context = {}) {
      * snapshots de inventario en cero antes del maestro.
      */
     await client.query(`
-      DELETE FROM shiny.inventario_sucursales
+      DELETE FROM gmx.inventario_sucursales
       WHERE id_producto=$1
         AND COALESCE(stock,0)=0
     `, [product.id]);
 
     const deleted = await client.query(`
-      DELETE FROM shiny.productos
+      DELETE FROM gmx.productos
       WHERE row_id=$1
       RETURNING row_id,id,sku,nombre,estado
     `, [product.row_id]);

@@ -8,7 +8,7 @@ function valueLabel(promotion = {}) {
   const type = String(promotion.tipo || '').toUpperCase();
   if (type === 'PORCENTAJE') return `${Number(promotion.valor || 0)}% de descuento`;
   if (type === 'MONTO') return `$${Number(promotion.valor || 0).toLocaleString('es-MX')} de descuento`;
-  if (type.includes('PUNTO')) return `${Number(promotion.valor || 2)}x puntos Shiny`;
+  if (type.includes('PUNTO')) return `${Number(promotion.valor || 2)}x puntos GMX`;
   return 'Beneficio exclusivo';
 }
 
@@ -55,7 +55,7 @@ export default function StorePromotionsPage() {
   }
 
   return <main className="public-page shiny-promotions-page">
-    <div className="public-page-head shiny-promotions-head"><small>{brandText('OFERTAS Shiny')}</small><h1>Promociones</h1><p>Aprovecha beneficios exclusivos en cartas, accesorios y productos sellados.</p></div>
+    <div className="public-page-head shiny-promotions-head"><small>{brandText('OFERTAS GMX')}</small><h1>Promociones</h1><p>Aprovecha beneficios exclusivos en cartas, accesorios y productos sellados.</p></div>
 
     <section className="shiny-featured-promotion">
       <div className="shiny-featured-copy">
@@ -97,6 +97,7 @@ export default function StorePromotionsPage() {
 
     <section className="shiny-promo-bottom">
       <article><PublicIcon name="mail" size={34}/><div><h2>Recibe próximas promociones</h2><p>Crea tu cuenta para consultar beneficios y pedidos Shiny.</p><Link to="/tienda/cuenta">Ingresar / Crear cuenta</Link></div></article>
-    </section>
+          <article><PublicIcon name="star" size={34}/><div><h2>Fidelidad GMX</h2><p>Compra, acumula puntos y obtÃ©n recompensas exclusivas.</p><div className="shiny-loyalty-progress"><i/></div><Link to="/tienda/cuenta">Conoce los beneficios</Link></div></article>
+</section>
   </main>;
 }

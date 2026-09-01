@@ -3,7 +3,7 @@ import { useEffect,useState } from 'react';
 
 const routeModules=[
   ['/admin/dashboard','DASHBOARD'],['/admin/productos','PRODUCTOS'],['/admin/alta-externa-beta','PRODUCTOS'],['/admin/busqueda-visual-beta','PRODUCTOS'],['/admin/categorias','PRODUCTOS'],['/admin/clientes','CLIENTES'],
-  ['/admin/inventario','INVENTARIO'],['/admin/sucursales','SUCURSALES'],['/admin/pedidos','PEDIDOS'],
+  ['/admin/inventario','INVENTARIO'],['/admin/sucursales','SUCURSALES'],['/admin/pedidos','PEDIDOS'],['/admin/historial-ventas','PEDIDOS'],
   ['/admin/compras','COMPRAS'],['/admin/caja','CAJA'],['/admin/comercial','COMERCIAL'],
   ['/admin/tcg-operacion','TCG'],['/admin/tcg','TCG'],['/admin/buylist','BUYLIST'],
   ['/admin/promociones','CONTENIDO'],['/admin/contenido','CONTENIDO'],['/admin/notificaciones','NOTIFICACIONES'],['/admin/reportes','REPORTES'],

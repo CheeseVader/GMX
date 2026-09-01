@@ -10,7 +10,7 @@ router.get('/stock-template.xlsx',async(_req,res)=>{
     res.setHeader('Content-Disposition','attachment; filename="SHINY_Inventario_Importacion_Stock_DBA.xlsx"');
     res.send(buffer);
   }catch(error){
-    console.error('[Shiny Inventory Template]',error);
+    console.error('[GMX Inventory Template]',error);
     res.status(500).json({success:false,error:'INVENTORY_TEMPLATE_FAILED',message:error.message});
   }
 });
@@ -24,7 +24,7 @@ router.post('/import-stock',async(req,res)=>{
     );
     res.json({success:true,data});
   }catch(error){
-    console.error('[Shiny Inventory Import]',error);
+    console.error('[GMX Inventory Import]',error);
     res.status(400).json({success:false,error:'INVENTORY_IMPORT_FAILED',message:error.message});
   }
 });
