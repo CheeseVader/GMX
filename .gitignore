@@ -89,3 +89,6 @@ backend/uploads/products/*
 
 # Respaldos locales GMX
 BACKUP-AI-VISION-LAB-*/
+
+# Salidas locales de releases
+release-output/
