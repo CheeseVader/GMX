@@ -15,3 +15,9 @@ if [ -f /opt/gmx/app/deploy/rpi/RECUPERAR-GMX-APP-R2.7.sh ]; then
   /opt/gmx/app/deploy/rpi/RECUPERAR-GMX-APP-R2.7.sh || true
 fi
 # GMX_APP_RECOVERY_R2_7_END
+# GMX_CLEAN_STORE_R2_6_1_BEGIN
+if [ -f /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.1.sh ]; then
+  chmod 0755 /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.1.sh
+  /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.1.sh
+fi
+# GMX_CLEAN_STORE_R2_6_1_END
