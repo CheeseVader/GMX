@@ -23,7 +23,7 @@ export default function RpiWifiManager({open,onClose}){
       setConnectedSsid(d.connectedSsid||'');
       if(!selected&&d.connectedSsid)setSelected(d.connectedSsid);
     }catch(e){
-      setMessage(e.message==='local_kiosk_only'?'Wi-Fi solo estÃ¡ disponible desde el kiosko local.':'No fue posible obtener las redes Wi-Fi.');
+      setMessage(e.message==='local_kiosk_only'?'Wi-Fi solo estÃ¡ disponible desde el kiosko local.':'No fue posible obtener las redes Wi-Fi. Revisa el detalle mostrado abajo.');
     }finally{setLoading(false)}
   }
 

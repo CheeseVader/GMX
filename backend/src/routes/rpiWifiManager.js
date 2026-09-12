@@ -46,28 +46,61 @@ function splitEscaped(line){
   out.push(cur);return out;
 }
 
-router.get('/networks',localKioskOnly,async(_req,res)=>{
+router.get('/networks', async (req,res)=>{
   try{
-    const raw=await helper('scan');
-    const activeRaw=await helper('active');
-    let connectedSsid='';
-    for(const line of activeRaw.split(/\r?\n/)){
-      if(!line)continue;
-      const p=splitEscaped(line);
-      if(p[0]==='yes'){connectedSsid=p.slice(1,-1).join(':');break}
+    if(process.platform!=='linux'){
+      return res.status(400).json({success:false,error:'WIFI_ONLY_AVAILABLE_ON_RPI'});
     }
-    const by=new Map();
-    for(const line of raw.split(/\r?\n/)){
-      if(!line)continue;
-      const [inUse,ssid,signalRaw,securityRaw]=splitEscaped(line);
-      if(!ssid)continue;
-      const item={ssid,signal:Math.max(0,Math.min(100,Number(signalRaw)||0)),secure:String(securityRaw||'')!==''&&String(securityRaw||'')!=='--',security:String(securityRaw||''),connected:inUse==='*'};
-      const prev=by.get(ssid);
-      if(!prev||item.connected||item.signal>prev.signal)by.set(ssid,item);
+
+    const host=String(req.hostname||req.headers.host||'').toLowerCase().split(':')[0];
+    const remote=String(req.socket?.remoteAddress||'');
+    const localHost=['127.0.0.1','localhost','::1'].includes(host);
+    const loopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(remote);
+
+    if(!localHost && !loopback){
+      return res.status(403).json({success:false,error:'WIFI_LOCAL_ONLY'});
     }
-    const networks=[...by.values()].sort((a,b)=>Number(b.connected)-Number(a.connected)||b.signal-a.signal||a.ssid.localeCompare(b.ssid));
-    res.json({ok:true,connectedSsid,networks});
-  }catch(e){res.status(500).json({ok:false,error:'wifi_scan_failed'})}
+
+    const {stdout,stderr}=await execFileAsync('sudo',['/usr/local/bin/gmx-wifi-helper','scan'],{
+      timeout:20000,
+      maxBuffer:1024*1024
+    });
+
+    const text=String(stdout||'').trim();
+    if(!text){
+      throw new Error(String(stderr||'WIFI_SCAN_EMPTY').trim());
+    }
+
+    const rows=text.split(/\r?\n/)
+      .map(line=>line.trim())
+      .filter(Boolean)
+      .map(line=>{
+        const parts=line.split(':');
+        if(parts.length<4) return null;
+        const inUse=parts.shift();
+        const security=parts.pop();
+        const signal=parts.pop();
+        const ssid=parts.join(':').replace(/\\:/g,':').replace(/\\\\/g,'\\').trim();
+        if(!ssid) return null;
+        return {
+          ssid,
+          signal:Number(signal)||0,
+          security:String(security||'').trim(),
+          connected:String(inUse||'').trim()==='*'
+        };
+      })
+      .filter(Boolean)
+      .sort((a,b)=>Number(b.connected)-Number(a.connected)||b.signal-a.signal);
+
+    res.json({success:true,data:rows,diagnostic:rows.length?'OK':'NO_NETWORKS_RETURNED'});
+  }catch(e){
+    console.error('[GMX][WIFI][SCAN]',e);
+    res.status(500).json({
+      success:false,
+      error:'WIFI_SCAN_FAILED',
+      message:e?.stderr?.trim?.() || e?.message || String(e)
+    });
+  }
 });
 
 let connecting=false;

@@ -84,17 +84,48 @@ export default function PromotionsLoyaltyPage(){
     setForm(emptyPromotion());
     setEditorOpen(true);
   }
-
-
   async function save(){
+    setMessage('');
+
+    const nombre=String(form.nombre||'').trim();
+    const codigo=String(form.codigo||'').trim();
+    const tipo=String(form.tipo||'').toUpperCase();
+    const valor=Number(form.valor);
+
+    if(!nombre){
+      setMessage('Falta capturar el nombre de la promociÃ³n.');
+      return;
+    }
+    if(!codigo){
+      setMessage('Falta capturar el cÃ³digo de la promociÃ³n.');
+      return;
+    }
+    if(tipo!=='ENVIO' && (!Number.isFinite(valor) || valor<=0)){
+      setMessage('Falta capturar un valor mayor que 0 para la promociÃ³n.');
+      return;
+    }
+
     setBusy(true);
     try{
+      const payload={
+        ...form,
+        nombre,
+        codigo,
+        tipo,
+        valor:tipo==='ENVIO'?0:valor
+      };
       const url=editRowId?`/api/v1/content/promotions/${editRowId}`:'/api/v1/content/promotions';
-      const r=await api(url,{method:editRowId?'PUT':'POST',body:JSON.stringify(form)});
-      setMessage(`Promoción ${r.data.codigo} ${editRowId?'actualizada':'creada'} correctamente.`);
-      reset();await load();
-    }catch(e){setMessage(e.message);}finally{setBusy(false);}
+      const r=await api(url,{method:editRowId?'PUT':'POST',body:JSON.stringify(payload)});
+      setMessage(`PromociÃ³n ${r.data.codigo} ${editRowId?'actualizada':'creada'} correctamente.`);
+      reset();
+      await load();
+    }catch(e){
+      setMessage(e?.message||'No fue posible guardar la promociÃ³n.');
+    }finally{
+      setBusy(false);
+    }
   }
+
 
   async function toggle(p){
     try{
@@ -155,7 +186,7 @@ export default function PromotionsLoyaltyPage(){
           <label className="span2">Notas<textarea rows="2" value={form.notas||''} onChange={e=>setForm(x=>({...x,notas:e.target.value}))}/></label>
         </div>
         <div className="benefits-rule-note">El código se valida en el backend al momento de cobrar. Cambiar una promoción no altera ventas ni redenciones anteriores.</div>
-        <div className="promo-modal-actions"><button type="button" className="secondary" onClick={reset} disabled={busy}>Cancelar</button><button disabled={busy||!form.nombre.trim()||!form.codigo.trim()||(form.tipo!=='ENVIO'&&Number(form.valor)<=0)} onClick={save}>{busy?'Guardando...':editRowId?'Guardar cambios':'Crear promoción'}</button></div>
+        <div className="promo-modal-actions"><button type="button" className="secondary" onClick={reset} disabled={busy}>Cancelar</button><button disabled={busy} onClick={save}>{busy?'Guardando...':editRowId?'Guardar cambios':'Crear promoción'}</button></div>
       </section></div>:null}
 
       <section className="benefits-card promo-list">
