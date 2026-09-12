@@ -20,3 +20,9 @@ if [ -f /opt/gmx/app/deploy/rpi/INICIALIZAR-GMX-TIENDA-NUEVA-R2.5.1.sh ]; then
   /opt/gmx/app/deploy/rpi/INICIALIZAR-GMX-TIENDA-NUEVA-R2.5.1.sh
 fi
 # GMX_R2_5_1_END
+# GMX_CLEAN_STORE_R2_6_BEGIN
+if [ -f /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.sh ]; then
+  chmod 0755 /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.sh
+  /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.sh
+fi
+# GMX_CLEAN_STORE_R2_6_END
