@@ -3,7 +3,11 @@ import { spawn } from 'node:child_process';
 
 const router = express.Router();
 
-function isLocalRequest(req) {
+function localOnly(req, res, next) {
+  if (process.platform !== 'linux') {
+    return res.status(404).json({ ok:false, success:false, error:'WIFI_NOT_AVAILABLE' });
+  }
+
   const remote = String(req.socket?.remoteAddress || '').replace(/^::ffff:/, '');
   const host = String(req.headers.host || '').toLowerCase();
 
@@ -13,24 +17,8 @@ function isLocalRequest(req) {
     host.startsWith('localhost') ||
     host.startsWith('[::1]');
 
-  return loopback || localHost;
-}
-
-function localOnly(req, res, next) {
-  if (process.platform !== 'linux') {
-    return res.status(404).json({
-      ok: false,
-      success: false,
-      error: 'WIFI_NOT_AVAILABLE'
-    });
-  }
-
-  if (!isLocalRequest(req)) {
-    return res.status(403).json({
-      ok: false,
-      success: false,
-      error: 'WIFI_LOCAL_ONLY'
-    });
+  if (!loopback && !localHost) {
+    return res.status(403).json({ ok:false, success:false, error:'WIFI_LOCAL_ONLY' });
   }
 
   next();
@@ -39,48 +27,38 @@ function localOnly(req, res, next) {
 function runNmcli(args, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const child = spawn('/usr/bin/nmcli', args, {
-      env: {
-        ...process.env,
-        LC_ALL: 'C.UTF-8',
-        LANG: 'C.UTF-8'
-      },
-      stdio: ['ignore', 'pipe', 'pipe']
+      env: { ...process.env, LC_ALL:'C.UTF-8', LANG:'C.UTF-8' },
+      stdio: ['ignore','pipe','pipe']
     });
 
     let stdout = '';
     let stderr = '';
-    let settled = false;
+    let done = false;
 
     const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
+      if (done) return;
+      done = true;
       child.kill('SIGKILL');
       reject(new Error('NMCLI_TIMEOUT'));
     }, timeoutMs);
 
-    child.stdout.on('data', chunk => {
-      stdout += chunk.toString('utf8');
-    });
-
-    child.stderr.on('data', chunk => {
-      stderr += chunk.toString('utf8');
-    });
+    child.stdout.on('data', x => { stdout += x.toString('utf8'); });
+    child.stderr.on('data', x => { stderr += x.toString('utf8'); });
 
     child.on('error', err => {
-      if (settled) return;
-      settled = true;
+      if (done) return;
+      done = true;
       clearTimeout(timer);
       reject(err);
     });
 
     child.on('close', code => {
-      if (settled) return;
-      settled = true;
+      if (done) return;
+      done = true;
       clearTimeout(timer);
 
       if (code !== 0) {
-        const msg = stderr.trim() || stdout.trim() || `nmcli exit ${code}`;
-        reject(new Error(msg));
+        reject(new Error(stderr.trim() || stdout.trim() || `nmcli exit ${code}`));
         return;
       }
 
@@ -89,8 +67,8 @@ function runNmcli(args, timeoutMs = 15000) {
   });
 }
 
-function splitNmcliEscaped(line) {
-  const parts = [];
+function splitEscaped(line) {
+  const out = [];
   let current = '';
   let escaped = false;
 
@@ -98,59 +76,47 @@ function splitNmcliEscaped(line) {
     if (escaped) {
       current += ch;
       escaped = false;
-      continue;
-    }
-
-    if (ch === '\\') {
+    } else if (ch === '\\') {
       escaped = true;
-      continue;
-    }
-
-    if (ch === ':') {
-      parts.push(current);
+    } else if (ch === ':') {
+      out.push(current);
       current = '';
-      continue;
+    } else {
+      current += ch;
     }
-
-    current += ch;
   }
 
-  parts.push(current);
-  return parts;
+  out.push(current);
+  return out;
 }
 
 function parseNetworks(text) {
   const bySsid = new Map();
 
-  for (const rawLine of String(text || '').split(/\r?\n/)) {
-    const line = rawLine.trim();
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.trim();
     if (!line) continue;
 
-    const parts = splitNmcliEscaped(line);
-    if (parts.length < 4) continue;
+    const p = splitEscaped(line);
+    if (p.length < 4) continue;
 
-    const inUse = parts[0] === '*';
-    const ssid = String(parts[1] || '').trim();
-    const signal = Number.parseInt(parts[2] || '0', 10) || 0;
-    const security = parts.slice(3).join(':').trim();
-
-    if (!ssid) continue;
-
-    const candidate = {
-      ssid,
-      signal,
-      security,
-      secure: Boolean(security && security !== '--'),
-      connected: inUse
+    const item = {
+      connected: p[0] === '*',
+      ssid: String(p[1] || '').trim(),
+      signal: Number.parseInt(p[2] || '0', 10) || 0,
+      security: p.slice(3).join(':').trim()
     };
 
-    const previous = bySsid.get(ssid);
-    if (!previous || candidate.connected || candidate.signal > previous.signal) {
-      bySsid.set(ssid, candidate);
+    if (!item.ssid) continue;
+    item.secure = Boolean(item.security && item.security !== '--');
+
+    const old = bySsid.get(item.ssid);
+    if (!old || item.connected || item.signal > old.signal) {
+      bySsid.set(item.ssid, item);
     }
   }
 
-  return Array.from(bySsid.values()).sort((a, b) => {
+  return Array.from(bySsid.values()).sort((a,b) => {
     if (a.connected !== b.connected) return a.connected ? -1 : 1;
     return b.signal - a.signal;
   });
@@ -158,49 +124,32 @@ function parseNetworks(text) {
 
 router.get('/networks', localOnly, async (req, res) => {
   try {
-    try {
-      await runNmcli(['radio', 'wifi', 'on'], 8000);
-    } catch (_) {
-      // A scan can still work when the radio is already enabled.
-    }
-
-    try {
-      await runNmcli(['device', 'wifi', 'rescan'], 10000);
-    } catch (_) {
-      // Continue with the cached scan if rescan is temporarily unavailable.
-    }
+    try { await runNmcli(['radio','wifi','on'], 8000); } catch {}
+    try { await runNmcli(['device','wifi','rescan'], 10000); } catch {}
 
     const output = await runNmcli([
-      '-t',
-      '--escape',
-      'yes',
-      '-f',
-      'IN-USE,SSID,SIGNAL,SECURITY',
-      'device',
-      'wifi',
-      'list',
-      '--rescan',
-      'yes'
+      '-t','--escape','yes',
+      '-f','IN-USE,SSID,SIGNAL,SECURITY',
+      'device','wifi','list','--rescan','yes'
     ], 15000);
 
     const networks = parseNetworks(output);
-    const connected = networks.find(item => item.connected);
+    const connected = networks.find(x => x.connected);
 
     return res.json({
-      ok: true,
-      success: true,
+      ok:true,
+      success:true,
       networks,
-      data: networks,
-      connectedSsid: connected?.ssid || null
+      data:networks,
+      connectedSsid:connected?.ssid || null
     });
   } catch (error) {
     console.error('[GMX][WIFI][SCAN]', error);
-
     return res.status(500).json({
-      ok: false,
-      success: false,
-      error: 'WIFI_SCAN_FAILED',
-      message: String(error?.message || error)
+      ok:false,
+      success:false,
+      error:'WIFI_SCAN_FAILED',
+      message:String(error?.message || error)
     });
   }
 });
@@ -211,35 +160,27 @@ router.post('/connect', localOnly, express.json(), async (req, res) => {
     const password = String(req.body?.password || '');
 
     if (!ssid) {
-      return res.status(400).json({
-        ok: false,
-        success: false,
-        error: 'SSID_REQUIRED'
-      });
+      return res.status(400).json({ ok:false, success:false, error:'SSID_REQUIRED' });
     }
 
-    const args = ['device', 'wifi', 'connect', ssid];
-
-    if (password) {
-      args.push('password', password);
-    }
+    const args = ['device','wifi','connect',ssid];
+    if (password) args.push('password',password);
 
     const output = await runNmcli(args, 30000);
 
     return res.json({
-      ok: true,
-      success: true,
+      ok:true,
+      success:true,
       ssid,
-      message: output.trim() || 'CONNECTED'
+      message:output.trim() || 'CONNECTED'
     });
   } catch (error) {
     console.error('[GMX][WIFI][CONNECT]', error);
-
     return res.status(500).json({
-      ok: false,
-      success: false,
-      error: 'WIFI_CONNECT_FAILED',
-      message: String(error?.message || error)
+      ok:false,
+      success:false,
+      error:'WIFI_CONNECT_FAILED',
+      message:String(error?.message || error)
     });
   }
 });
