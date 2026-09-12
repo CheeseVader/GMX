@@ -9,26 +9,9 @@ if [ -f "$WIFI_PATCH" ]; then
   "$WIFI_PATCH" || echo "[GMX][WARN] No se pudo actualizar gmx-wifi-helper R1.5" >&2
 fi
 # /GMX_WIFI_POSTUPDATE_R1_5
-# GMX_R2_5_1_BEGIN
-if [ -f /opt/gmx/app/deploy/rpi/ACTUALIZAR-GMX-WIFI-POLKIT-R2.5.1.sh ]; then
-  chmod 0755 /opt/gmx/app/deploy/rpi/ACTUALIZAR-GMX-WIFI-POLKIT-R2.5.1.sh
-  /opt/gmx/app/deploy/rpi/ACTUALIZAR-GMX-WIFI-POLKIT-R2.5.1.sh
+# GMX_APP_RECOVERY_R2_7_BEGIN
+if [ -f /opt/gmx/app/deploy/rpi/RECUPERAR-GMX-APP-R2.7.sh ]; then
+  chmod 0755 /opt/gmx/app/deploy/rpi/RECUPERAR-GMX-APP-R2.7.sh || true
+  /opt/gmx/app/deploy/rpi/RECUPERAR-GMX-APP-R2.7.sh || true
 fi
-
-if [ -f /opt/gmx/app/deploy/rpi/INICIALIZAR-GMX-TIENDA-NUEVA-R2.5.1.sh ]; then
-  chmod 0755 /opt/gmx/app/deploy/rpi/INICIALIZAR-GMX-TIENDA-NUEVA-R2.5.1.sh
-  /opt/gmx/app/deploy/rpi/INICIALIZAR-GMX-TIENDA-NUEVA-R2.5.1.sh
-fi
-# GMX_R2_5_1_END
-# GMX_CLEAN_STORE_R2_6_BEGIN
-if [ -f /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.sh ]; then
-  chmod 0755 /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.sh
-  /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.sh
-fi
-# GMX_CLEAN_STORE_R2_6_END
-# GMX_ADMIN_REPAIR_R2_6_1_BEGIN
-if [ -f /opt/gmx/app/deploy/rpi/REPARAR-GMX-ADMIN-R2.6.1.sh ]; then
-  chmod 0755 /opt/gmx/app/deploy/rpi/REPARAR-GMX-ADMIN-R2.6.1.sh
-  /opt/gmx/app/deploy/rpi/REPARAR-GMX-ADMIN-R2.6.1.sh
-fi
-# GMX_ADMIN_REPAIR_R2_6_1_END
+# GMX_APP_RECOVERY_R2_7_END
