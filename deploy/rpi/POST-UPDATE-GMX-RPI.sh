@@ -15,9 +15,9 @@ if [ -f /opt/gmx/app/deploy/rpi/RECUPERAR-GMX-APP-R2.7.sh ]; then
   /opt/gmx/app/deploy/rpi/RECUPERAR-GMX-APP-R2.7.sh || true
 fi
 # GMX_APP_RECOVERY_R2_7_END
-# GMX_RESET_STORE_R2_8_BEGIN
-if [ -f /opt/gmx/app/deploy/rpi/RESET-GMX-TIENDA-NUEVA-R2.8.sh ]; then
-  chmod 0755 /opt/gmx/app/deploy/rpi/RESET-GMX-TIENDA-NUEVA-R2.8.sh
-  /opt/gmx/app/deploy/rpi/RESET-GMX-TIENDA-NUEVA-R2.8.sh
+# GMX_RESET_STORE_R2_9_BEGIN
+if [ -f /opt/gmx/app/deploy/rpi/RESET-GMX-TIENDA-NUEVA-R2.9.sh ]; then
+  chmod 0755 /opt/gmx/app/deploy/rpi/RESET-GMX-TIENDA-NUEVA-R2.9.sh
+  /opt/gmx/app/deploy/rpi/RESET-GMX-TIENDA-NUEVA-R2.9.sh
 fi
-# GMX_RESET_STORE_R2_8_END
+# GMX_RESET_STORE_R2_9_END
