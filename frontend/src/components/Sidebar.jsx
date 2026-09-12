@@ -14,6 +14,7 @@ const groups = [
 },
 { label: 'TCG', items: [
   ['/admin/tcg', 'Catálogo TCG', 'tcg', 'TCG'], ['/admin/tcg-operacion', 'Operación TCG', 'inventory', 'TCG'], ['/admin/buylist', 'Buylist', 'buylist', 'BUYLIST'],
+  ['/ai-vision-lab', 'EscÃ¡ner de cartas', 'tcg', 'TCG'],
   ['/admin/membresias', 'Membresías', 'reports', 'COMERCIAL'], ['/admin/torneos', 'Torneos', 'tcg', 'COMERCIAL']]
 },
 { label: 'GESTIÓN', items: [

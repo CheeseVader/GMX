@@ -53,7 +53,7 @@ export default function RpiWifiManager({open,onClose}){
     <section className="rpiwifi-modal">
       <header className="rpiwifi-header">
         <div><h2>Configurar Wi-Fi</h2><p>{connectedSsid?<>Conectado actualmente: <strong>{connectedSsid}</strong></>:'Selecciona una red disponible'}</p></div>
-        <button type="button" className="rpiwifi-close" onClick={onClose} aria-label="Cerrar">Ã—</button>
+        <button type="button" className="rpiwifi-close" onClick={onClose} aria-label="Cerrar">X</button>
       </header>
       <div className="rpiwifi-list">
         {loading&&networks.length===0?<div className="rpiwifi-empty">Buscando redesâ€¦</div>:null}

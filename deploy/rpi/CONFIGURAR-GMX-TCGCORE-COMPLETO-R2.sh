@@ -72,8 +72,15 @@ set -Eeuo pipefail
 ACTION="${1:-}"
 case "$ACTION" in
   scan)
-    nmcli device wifi rescan >/dev/null 2>&1 || true
-    exec nmcli -t --escape yes -f IN-USE,SSID,SIGNAL,SECURITY device wifi list --rescan auto
+    # GMX_WIFI_SCAN_R3
+    nmcli radio wifi on >/dev/null 2>&1 || true
+    WIFI_IF="$(nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2=="wifi"{print $1;exit}')"
+    [ -n "$WIFI_IF" ] || WIFI_IF="$(iw dev 2>/dev/null | awk '$1=="Interface"{print $2;exit}')"
+    [ -n "$WIFI_IF" ] || { echo "NO_WIFI_INTERFACE" >&2; exit 20; }
+    nmcli device set "$WIFI_IF" managed yes >/dev/null 2>&1 || true
+    nmcli device wifi rescan ifname "$WIFI_IF" >/dev/null 2>&1 || true
+    sleep 2
+    exec nmcli -t --escape yes -f IN-USE,SSID,SIGNAL,SECURITY device wifi list ifname "$WIFI_IF" --rescan yes
     ;;
   active)
     exec nmcli -t --escape yes -f ACTIVE,SSID,DEVICE device wifi

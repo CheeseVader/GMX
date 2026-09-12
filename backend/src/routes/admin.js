@@ -206,6 +206,24 @@ router.put('/users/:rowId',requirePermission('ADMIN','authorize'),async(req,res)
 });
 
 
+router.put('/users/:rowId/identity',requireSuperadmin,async(req,res)=>{
+  try{
+    const rowId=Number(req.params.rowId),email=String(req.body?.email||'').trim().toLowerCase(),username=String(req.body?.username||'').trim().toLowerCase(),password=String(req.body?.password||'');
+    if(!Number.isFinite(rowId)||rowId<=0)throw new Error('INVALID_ADMIN_ROW');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(email))throw new Error('INVALID_EMAIL');
+    if(!/^[a-z0-9._-]{3,32}$/.test(username))throw new Error('INVALID_USERNAME');
+    if(password&&password.length<10)throw new Error('PASSWORD_MIN_10');
+    const cols=await query(`SELECT column_name FROM information_schema.columns WHERE table_schema='gmx' AND table_name='administradores' AND column_name='username'`);
+    if(!cols.rowCount)throw new Error('ADMIN_USERNAME_COLUMN_REQUIRED');
+    const target=await query(`SELECT row_id,id_admin,email,username FROM gmx.administradores WHERE row_id=$1 LIMIT 1`,[rowId]);if(!target.rowCount)throw new Error('ADMIN_NOT_FOUND');
+    if((await query(`SELECT 1 FROM gmx.administradores WHERE LOWER(email)=LOWER($1) AND row_id<>$2 LIMIT 1`,[email,rowId])).rowCount)throw new Error('ADMIN_EMAIL_ALREADY_EXISTS');
+    if((await query(`SELECT 1 FROM gmx.administradores WHERE LOWER(username)=LOWER($1) AND row_id<>$2 LIMIT 1`,[username,rowId])).rowCount)throw new Error('ADMIN_USERNAME_ALREADY_EXISTS');
+    const sql=password?`UPDATE gmx.administradores SET email=$2,username=$3,password_hash=$4,fecha_actualizacion=NOW() WHERE row_id=$1 RETURNING row_id,id_admin,nombre,email,username,rol,activo,sucursal_principal,sucursales_permitidas`:`UPDATE gmx.administradores SET email=$2,username=$3,fecha_actualizacion=NOW() WHERE row_id=$1 RETURNING row_id,id_admin,nombre,email,username,rol,activo,sucursal_principal,sucursales_permitidas`;
+    const args=password?[rowId,email,username,hashPassword(password)]:[rowId,email,username];const r=await query(sql,args);
+    await audit(req,'ADMIN','UPDATE_USER_IDENTITY',r.rows[0].id_admin,`email=${target.rows[0].email}->${email}; username=${target.rows[0].username||''}->${username}; password=${password?'CHANGED':'UNCHANGED'}`);
+    res.json({success:true,data:r.rows[0]});
+  }catch(e){bad(res,e);}
+});
 router.post('/users/:rowId/send-password-reset',requirePermission('ADMIN','authorize'),async(req,res)=>{
   try{
     const target=await getAdminByRowId(Number(req.params.rowId));

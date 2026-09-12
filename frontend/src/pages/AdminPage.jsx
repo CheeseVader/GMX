@@ -14,6 +14,7 @@ export default function AdminPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [identityPassword,setIdentityPassword]=useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('summary');
 
@@ -77,7 +78,11 @@ export default function AdminPage() {
     const p = type === 'NONE' ? {} : type === 'READ' ? { leer: true } : type === 'OPERATE' ? { leer: true, crear: true, editar: true } : { leer: true, crear: true, editar: true, eliminar: true, autorizar: true };
     setDirty(true);setPermissions((rows) => rows.map((x) => x.modulo === module ? { ...x, leer: !!p.leer, crear: !!p.crear, editar: !!p.editar, eliminar: !!p.eliminar, autorizar: !!p.autorizar, _custom: true } : x));
   }
-  async function savePermissions() {
+  async function saveIdentity(){
+    if(!selected)return;
+    try{const r=await api(`/api/v1/admin/users/${selected.row_id}/identity`,{method:'PUT',body:JSON.stringify({email:String(selected.email||'').trim().toLowerCase(),username:String(selected.username||'').trim().toLowerCase(),password:identityPassword})});setSelected(r.data);setIdentityPassword('');setMessage('Correo, usuario y acceso actualizados.');await load();}catch(e){setMessage(e.message);}
+  }
+async function savePermissions() {
     if (!selected || selected.rol === 'SUPERADMIN') return;
     if (!security.currentPassword) return setMessage('Escribe tu contraseña actual para autorizar el cambio.');
     const rows = permissions.filter((x) => x._custom).map(({ modulo, leer, crear, editar, eliminar, autorizar }) => ({ modulo, leer, crear, editar, eliminar, autorizar }));
@@ -152,7 +157,7 @@ export default function AdminPage() {
 
           {activeTab==='summary'?<div className="usrd-tab-body">
             <div className="usrd-summary-grid"><section className="usrd-card"><div className="usrd-card-head"><h4>Información del usuario</h4><span>Cuenta</span></div><div className="usrd-info-grid"><label>Nombre<input value={selected.nombre||''} onChange={(e)=>setSelected(x=>({...x,nombre:e.target.value}))}/></label><label>Usuario<input value={selected.username||''} readOnly title="El usuario de cuentas existentes se conserva para proteger sesiones y permisos internos."/></label><label>Rol<select value={selected.rol} onChange={(e)=>{const rol=e.target.value;setSelected(x=>({...x,rol,sucursal_principal:rol==='SUPERADMIN'?'':x.sucursal_principal,sucursales_permitidas:rol==='SUPERADMIN'?[]:x.sucursales_permitidas}))}}>{(meta.roles||[]).map(r=><option key={r}>{r}</option>)}</select></label><label>Estado<select value={selected.activo===false?'inactive':'active'} onChange={(e)=>setSelected(x=>({...x,activo:e.target.value==='active'}))}><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label></div><div className="usrd-save-row"><button onClick={saveUser}>Guardar cambios</button></div></section>
-            <section className="usrd-card"><div className="usrd-card-head"><h4>Permisos sensibles</h4><button className="linklike" onClick={()=>setActiveTab('roles')}>Gestionar permisos</button></div><div className="usrd-sensitive-list">{sensitiveModules.length?sensitiveModules.map(m=><div key={m.id}><span><b>{m.label}</b><small>{m.id}</small></span><strong>{val(m.id,'autorizar')?'Total':val(m.id,'editar')?'Editar':val(m.id,'leer')?'Lectura':'Sin acceso'}</strong></div>):<p className="usrd-muted">No hay módulos sensibles identificados.</p>}</div></section>
+            <section className="usrd-card" data-fix="GMX_SUPERADMIN_IDENTITY_R1"><div className="usrd-card-head"><h4>Identidad y acceso</h4><span>Solo SUPERADMIN</span></div><div className="usrd-info-grid"><label>Correo<input type="email" value={selected.email||''} onChange={(e)=>setSelected(x=>({...x,email:e.target.value}))}/></label><label>Usuario<input value={selected.username||''} onChange={(e)=>setSelected(x=>({...x,username:e.target.value.toLowerCase()}))}/></label><label>ContraseÃ±a nueva<input type="password" value={identityPassword} onChange={(e)=>setIdentityPassword(e.target.value)} placeholder="Dejar vacÃ­o para conservar"/></label><button type="button" onClick={saveIdentity} disabled={!selected.email||!selected.username||(identityPassword.length>0&&identityPassword.length<10)}>Guardar identidad</button></div></section><section className="usrd-card"><div className="usrd-card-head"><h4>Permisos sensibles</h4><button className="linklike" onClick={()=>setActiveTab('roles')}>Gestionar permisos</button></div><div className="usrd-sensitive-list">{sensitiveModules.length?sensitiveModules.map(m=><div key={m.id}><span><b>{m.label}</b><small>{m.id}</small></span><strong>{val(m.id,'autorizar')?'Total':val(m.id,'editar')?'Editar':val(m.id,'leer')?'Lectura':'Sin acceso'}</strong></div>):<p className="usrd-muted">No hay módulos sensibles identificados.</p>}</div></section>
           </div>
           <div className="usrd-bottom-grid"><section className="usrd-card usrd-role-distribution"><div className="usrd-card-head"><h4>Distribución por rol</h4><span>{users.length} usuarios</span></div><div className="usrd-donut" style={{'--total':Math.max(users.length,1)}}><div><b>{users.length}</b><small>Total</small></div></div><div className="usrd-role-legend">{roleDistribution.map(x=><p key={x.role}><span>{x.role}</span><b>{x.count}</b></p>)}</div></section><section className="usrd-card"><div className="usrd-card-head"><h4>Alcance actual</h4><button className="linklike" onClick={()=>setActiveTab('branches')}>Ver sucursales</button></div><div className="usrd-scope"><b>{selected.rol==='SUPERADMIN'?'Todas las sucursales':branchName(selected.sucursal_principal)}</b><p>{selected.rol==='SUPERADMIN'?'Alcance global implícito.':`${(selected.sucursales_permitidas||[]).length} sucursal(es) permitida(s).`}</p></div></section></div>
           </div>:null}

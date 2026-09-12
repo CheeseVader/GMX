@@ -56,7 +56,6 @@ export default function PromotionsLoyaltyPage(){
   const active=promotions.filter(p=>String(p.estado).toUpperCase()==='ACTIVA').length;
   const applied=redemptions.filter(r=>r.estado==='APLICADA');
   const discountTotal=applied.reduce((a,x)=>a+Number(x.descuento||0),0);
-
   function editPromotion(p){
     setEditRowId(p.row_id);
     setForm({
@@ -73,8 +72,19 @@ export default function PromotionsLoyaltyPage(){
     setEditorOpen(true);
     window.scrollTo({top:0,behavior:'smooth'});
   }
-  function openNewPromotion(){setEditRowId(null);setForm(emptyPromotion());setEditorOpen(true);window.scrollTo({top:0,behavior:'smooth'});}
-  function reset(){setEditRowId(null);setForm(emptyPromotion());setEditorOpen(false);}
+
+  function reset(){
+    setEditRowId(null);
+    setForm(emptyPromotion());
+    setEditorOpen(false);
+  }
+
+  function openNewPromotion(){
+    setEditRowId(null);
+    setForm(emptyPromotion());
+    setEditorOpen(true);
+  }
+
 
   async function save(){
     setBusy(true);
