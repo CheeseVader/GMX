@@ -1,6 +1,7 @@
 import { brandText } from "../config/brand.js";import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router';
 import { api } from '../services/api.js';
+import SystemAccessUrlsPanel from '../components/SystemAccessUrlsPanel.jsx';
 import '../phase_shiny_exact_views_r23.css';
 import '../system_sys_h_r2.css';
 
@@ -342,6 +343,8 @@ export default function SystemPage() {
         </section>
       </div>
     </section>
+
+    <SystemAccessUrlsPanel />
 
     <nav className="system-section-tabs" aria-label="Secciones de configuración">
       <button className={systemSection === 'general' ? 'active' : ''} onClick={() => setSystemSection('general')}>Operación general</button>

@@ -92,3 +92,5 @@ BACKUP-AI-VISION-LAB-*/
 
 # Salidas locales de releases
 release-output/
+# Respaldos locales de parches de URLs GMX
+BACKUP-GMX-URLS-SISTEMA-R1-*/
