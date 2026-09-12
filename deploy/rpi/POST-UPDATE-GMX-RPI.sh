@@ -26,3 +26,9 @@ if [ -f /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.sh ]; then
   /opt/gmx/app/deploy/rpi/LIMPIAR-GMX-TIENDA-NUEVA-R2.6.sh
 fi
 # GMX_CLEAN_STORE_R2_6_END
+# GMX_ADMIN_REPAIR_R2_6_1_BEGIN
+if [ -f /opt/gmx/app/deploy/rpi/REPARAR-GMX-ADMIN-R2.6.1.sh ]; then
+  chmod 0755 /opt/gmx/app/deploy/rpi/REPARAR-GMX-ADMIN-R2.6.1.sh
+  /opt/gmx/app/deploy/rpi/REPARAR-GMX-ADMIN-R2.6.1.sh
+fi
+# GMX_ADMIN_REPAIR_R2_6_1_END
