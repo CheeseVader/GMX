@@ -83,48 +83,75 @@ export default function PromotionsLoyaltyPage(){
     setEditRowId(null);
     setForm(emptyPromotion());
     setEditorOpen(true);
-  }
-  async function save(){
+  }  async function save(){
     setMessage('');
 
     const nombre=String(form.nombre||'').trim();
-    const codigo=String(form.codigo||'').trim();
-    const tipo=String(form.tipo||'').toUpperCase();
-    const valor=Number(form.valor);
+    const codigo=String(form.codigo||'').trim().toUpperCase();
+    const tipo=String(form.tipo||'PORCENTAJE').trim().toUpperCase();
+    const valor=tipo==='ENVIO'?0:Number(form.valor);
 
-    if(!nombre){
-      setMessage('Falta capturar el nombre de la promociÃ³n.');
-      return;
-    }
-    if(!codigo){
-      setMessage('Falta capturar el cÃ³digo de la promociÃ³n.');
-      return;
-    }
-    if(tipo!=='ENVIO' && (!Number.isFinite(valor) || valor<=0)){
+    if(!nombre){setMessage('Falta capturar el nombre de la promociÃ³n.');return;}
+    if(!codigo){setMessage('Falta capturar el cÃ³digo de la promociÃ³n.');return;}
+    if(tipo!=='ENVIO'&&(!Number.isFinite(valor)||valor<=0)){
       setMessage('Falta capturar un valor mayor que 0 para la promociÃ³n.');
       return;
     }
+    if(tipo==='PORCENTAJE'&&valor>100){
+      setMessage('El porcentaje no puede ser mayor que 100.');
+      return;
+    }
+
+    const payload={
+      ...form,
+      nombre,
+      codigo,
+      tipo,
+      valor,
+      minimo_compra:form.minimo_compra===''?'0':form.minimo_compra,
+      limite_usos:form.limite_usos===''?null:form.limite_usos,
+      limite_por_cliente:form.limite_por_cliente===''?null:form.limite_por_cliente,
+      max_discount:form.max_discount===''?null:form.max_discount,
+      inicio:form.inicio||null,
+      fin:form.fin||null,
+      id_sucursal:form.id_sucursal||null
+    };
 
     setBusy(true);
+    let saved=null;
     try{
-      const payload={
-        ...form,
-        nombre,
-        codigo,
-        tipo,
-        valor:tipo==='ENVIO'?0:valor
-      };
       const url=editRowId?`/api/v1/content/promotions/${editRowId}`:'/api/v1/content/promotions';
-      const r=await api(url,{method:editRowId?'PUT':'POST',body:JSON.stringify(payload)});
-      setMessage(`PromociÃ³n ${r.data.codigo} ${editRowId?'actualizada':'creada'} correctamente.`);
+      const r=await api(url,{
+        method:editRowId?'PUT':'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      saved=r?.data||null;
+
+      if(!saved){
+        throw new Error('El servidor no devolviÃ³ la promociÃ³n guardada.');
+      }
+
+      const action=editRowId?'actualizada':'creada';
+      setMessage(`PromociÃ³n ${saved.codigo||codigo} ${action} correctamente.`);
       reset();
-      await load();
+
+      // La promociÃ³n YA fue guardada. Un fallo posterior al refrescar
+      // no debe convertir un guardado correcto en un falso error.
+      try{
+        await load();
+      }catch(refreshError){
+        console.error('[GMX][PROMO][REFRESH_AFTER_SAVE]',refreshError);
+      }
     }catch(e){
-      setMessage(e?.message||'No fue posible guardar la promociÃ³n.');
+      console.error('[GMX][PROMO][SAVE]',e);
+      const detail=String(e?.message||e?.error||'No fue posible guardar la promociÃ³n.');
+      setMessage(`No fue posible guardar la promociÃ³n: ${detail}`);
     }finally{
       setBusy(false);
     }
   }
+
 
 
   async function toggle(p){
@@ -186,7 +213,7 @@ export default function PromotionsLoyaltyPage(){
           <label className="span2">Notas<textarea rows="2" value={form.notas||''} onChange={e=>setForm(x=>({...x,notas:e.target.value}))}/></label>
         </div>
         <div className="benefits-rule-note">El código se valida en el backend al momento de cobrar. Cambiar una promoción no altera ventas ni redenciones anteriores.</div>
-        <div className="promo-modal-actions"><button type="button" className="secondary" onClick={reset} disabled={busy}>Cancelar</button><button disabled={busy} onClick={save}>{busy?'Guardando...':editRowId?'Guardar cambios':'Crear promoción'}</button></div>
+        <div className="promo-modal-actions"><button type="button" className="secondary" onClick={reset} disabled={busy}>Cancelar</button><button type="button" disabled={busy} onClick={save}>{busy?'Guardando...':editRowId?'Guardar cambios':'Crear promoción'}</button></div>
       </section></div>:null}
 
       <section className="benefits-card promo-list">

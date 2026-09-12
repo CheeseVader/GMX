@@ -11,22 +11,50 @@ export default function RpiWifiManager({open,onClose}){
   const [connecting,setConnecting]=useState(false);
   const [message,setMessage]=useState('');
 
-  const selectedNetwork=useMemo(()=>networks.find(n=>n.ssid===selected)||null,[networks,selected]);
-
-  async function refreshNetworks(){
-    setLoading(true);setMessage('');
+  const selectedNetwork=useMemo(()=>networks.find(n=>n.ssid===selected)||null,[networks,selected]);  async function refreshNetworks(){
+    setLoading(true);
+    setMessage('');
     try{
-      const r=await fetch('/api/rpi-wifi/networks',{cache:'no-store'});
-      const d=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(d?.error||'scan_failed');
-      const list=Array.isArray(d.networks)?d.networks:(Array.isArray(d.data)?d.data:[]);
+      const r=await fetch('/api/rpi-wifi/networks',{
+        method:'GET',
+        cache:'no-store',
+        headers:{'Accept':'application/json'}
+      });
+
+      const text=await r.text();
+      let d={};
+      try{d=text?JSON.parse(text):{};}catch{}
+
+      if(!r.ok){
+        throw new Error(d?.message||d?.error||`HTTP ${r.status}`);
+      }
+
+      const list=Array.isArray(d?.networks)
+        ?d.networks
+        :(Array.isArray(d?.data)?d.data:[]);
+
       setNetworks(list);
-      setConnectedSsid(d.connectedSsid||'');
-      if(!selected&&d.connectedSsid)setSelected(d.connectedSsid);
+      const current=d?.connectedSsid||list.find(n=>n?.connected)?.ssid||'';
+      setConnectedSsid(current);
+
+      if(current){
+        setSelected(prev=>prev||current);
+      }else if(list.length){
+        setSelected(prev=>prev||list[0].ssid);
+      }
+
+      if(!list.length){
+        setMessage(`El backend respondiÃ³ correctamente, pero no devolviÃ³ redes. ${d?.diagnostic||''}`.trim());
+      }
     }catch(e){
-      setMessage(e.message==='local_kiosk_only'?'Wi-Fi solo estÃ¡ disponible desde el kiosko local.':'No fue posible obtener las redes Wi-Fi. Revisa el detalle mostrado abajo.');
-    }finally{setLoading(false)}
+      console.error('[GMX][WIFI][UI]',e);
+      setNetworks([]);
+      setMessage(`No fue posible obtener las redes Wi-Fi: ${String(e?.message||e)}`);
+    }finally{
+      setLoading(false);
+    }
   }
+
 
   useEffect(()=>{if(open)refreshNetworks();else{setPassword('');setShowPassword(false);setMessage('')}},[open]);
 

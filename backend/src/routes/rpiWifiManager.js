@@ -46,69 +46,89 @@ function splitEscaped(line){
   out.push(cur);return out;
 }
 
-router.get('/networks', async (req,res)=>{
+router.get('/networks',async(req,res)=>{
   try{
     if(process.platform!=='linux'){
-      return res.status(400).json({success:false,error:'WIFI_ONLY_AVAILABLE_ON_RPI'});
+      return res.status(404).json({ok:false,success:false,error:'WIFI_ONLY_AVAILABLE_ON_RPI'});
     }
 
-    const host=String(req.hostname||req.headers.host||'').toLowerCase().split(':')[0];
-    const remote=String(req.socket?.remoteAddress||'');
-    const localHost=['127.0.0.1','localhost','::1'].includes(host);
-    const loopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(remote);
+    // La llamada Nginx -> Node llega por loopback. Host local tambien se admite.
+    const rawHost=String(req.headers.host||'').toLowerCase();
+    const host=rawHost.replace(/^\[/,'').replace(/\].*$/,'').split(':')[0];
+    const remote=String(req.socket?.remoteAddress||'').replace(/^::ffff:/,'');
+    const localHost=host==='127.0.0.1'||host==='localhost'||host==='::1';
+    const loopback=remote==='127.0.0.1'||remote==='::1';
 
-    if(!localHost && !loopback){
-      return res.status(403).json({success:false,error:'WIFI_LOCAL_ONLY'});
+    if(!localHost&&!loopback){
+      return res.status(403).json({ok:false,success:false,error:'WIFI_LOCAL_ONLY',message:`host=${rawHost} remote=${remote}`});
     }
 
-    const {stdout,stderr}=await execFileAsync('sudo',['/usr/local/bin/gmx-wifi-helper','scan'],{
-      timeout:20000,
-      maxBuffer:1024*1024
-    });
+    const {stdout,stderr}=await execFileAsync('/usr/bin/sudo',
+      ['-n','/usr/local/bin/gmx-wifi-helper','scan'],
+      {timeout:25000,maxBuffer:1024*1024}
+    );
 
-    const text=String(stdout||'').trim();
-    if(!text){
+    const raw=String(stdout||'').trim();
+    if(!raw){
       throw new Error(String(stderr||'WIFI_SCAN_EMPTY').trim());
     }
 
-    const rows=text.split(/\r?\n/)
-      .map(line=>line.trim())
-      .filter(Boolean)
-      .map(line=>{
-        const parts=line.split(':');
-        if(parts.length<4) return null;
-        const inUse=parts.shift();
-        const security=parts.pop();
-        const signal=parts.pop();
-        const ssid=parts.join(':').replace(/\\:/g,':').replace(/\\\\/g,'\\').trim();
-        if(!ssid) return null;
-        return {
-          ssid,
-          signal:Number(signal)||0,
-          security:String(security||'').trim(),
-          secure:!/^$|^--$|^OPEN$/i.test(String(security||'').trim()),
-          connected:String(inUse||'').trim()==='*'
-        };
-      })
-      .filter(Boolean)
-      .sort((a,b)=>Number(b.connected)-Number(a.connected)||b.signal-a.signal);
+    function splitEscaped(line){
+      const out=[];let cur='';let esc=false;
+      for(const ch of String(line)){
+        if(esc){cur+=ch;esc=false;continue;}
+        if(ch==='\\'){esc=true;continue;}
+        if(ch===':'){out.push(cur);cur='';continue;}
+        cur+=ch;
+      }
+      out.push(cur);
+      return out;
+    }
 
-    const connected=rows.find(n=>n.connected);
-    const connectedSsid=connected?.ssid||'';
+    const by=new Map();
+    for(const line of raw.split(/\r?\n/)){
+      if(!line.trim())continue;
+      const parts=splitEscaped(line.trim());
+      if(parts.length<4)continue;
+
+      const inUse=String(parts[0]||'').trim();
+      const security=String(parts[parts.length-1]||'').trim();
+      const signal=Number(parts[parts.length-2])||0;
+      const ssid=parts.slice(1,-2).join(':').trim();
+      if(!ssid)continue;
+
+      const item={
+        ssid,
+        signal,
+        security,
+        secure:security!==''&&security!=='--'&&!/^OPEN$/i.test(security),
+        connected:inUse==='*'||/^yes$/i.test(inUse)
+      };
+      const prev=by.get(ssid);
+      if(!prev||item.connected||item.signal>prev.signal)by.set(ssid,item);
+    }
+
+    const networks=[...by.values()].sort((a,b)=>
+      Number(b.connected)-Number(a.connected)||b.signal-a.signal||a.ssid.localeCompare(b.ssid)
+    );
+    const connectedSsid=networks.find(n=>n.connected)?.ssid||'';
+
     res.json({
       ok:true,
       success:true,
       connectedSsid,
-      networks:rows,
-      data:rows,
-      diagnostic:rows.length?'OK':'NO_NETWORKS_RETURNED'
+      networks,
+      data:networks,
+      diagnostic:`NETWORKS_${networks.length}`
     });
   }catch(e){
-    console.error('[GMX][WIFI][SCAN]',e);
+    const detail=String(e?.stderr||e?.message||e||'WIFI_SCAN_FAILED').trim();
+    console.error('[GMX][WIFI][SCAN]',detail);
     res.status(500).json({
+      ok:false,
       success:false,
       error:'WIFI_SCAN_FAILED',
-      message:e?.stderr?.trim?.() || e?.message || String(e)
+      message:detail
     });
   }
 });

@@ -16,8 +16,28 @@ router.get('/promotions/redemptions',async(req,res)=>{try{
   const r=await listPromotionRedemptions(req.query);
   res.json({success:true,data:r.rows});
 }catch(e){bad(res,e,500);}});
-router.post('/promotions',async(req,res)=>{try{res.status(201).json({success:true,data:await savePromotion(null,req.body||{},req.user)});}catch(e){bad(res,e);}});
-router.put('/promotions/:rowId',async(req,res)=>{try{res.json({success:true,data:await savePromotion(Number(req.params.rowId),req.body||{},req.user)});}catch(e){bad(res,e);}});
+router.post('/promotions',async(req,res)=>{
+  try{
+    const body=req.body&&typeof req.body==='object'?req.body:{};
+    const saved=await savePromotion(null,body,req.user);
+    res.status(201).json({success:true,data:saved});
+  }catch(e){
+    console.error('[GMX][PROMOTIONS][POST]',e);
+    bad(res,e);
+  }
+});
+router.put('/promotions/:rowId',async(req,res)=>{
+  try{
+    const rowId=Number(req.params.rowId);
+    if(!Number.isFinite(rowId)||rowId<=0)throw new Error('PROMOTION_INVALID_ROW_ID');
+    const body=req.body&&typeof req.body==='object'?req.body:{};
+    const saved=await savePromotion(rowId,body,req.user);
+    res.json({success:true,data:saved});
+  }catch(e){
+    console.error('[GMX][PROMOTIONS][PUT]',e);
+    bad(res,e);
+  }
+});
 
 router.get('/notifications',async(req,res)=>{try{const r=await listNotifications(req.query);res.json({success:true,data:r.rows});}catch(e){bad(res,e,500);}});
 router.post('/notifications/generate',async(req,res)=>{try{res.json({success:true,data:await generateAlerts(req.user)});}catch(e){bad(res,e);}});
