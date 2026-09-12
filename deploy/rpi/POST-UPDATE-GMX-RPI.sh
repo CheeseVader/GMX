@@ -9,3 +9,8 @@ if [ -f "$WIFI_PATCH" ]; then
   "$WIFI_PATCH" || echo "[GMX][WARN] No se pudo actualizar gmx-wifi-helper R1.5" >&2
 fi
 # /GMX_WIFI_POSTUPDATE_R1_5
+# GMX_WIFI_POLKIT_R2_4_BEGIN
+if [ -x /opt/gmx/app/deploy/rpi/ACTUALIZAR-GMX-WIFI-POLKIT-R2.4.sh ]; then
+  /opt/gmx/app/deploy/rpi/ACTUALIZAR-GMX-WIFI-POLKIT-R2.4.sh
+fi
+# GMX_WIFI_POLKIT_R2_4_END
