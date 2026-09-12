@@ -1,5 +1,6 @@
 import { brandText } from "./config/brand.js";import 'dotenv/config';
 import express from 'express';
+import aiVisionLabRouter from './routes/aiVisionLab.js';
 import helmet from 'helmet';
 import cors from 'cors';
 import path from 'node:path';
@@ -96,7 +97,7 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
   next();
 });
@@ -164,6 +165,9 @@ app.use('/api/v1/benefits', requireModule('COMERCIAL'), benefitsRouter);
 app.use('/api/v1/memberships', requireModule('COMERCIAL'), membershipsRouter);
 app.use('/api/v1/cms', requireModule('CONTENIDO'), cmsRouter);
 
+app.use('/ai-vision-lab', aiVisionLabRouter);
+app.use('/api/v1/ai-vision-lab', aiVisionLabRouter);
+
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(frontendDist));
   app.use((_req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
@@ -187,3 +191,4 @@ async function shutdown(signal) {
 }
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
+

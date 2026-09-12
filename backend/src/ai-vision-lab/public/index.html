@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>GMX Â· AI Vision Lab LOCAL</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,Segoe UI,Arial;background:#081121;color:#f6f8ff}
+*{box-sizing:border-box}body{margin:0;background:#081121}.wrap{max-width:1500px;margin:auto;padding:20px}
+h1{margin:0;font-size:28px}.sub{color:#aeb8cb;margin:6px 0 18px}.badge{border:1px solid #2e476c;border-radius:999px;padding:8px 12px;font-size:12px}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:320px 1fr;gap:18px}.card{background:#0b1629;border:1px solid #29405f;border-radius:16px;padding:18px}
+.preview{height:480px;border:1px dashed #375578;border-radius:14px;display:grid;place-items:center;overflow:hidden;background:#07101f}
+.preview img,.preview video{max-width:100%;max-height:100%;object-fit:contain}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+button,.filebtn{border:0;border-radius:11px;padding:12px 10px;font-weight:800;cursor:pointer;text-align:center;background:#3559d9;color:white}
+.secondary{background:#182944}.green{background:#17a45b}.orange{background:#d97706}.wide{grid-column:1/-1}
+button:disabled{opacity:.45;cursor:not-allowed}input[type=file]{display:none}.panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{border:1px solid #29405f;border-radius:14px;padding:16px;min-height:250px}.panel h2{margin:0 0 10px;font-size:18px}
+.muted{color:#98a5ba}.ok{color:#45d483}.warn{color:#ffbd52}.err{color:#ff6b6b}.mono{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.result{display:grid;gap:7px}.candidate{border:1px solid #263b59;border-radius:10px;padding:10px;margin-top:8px}.score{font-weight:900}
+.statusrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.small{font-size:12px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.preview{height:420px}.panels{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top">
+<div><h1>GMX Â· AI Vision Lab LOCAL</h1><div class="sub">100% local Â· sin API key Â· sin crÃ©ditos Â· OCR literal + catÃ¡logo GMX + visiÃ³n Ollama opcional</div></div>
+<div id="statusBadge" class="badge">Comprobando motor localâ€¦</div>
+</div>
+<div class="grid">
+<section class="card">
+<div class="preview" id="preview"><span class="muted">Selecciona o toma una foto</span></div>
+<div class="actions">
+<label class="filebtn secondary">ðŸ–¼ Seleccionar<input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp"/></label>
+<label class="filebtn secondary">ðŸ“· Tomar foto<input id="cameraInput" type="file" accept="image/*" capture="environment"/></label>
+<button id="webcamBtn" class="secondary">ðŸŽ¥ Abrir cÃ¡mara</button>
+<button id="captureBtn" class="orange" disabled>ðŸ“¸ Capturar</button>
+<button id="analyzeBtn" class="green wide" disabled>ðŸ” IDENTIFICAR CARTA GRATIS</button>
+</div>
+<div class="small muted" style="margin-top:12px">OCR y catÃ¡logo se procesan localmente. Ollama es opcional y tampoco usa API key.</div>
+</section>
+<section class="card">
+<div class="statusrow"><span class="badge">OCR LOCAL âœ“</span><span class="badge">CATÃLOGO GMX âœ“</span><span id="ollamaBadge" class="badge">OLLAMA â€¦</span></div>
+<div class="panels">
+<div class="panel"><h2>Lectura literal</h2><div id="ocr" class="muted">Esperando imagen.</div></div>
+<div class="panel"><h2>IdentificaciÃ³n / catÃ¡logo</h2><div id="catalog" class="muted">Esperando imagen.</div></div>
+<div class="panel"><h2>VisiÃ³n local (Ollama)</h2><div id="vision" class="muted">Opcional.</div></div>
+<div class="panel"><h2>Resultado final</h2><div id="final" class="muted">Sin resultado.</div></div>
+</div></section></div></div>
+<script>
+const $=s=>document.querySelector(s);let file=null,stream=null,video=null;
+async function localStatus(){try{const r=await fetch("/ai-vision-lab/local/status");const j=await r.json(),d=j.data||{};$("#statusBadge").textContent="LOCAL $0 âœ“ Â· sin API key";$("#ollamaBadge").textContent=d.ollama?`OLLAMA âœ“ ${d.ollama_model}`:"OLLAMA opcional Â· no detectado";$("#ollamaBadge").className="badge "+(d.ollama?"ok":"warn")}catch{$("#statusBadge").textContent="Motor local no disponible";$("#statusBadge").className="badge err"}}
+function setFile(f){file=f;$("#analyzeBtn").disabled=!file;if(stream)stopCamera();if(!file){$("#preview").innerHTML='<span class="muted">Selecciona o toma una foto</span>';return}const u=URL.createObjectURL(file);$("#preview").innerHTML=`<img src="${u}" alt="Carta"/>`}
+$("#fileInput").onchange=e=>setFile(e.target.files?.[0]||null);$("#cameraInput").onchange=e=>setFile(e.target.files?.[0]||null);
+async function openCamera(){try{if(!navigator.mediaDevices?.getUserMedia)throw new Error();stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});video=document.createElement("video");video.autoplay=true;video.playsInline=true;video.muted=true;video.srcObject=stream;$("#preview").innerHTML="";$("#preview").appendChild(video);$("#captureBtn").disabled=false}catch{alert("No fue posible abrir la cÃ¡mara. En celular/tablet usa Tomar foto. Para webcam remota usa HTTPS o localhost.")}}
+function stopCamera(){if(stream)for(const t of stream.getTracks())t.stop();stream=null;video=null;$("#captureBtn").disabled=true}
+$("#webcamBtn").onclick=openCamera;$("#captureBtn").onclick=async()=>{if(!video)return;const c=document.createElement("canvas");c.width=video.videoWidth||1280;c.height=video.videoHeight||720;c.getContext("2d").drawImage(video,0,0,c.width,c.height);const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.94));setFile(new File([blob],"captura-gmx.jpg",{type:"image/jpeg"}))};
+function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}function cardName(c){return c?.nombre||c?.name||c?.nombre_carta||"(sin nombre)"}function cardCode(c){return c?.codigo||c?.collector_number||c?.numero_coleccion||c?.set_code||""}
+$("#analyzeBtn").onclick=async()=>{if(!file)return;$("#analyzeBtn").disabled=true;$("#analyzeBtn").textContent="Analizando localmenteâ€¦";$("#ocr").innerHTML='<span class="muted">Ejecutando Tesseract localâ€¦</span>';$("#catalog").innerHTML='<span class="muted">Buscando en catÃ¡logo GMXâ€¦</span>';$("#vision").innerHTML='<span class="muted">Comprobando Ollamaâ€¦</span>';$("#final").innerHTML='<span class="muted">Procesandoâ€¦</span>';
+try{const r=await fetch("/ai-vision-lab/analyze/local",{method:"POST",headers:{"Content-Type":file.type||"image/jpeg"},body:file});const j=await r.json();if(!r.ok||!j.success)throw new Error(j.error||`HTTP ${r.status}`);const d=j.data||{},o=d.ocr||{},c=d.catalog||{},v=d.vision||{};
+$("#ocr").innerHTML=`<div class="result"><div><b>Confianza OCR:</b> ${Number(o.confidence||0).toFixed(1)}%</div><div><b>Nombre observado:</b> ${esc(c.observed_name||"No determinado")}</div><div><b>CÃ³digo observado:</b> ${esc(c.observed_code||"No detectado")}</div><div class="mono">${esc(o.text||"Sin texto")}</div></div>`;
+const rows=c.candidates||[];$("#catalog").innerHTML=rows.length?rows.map((x,i)=>`<div class="candidate"><div class="score">#${i+1} Â· ${(x.score*100).toFixed(1)}%</div><div><b>${esc(cardName(x.card))}</b></div><div>${esc(cardCode(x.card))}</div><div class="small">Nombre exacto: ${x.exact_name?"âœ“":"â€”"} Â· CÃ³digo exacto: ${x.exact_code?"âœ“":"â€”"}</div></div>`).join(""):'<span class="warn">No hubo coincidencias suficientes.</span>';
+$("#vision").innerHTML=v.available&&v.data?`<div class="mono">${esc(JSON.stringify(v.data,null,2))}</div>`:`<span class="warn">${esc(v.error||"Ollama no instalado. OCR + catÃ¡logo siguen funcionando.")}</span>`;
+const best=rows[0];if(c.confirmed&&best)$("#final").innerHTML=`<div class="ok"><b>âœ“ CARTA CONFIRMADA</b></div><h2>${esc(cardName(best.card))}</h2><div>${esc(cardCode(best.card))}</div><div class="small">PuntuaciÃ³n ${(best.score*100).toFixed(1)}%.</div>`;else if(best)$("#final").innerHTML=`<div class="warn"><b>REVISIÃ“N NECESARIA</b></div><h2>${esc(cardName(best.card))}</h2><div class="small">Mejor coincidencia ${(best.score*100).toFixed(1)}%. GMX no la acepta automÃ¡ticamente.</div>`;else $("#final").innerHTML='<span class="warn">No se pudo confirmar una identidad. GMX no inventarÃ¡ una carta.</span>';
+}catch(e){$("#ocr").innerHTML=`<span class="err">${esc(e.message)}</span>`;$("#catalog").innerHTML='<span class="err">AnÃ¡lisis interrumpido.</span>';$("#final").innerHTML='<span class="err">No se confirmÃ³ ninguna carta.</span>'}finally{$("#analyzeBtn").disabled=!file;$("#analyzeBtn").textContent="ðŸ” IDENTIFICAR CARTA GRATIS"}};
+window.addEventListener("beforeunload",stopCamera);localStatus();
+</script></body></html>
