@@ -5,6 +5,9 @@ import BrandLogo from './BrandLogo.jsx';
 const groups = [
 { label: 'GENERAL', items: [
   ['/admin/dashboard', 'Dashboard', 'dashboard', 'DASHBOARD'], ['/admin/productos', 'Productos', 'products', 'PRODUCTOS'], ['/admin/categorias', 'Categorías', 'products', 'PRODUCTOS'],
+  ['/admin/alta-externa-beta','Alta Externa Beta','products','PRODUCTOS'],
+  ['/admin/busqueda-visual-beta','BÃºsqueda Visual Beta','products','PRODUCTOS'],
+  ['/ai-vision-lab','AI Vision Lab','tcg','TCG'],
   ['/admin/clientes', 'Clientes', 'clients', 'CLIENTES'], ['/admin/inventario', 'Inventario', 'inventory', 'INVENTARIO'],
   ['/admin/sucursales', 'Sucursales', 'branches', 'SUCURSALES']]
 },
@@ -14,7 +17,7 @@ const groups = [
 },
 { label: 'TCG', items: [
   ['/admin/tcg', 'Catálogo TCG', 'tcg', 'TCG'], ['/admin/tcg-operacion', 'Operación TCG', 'inventory', 'TCG'], ['/admin/buylist', 'Buylist', 'buylist', 'BUYLIST'],
-  ['/ai-vision-lab', 'EscÃ¡ner de cartas', 'tcg', 'TCG'],
+
   ['/admin/membresias', 'Membresías', 'reports', 'COMERCIAL'], ['/admin/torneos', 'Torneos', 'tcg', 'COMERCIAL']]
 },
 { label: 'GESTIÓN', items: [

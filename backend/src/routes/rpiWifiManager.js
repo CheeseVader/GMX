@@ -86,13 +86,23 @@ router.get('/networks', async (req,res)=>{
           ssid,
           signal:Number(signal)||0,
           security:String(security||'').trim(),
+          secure:!/^$|^--$|^OPEN$/i.test(String(security||'').trim()),
           connected:String(inUse||'').trim()==='*'
         };
       })
       .filter(Boolean)
       .sort((a,b)=>Number(b.connected)-Number(a.connected)||b.signal-a.signal);
 
-    res.json({success:true,data:rows,diagnostic:rows.length?'OK':'NO_NETWORKS_RETURNED'});
+    const connected=rows.find(n=>n.connected);
+    const connectedSsid=connected?.ssid||'';
+    res.json({
+      ok:true,
+      success:true,
+      connectedSsid,
+      networks:rows,
+      data:rows,
+      diagnostic:rows.length?'OK':'NO_NETWORKS_RETURNED'
+    });
   }catch(e){
     console.error('[GMX][WIFI][SCAN]',e);
     res.status(500).json({

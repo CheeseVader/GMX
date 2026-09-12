@@ -7,6 +7,7 @@ import { api } from '../services/api.js';
 const pageMeta = {
   '/admin/dashboard': ['Dashboard', brandText("GMX LOCAL")],
   '/admin/productos': ['Productos', 'CATÁLOGO'],
+  '/admin/alta-externa-beta': ['Alta Externa Beta', 'LABORATORIO Â· CONSULTA EXTERNA'],
 
 
   '/admin/busqueda-visual-beta': ['Búsqueda Visual Beta', 'LABORATORIO · OPENCV + OPENCLIP'],

@@ -19,7 +19,8 @@ export default function RpiWifiManager({open,onClose}){
       const r=await fetch('/api/rpi-wifi/networks',{cache:'no-store'});
       const d=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(d?.error||'scan_failed');
-      setNetworks(Array.isArray(d.networks)?d.networks:[]);
+      const list=Array.isArray(d.networks)?d.networks:(Array.isArray(d.data)?d.data:[]);
+      setNetworks(list);
       setConnectedSsid(d.connectedSsid||'');
       if(!selected&&d.connectedSsid)setSelected(d.connectedSsid);
     }catch(e){

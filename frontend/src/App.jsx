@@ -97,6 +97,8 @@ export default function App(){
         <Route index element={<Navigate to="dashboard" replace/>}/>
         <Route path="dashboard" element={<DashboardPage/>}/>
         <Route path="productos" element={<ProductsPage/>}/>
+        <Route path="busqueda-visual-beta" element={<VisualSearchBetaPage/>}/>
+        <Route path="alta-externa-beta" element={<ExternalCardLookupBetaPage/>}/>
         <Route path="categorias" element={<CategoriesPage/>}/>
         <Route path="clientes" element={<ClientsPage/>}/>
         <Route path="inventario" element={<InventoryPage/>}/>
