@@ -1,4 +1,4 @@
-﻿import fs from 'node:fs';
+import fs from 'node:fs';
 import { brandText } from "../config/brand.js";import crypto from 'node:crypto';
 import { pool, query } from '../db.js';
 import { hashPassword, verifyPassword, newToken, hashToken } from '../security.js';
@@ -15,7 +15,7 @@ function validatePassword(password) {
   return p;
 }
 
-export async function registerClient({ name, email, phone, password, address = '', country = 'MÃ©xico', state = '', city = '', zip = '', settlement = '', ip, userAgent, baseUrl = '' }) {
+export async function registerClient({ name, email, phone, password, address = '', country = 'México', state = '', city = '', zip = '', settlement = '', ip, userAgent, baseUrl = '' }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -43,12 +43,12 @@ export async function registerClient({ name, email, phone, password, address = '
         nombre=$2,telefono=COALESCE(NULLIF($3,''),telefono),direccion=COALESCE(NULLIF($4,''),direccion),
         ciudad=COALESCE(NULLIF($5,''),ciudad),estado=COALESCE(NULLIF($6,''),estado),cp=COALESCE(NULLIF($7,''),cp),
         pais=COALESCE(NULLIF($8,''),pais),fecha_actualizacion=NOW()
-        WHERE id_cliente=$1`, [idCliente, name, phone, fullAddress, txt(city), txt(state), txt(zip), txt(country) || 'MÃ©xico']);
+        WHERE id_cliente=$1`, [idCliente, name, phone, fullAddress, txt(city), txt(state), txt(zip), txt(country) || 'México']);
     } else {
       idCliente = uid('CLI-WEB');
       await client.query(`INSERT INTO gmx.clientes(id_cliente,nombre,telefono,email,direccion,ciudad,estado,cp,pais,fecha_registro,fecha_actualizacion)
         VALUES($1,$2,NULLIF($3,''),$4,NULLIF($5,''),NULLIF($6,''),NULLIF($7,''),NULLIF($8,''),$9,NOW(),NOW())`,
-      [idCliente, name, phone, email, fullAddress, txt(city), txt(state), txt(zip), txt(country) || 'MÃ©xico']);
+      [idCliente, name, phone, email, fullAddress, txt(city), txt(state), txt(zip), txt(country) || 'México']);
     }
 
     const idCuenta = uid('CTA');
@@ -69,7 +69,7 @@ export async function registerClient({ name, email, phone, password, address = '
     const verificationUrl = `${publicBase}/tienda/verificar-email?token=${encodeURIComponent(verifyToken)}`;
     const mail = await queueAndSendEmail({
       to: email,
-      subject: brandText("GMX Â· Confirma tu cuenta"),
+      subject: brandText("GMX · Confirma tu cuenta"),
       html: verificationEmailHtml({ name, verificationUrl }),
       reference: idCliente
     });
@@ -179,7 +179,7 @@ export async function saveAddress(idCliente, input) {
       RETURNING *`, [
     id, idCliente, txt(input.alias) || null, txt(input.nombre_receptor) || null, txt(input.telefono) || null,
     txt(input.direccion), txt(input.ciudad) || null, txt(input.estado) || null, txt(input.cp) || null,
-    txt(input.pais) || 'MÃ©xico', input.principal === true]
+    txt(input.pais) || 'México', input.principal === true]
     );
     if (!r.rowCount) throw new Error('ADDRESS_NOT_FOUND');
     await client.query('COMMIT');
@@ -198,7 +198,7 @@ export async function requestPasswordReset({ email, ip, baseUrl = '' }) {
     WHERE LOWER(c.email)=$1
     ORDER BY c.row_id LIMIT 1`, [email]);
 
-  // Respuesta intencionalmente idÃ©ntica exista o no la cuenta.
+  // Respuesta intencionalmente idéntica exista o no la cuenta.
   if (!r.rowCount || r.rows[0].activo !== true || r.rows[0].email_verificado !== true) {
     return { accepted: true };
   }
@@ -224,7 +224,7 @@ export async function requestPasswordReset({ email, ip, baseUrl = '' }) {
 
   const mail = await queueAndSendEmail({
     to: account.email,
-    subject: brandText("GMX Â· Recupera tu cuenta"),
+    subject: brandText("GMX · Recupera tu cuenta"),
     html: passwordResetEmailHtml({ name: account.nombre || '', resetUrl }),
     reference: account.id_cliente
   });
@@ -297,7 +297,7 @@ export async function completePasswordReset({ token, password, ip, userAgent }) 
 
     await queueAndSendEmail({
       to: account.email,
-      subject: brandText("GMX Â· Tu contraseÃ±a fue actualizada"),
+      subject: brandText("GMX · Tu contraseña fue actualizada"),
       html: passwordChangedEmailHtml({ name: account.nombre || '' }),
       reference: account.id_cliente
     });

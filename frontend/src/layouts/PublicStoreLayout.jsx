@@ -1,4 +1,4 @@
-﻿import { brandText } from '../config/brand.js';
+import { brandText } from '../config/brand.js';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useEffect, useState } from 'react';
 import { usePublicStore } from '../contexts/PublicStoreContext.jsx';
@@ -139,12 +139,12 @@ export default function PublicStoreLayout() {
   }}>
     <header className="public-header shiny-client-header">
       <div className="public-header-main">
-        <button className="shiny-mobile-menu" type="button" aria-label={menuOpen ? 'Cerrar menÃº' : 'Abrir menÃº'} onClick={() => setMenuOpen((value) => !value)}>
+        <button className="shiny-mobile-menu" type="button" aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'} onClick={() => setMenuOpen((value) => !value)}>
           <PublicIcon name={menuOpen ? 'close' : 'menu'} />
         </button>
         <NavLink to="/tienda" className="public-brand" aria-label={`${brand}, inicio`} onClick={() => setMenuOpen(false)}><b>{logo}</b><strong>{brand}</strong></NavLink>
         <form className="public-search" onSubmit={submitSearch}>
-          <select aria-label="Tipo de bÃºsqueda" value={searchType} onChange={(e) => setSearchType(e.target.value)}>
+          <select aria-label="Tipo de búsqueda" value={searchType} onChange={(e) => setSearchType(e.target.value)}>
             <option value="ALL">Todo</option><option value="PRODUCT">Productos</option><option value="TCG">TCG</option>
           </select>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cartas, productos o sets..." />
@@ -169,11 +169,11 @@ export default function PublicStoreLayout() {
     </header>
 
     {store?.promotions?.length ? <div className="public-promo-bar">
-      <span><PublicIcon name="tag" size={15} /> {store.promotions[0].nombre}{store.promotions[0].codigo ? <> Â· CÃ³digo <b>{store.promotions[0].codigo}</b></> : null}</span>
-      <NavLink to="/tienda/promociones">Ver promociÃ³n <PublicIcon name="arrow" size={14} /></NavLink>
+      <span><PublicIcon name="tag" size={15} /> {store.promotions[0].nombre}{store.promotions[0].codigo ? <> · Código <b>{store.promotions[0].codigo}</b></> : null}</span>
+      <NavLink to="/tienda/promociones">Ver promoción <PublicIcon name="arrow" size={14} /></NavLink>
     </div> : null}
 
-    {loading ? <div className="public-system-message">Cargando tiendaâ€¦</div> : null}
+    {loading ? <div className="public-system-message">Cargando tienda…</div> : null}
     {error ? <div className="public-system-message error">{error}</div> : null}
 
     <Outlet />

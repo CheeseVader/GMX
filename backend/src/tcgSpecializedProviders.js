@@ -545,22 +545,22 @@ async function swuCards(setCode, { downloadImages = false, syncPrices = true } =
 
 export const SPECIALIZED_SOURCE_REGISTRY = Object.freeze({
   LORCANA: {
-    catalog: [{ code: 'LORCAST', name: 'Lorcast', description: 'CatÃ¡logo e imÃ¡genes de Disney Lorcana' }],
+    catalog: [{ code: 'LORCAST', name: 'Lorcast', description: 'Catálogo e imágenes de Disney Lorcana' }],
     images: [{ code: 'LORCAST', name: 'Lorcast' }],
     prices: [{ code: 'LORCAST', name: 'Lorcast' }]
   },
   ONEPIECE: {
-    catalog: [{ code: 'OPTCG_API', name: 'OPTCG API', description: 'CatÃ¡logo pÃºblico de One Piece Card Game' }],
+    catalog: [{ code: 'OPTCG_API', name: 'OPTCG API', description: 'Catálogo público de One Piece Card Game' }],
     images: [{ code: 'OPTCG_API', name: 'OPTCG API' }],
-    prices: [{ code: 'TCGPLAYER', name: 'TCGplayer (vÃ­a OPTCG API)' }]
+    prices: [{ code: 'TCGPLAYER', name: 'TCGplayer (vía OPTCG API)' }]
   },
   DIGIMON: {
-    catalog: [{ code: 'DIGIMONCARD_API', name: 'DigimonCard.io', description: 'CatÃ¡logo pÃºblico de Digimon Card Game' }],
+    catalog: [{ code: 'DIGIMONCARD_API', name: 'DigimonCard.io', description: 'Catálogo público de Digimon Card Game' }],
     images: [],
     prices: []
   },
   SWU: {
-    catalog: [{ code: 'SWU_API', name: 'SWU API', description: 'CatÃ¡logo pÃºblico de Star Wars Unlimited' }],
+    catalog: [{ code: 'SWU_API', name: 'SWU API', description: 'Catálogo público de Star Wars Unlimited' }],
     images: [{ code: 'SWU_API', name: 'SWU API' }],
     prices: []
   }

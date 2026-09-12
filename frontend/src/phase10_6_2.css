@@ -135,7 +135,7 @@
   font-size:15px;
 }
 
-/* El botÃ³n de carga tambiÃ©n admite texto largo sin cortarse. */
+/* El botón de carga también admite texto largo sin cortarse. */
 .transfer-order .proof-upload{
   min-height:60px!important;
   height:auto!important;
@@ -145,7 +145,7 @@
   text-align:center;
 }
 
-/* ConfirmaciÃ³n visual despuÃ©s de recibir el comprobante. */
+/* Confirmación visual después de recibir el comprobante. */
 .gmx-transfer-success-backdrop{
   position:fixed;
   inset:0;

@@ -44,7 +44,7 @@ export default function RpiWifiManager({open,onClose}){
       }
 
       if(!list.length){
-        setMessage(`El backend respondiÃ³ correctamente, pero no devolviÃ³ redes. ${d?.diagnostic||''}`.trim());
+        setMessage(`El backend respondió correctamente, pero no devolvió redes. ${d?.diagnostic||''}`.trim());
       }
     }catch(e){
       console.error('[GMX][WIFI][UI]',e);
@@ -60,19 +60,19 @@ export default function RpiWifiManager({open,onClose}){
 
   async function connect(){
     if(!selectedNetwork)return;
-    if(selectedNetwork.secure&&!password){setMessage('Escribe la contraseÃ±a de la red.');return}
-    setConnecting(true);setMessage('Conectandoâ€¦');
+    if(selectedNetwork.secure&&!password){setMessage('Escribe la contraseña de la red.');return}
+    setConnecting(true);setMessage('Conectando…');
     try{
       const r=await fetch('/api/rpi-wifi/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:selectedNetwork.ssid,secure:selectedNetwork.secure,password})});
       const d=await r.json().catch(()=>({}));
       if(!r.ok){
-        setMessage(d?.error==='bad_password'?'No fue posible conectarse. Verifica la contraseÃ±a.':'No fue posible conectarse a esta red.');
+        setMessage(d?.error==='bad_password'?'No fue posible conectarse. Verifica la contraseña.':'No fue posible conectarse a esta red.');
         return;
       }
       setConnectedSsid(selectedNetwork.ssid);setPassword('');setMessage(`Conectado a ${selectedNetwork.ssid}.`);
       setTimeout(refreshNetworks,1200);
     }catch{
-      setMessage('Verificando la nueva conexiÃ³nâ€¦');
+      setMessage('Verificando la nueva conexión…');
       setTimeout(refreshNetworks,1800);
     }finally{setConnecting(false)}
   }
@@ -85,25 +85,25 @@ export default function RpiWifiManager({open,onClose}){
         <button type="button" className="rpiwifi-close" onClick={onClose} aria-label="Cerrar">X</button>
       </header>
       <div className="rpiwifi-list">
-        {loading&&networks.length===0?<div className="rpiwifi-empty">Buscando redesâ€¦</div>:null}
+        {loading&&networks.length===0?<div className="rpiwifi-empty">Buscando redes…</div>:null}
         {!loading&&networks.length===0?<div className="rpiwifi-empty">No se encontraron redes.</div>:null}
         {networks.map(n=><button type="button" key={n.ssid} className={`rpiwifi-network ${selected===n.ssid?'selected':''}`} onClick={()=>{setSelected(n.ssid);setPassword('');setMessage('')}}>
-          <span className="rpiwifi-signal">ðŸ“¶</span>
-          <span className="rpiwifi-name"><strong>{n.ssid}</strong><small>{n.connected?'Conectada':`${n.signal}% de seÃ±al`}</small></span>
-          <span className="rpiwifi-security">{n.secure?'ðŸ”’':'Abierta'}</span>
+          <span className="rpiwifi-signal">📶</span>
+          <span className="rpiwifi-name"><strong>{n.ssid}</strong><small>{n.connected?'Conectada':`${n.signal}% de señal`}</small></span>
+          <span className="rpiwifi-security">{n.secure?'🔒':'Abierta'}</span>
         </button>)}
       </div>
       {selectedNetwork?<div className="rpiwifi-form">
         <div className="rpiwifi-selected">Red seleccionada: <strong>{selectedNetwork.ssid}</strong></div>
-        {selectedNetwork.secure?<label className="rpiwifi-label"><span>ContraseÃ±a Wi-Fi</span>
-          <div className="rpiwifi-password"><input type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')connect()}} autoComplete="off" autoFocus placeholder="Escribe la contraseÃ±a"/>
+        {selectedNetwork.secure?<label className="rpiwifi-label"><span>Contraseña Wi-Fi</span>
+          <div className="rpiwifi-password"><input type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')connect()}} autoComplete="off" autoFocus placeholder="Escribe la contraseña"/>
           <button type="button" onClick={()=>setShowPassword(v=>!v)}>{showPassword?'Ocultar':'Mostrar'}</button></div>
         </label>:null}
       </div>:null}
       {message?<div className="rpiwifi-message">{message}</div>:null}
       <footer className="rpiwifi-actions">
-        <button type="button" className="rpiwifi-secondary" onClick={refreshNetworks} disabled={loading||connecting}>{loading?'Buscandoâ€¦':'Actualizar redes'}</button>
-        <button type="button" className="rpiwifi-primary" onClick={connect} disabled={!selectedNetwork||connecting}>{connecting?'Conectandoâ€¦':'Conectar'}</button>
+        <button type="button" className="rpiwifi-secondary" onClick={refreshNetworks} disabled={loading||connecting}>{loading?'Buscando…':'Actualizar redes'}</button>
+        <button type="button" className="rpiwifi-primary" onClick={connect} disabled={!selectedNetwork||connecting}>{connecting?'Conectando…':'Conectar'}</button>
       </footer>
     </section>
   </div>;

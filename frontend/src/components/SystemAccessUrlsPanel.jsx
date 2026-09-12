@@ -47,9 +47,9 @@ export default function SystemAccessUrlsPanel(){
 
   return <section className="content-card gmx-access-panel">
     <div className="section-head gmx-access-head">
-      <div><div className="eyebrow">ACCESOS Â· MISMA LÃ“GICA TCG-CORE</div><h2>URLs del sistema</h2>
+      <div><div className="eyebrow">ACCESOS · MISMA LÓGICA TCG-CORE</div><h2>URLs del sistema</h2>
       <p className="section-copy">ADMIN siempre entra por <b>/login</b>. TIENDA usa un acceso independiente. El kiosko nunca abre la tienda.</p></div>
-      <button type="button" className="secondary" disabled={busy} onClick={refresh}>{busy?'Actualizandoâ€¦':'Actualizar URLs'}</button>
+      <button type="button" className="secondary" disabled={busy} onClick={refresh}>{busy?'Actualizando…':'Actualizar URLs'}</button>
     </div>
     {error?<div className="system-settings-note gmx-access-error">{error}</div>:null}
     <div className="gmx-access-columns">
@@ -63,20 +63,20 @@ export default function SystemAccessUrlsPanel(){
         <AccessRow label="Autostart / Kiosko" url={data.kiosk}/>
       </div>
       <div className="gmx-access-group store">
-        <div className="gmx-access-group-title"><b>TIENDA</b><span>Entrada pÃºblica independiente</span></div>
+        <div className="gmx-access-group-title"><b>TIENDA</b><span>Entrada pública independiente</span></div>
         <AccessRow label="Tienda local" url={data.store?.local} kind="store"/>
         <AccessRow label="Cloudflare TIENDA" url={data.store?.cloudflare} kind="store"/>
         <div className="gmx-access-contract">
           <b>Contrato de acceso</b>
-          <span>127.0.0.1 â†’ /login ADMIN</span>
-          <span>localhost â†’ /login ADMIN</span>
-          <span>gmx.local â†’ /login ADMIN</span>
-          <span>Kiosko â†’ /login ADMIN</span>
-          <span>Cloudflare ADMIN â†’ puerto 80 â†’ ADMIN</span>
-          <span>Cloudflare TIENDA â†’ puerto 8789 â†’ /tienda</span>
+          <span>127.0.0.1 → /login ADMIN</span>
+          <span>localhost → /login ADMIN</span>
+          <span>gmx.local → /login ADMIN</span>
+          <span>Kiosko → /login ADMIN</span>
+          <span>Cloudflare ADMIN → puerto 80 → ADMIN</span>
+          <span>Cloudflare TIENDA → puerto 8789 → /tienda</span>
         </div>
       </div>
     </div>
-    <div className="gmx-access-foot">Actualizado: {data.generated_at?new Date(data.generated_at).toLocaleString():'â€”'}</div>
+    <div className="gmx-access-foot">Actualizado: {data.generated_at?new Date(data.generated_at).toLocaleString():'—'}</div>
   </section>;
 }

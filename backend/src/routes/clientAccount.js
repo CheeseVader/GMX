@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { requireClientAuth,setClientSessionCookie,clearClientSessionCookie } from '../middleware/clientAuth.js';
 import {
@@ -37,10 +37,10 @@ router.post('/auth/recover',rateLimit({keyPrefix:'CLIENT_RECOVER',max:8}),async(
       ip:req.ip,
       baseUrl
     });
-    // Nunca indicar al pÃºblico si el correo existe.
+    // Nunca indicar al público si el correo existe.
     res.json({success:true,data:r});
   }catch(_e){
-    // Incluso ante ciertos fallos internos, evitamos enumeraciÃ³n de cuentas.
+    // Incluso ante ciertos fallos internos, evitamos enumeración de cuentas.
     res.json({success:true,data:{accepted:true}});
   }
 });
