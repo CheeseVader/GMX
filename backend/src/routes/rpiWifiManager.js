@@ -1,6 +1,10 @@
 import express from 'express';
 import { spawn } from 'node:child_process';
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const execFileAsync = promisify(execFile);
+
 const router = express.Router();
 
 function hostIsLocal(req){

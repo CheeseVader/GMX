@@ -23,20 +23,49 @@ export default function PromotionsLoyaltyPage(){
   const [message,setMessage]=useState('');
   const [search,setSearch]=useState('');
   const [status,setStatus]=useState('');
-  const [busy,setBusy]=useState(false);
+  const [busy,setBusy]=useState(false);  async function load(){
+    setMessage('');
 
-  async function load(){
-    const [p,r,b,c]=await Promise.all([
-      api('/api/v1/content/promotions'),
+    // El catÃ¡logo de promociones es el dato principal.
+    // Redenciones/sucursales/clientes son auxiliares y no deben tumbar toda la pantalla.
+    try{
+      const promotionsResponse=await api('/api/v1/content/promotions');
+      setPromotions(Array.isArray(promotionsResponse?.data)?promotionsResponse.data:[]);
+    }catch(e){
+      console.error('[GMX][PROMOTIONS][LOAD_CATALOG]',e);
+      setPromotions([]);
+      setMessage(`No fue posible cargar el catÃ¡logo de promociones: ${String(e?.message||e)}`);
+      return;
+    }
+
+    const [redemptionsResult,branchesResult,clientsResult]=await Promise.allSettled([
       api('/api/v1/content/promotions/redemptions?limit=500'),
       api('/api/v1/branches?includeInactive=false'),
       api('/api/v1/clients?limit=1000')
     ]);
-    setPromotions(p.data||[]);
-    setRedemptions(r.data||[]);
-    setBranches(b.data||[]);
-    setClients(c.data||[]);
+
+    if(redemptionsResult.status==='fulfilled'){
+      setRedemptions(Array.isArray(redemptionsResult.value?.data)?redemptionsResult.value.data:[]);
+    }else{
+      console.error('[GMX][PROMOTIONS][LOAD_REDEMPTIONS]',redemptionsResult.reason);
+      setRedemptions([]);
+    }
+
+    if(branchesResult.status==='fulfilled'){
+      setBranches(Array.isArray(branchesResult.value?.data)?branchesResult.value.data:[]);
+    }else{
+      console.error('[GMX][PROMOTIONS][LOAD_BRANCHES]',branchesResult.reason);
+      setBranches([]);
+    }
+
+    if(clientsResult.status==='fulfilled'){
+      setClients(Array.isArray(clientsResult.value?.data)?clientsResult.value.data:[]);
+    }else{
+      console.error('[GMX][PROMOTIONS][LOAD_CLIENTS]',clientsResult.reason);
+      setClients([]);
+    }
   }
+
   useEffect(()=>{load().catch(e=>setMessage(e.message));},[]);
   useEffect(()=>{
     if(!editorOpen)return;
