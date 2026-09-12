@@ -4,6 +4,7 @@ import { api } from '../services/api.js';
 import BrandLogo from '../components/BrandLogo.jsx';
 
 import './LoginPageR63.css';
+import RpiWifiManager from '../components/RpiWifiManager.jsx';
 export default function LoginPage() {
   const nav = useNavigate();
   const location = useLocation();
@@ -11,6 +12,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [wifiManagerOpen,setWifiManagerOpen]=useState(false);
+  const localWifiAllowed=typeof window!=='undefined' && (window.location.hostname==='127.0.0.1'||window.location.hostname==='localhost');
   const [loginAppearance,setLoginAppearance] = useState(() => {
     try {
       const cached=JSON.parse(localStorage.getItem('SHINY_LOGIN_APPEARANCE_R55')||'{}');
@@ -82,6 +85,7 @@ export default function LoginPage() {
   }
 
   return <main className={`login-page shiny-login-r55 design-${loginAppearance.design}`} data-login-glow={loginAppearance.glow}>
+      <RpiWifiManager open={wifiManagerOpen} onClose={()=>setWifiManagerOpen(false)} />
       {loginAppearance.design==='custom' && loginAppearance.mediaId ?
         <img
           className="shiny-login-custom-background-r63m"
@@ -111,6 +115,7 @@ export default function LoginPage() {
       <div className="eyebrow">{brandText("GMX · ADMIN")}</div>
       <h1>Iniciar sesión</h1>
       <p>Acceso administrativo seguro.</p>
+      {localWifiAllowed?<button type="button" className="gmx-login-wifi-button" onClick={()=>setWifiManagerOpen(true)}>Configurar Wi-Fi</button>:null}
       <label>Usuario<input type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} autoCapitalize="none" spellCheck={false} required /></label>
       <label>Contrase&ntilde;a<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
       {error ? <div className="alert error">{error}</div> : null}

@@ -52,6 +52,7 @@ import productImagesRouter from './routes/productImages.js';
 import { startProductImageEnrichmentScheduler } from './productImageEnrichmentService.js';
 
 import transferPaymentsAdminRouter from './routes/transferPaymentsAdmin.js';
+import rpiWifiManager from './routes/rpiWifiManager.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -118,6 +119,7 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api/auth', authRateLimit, authRouter);
+app.use('/api/rpi-wifi', rpiWifiManager);
 app.use('/api/public', publicApiRateLimit);
 app.use('/api/public/live-sync', storefrontLiveRouter);
 app.use('/api/public', publicMembershipsRouter);
