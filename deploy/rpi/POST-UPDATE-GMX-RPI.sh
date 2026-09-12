@@ -10,8 +10,11 @@ if [ -f "$WIFI_PATCH" ]; then
 fi
 # /GMX_WIFI_POSTUPDATE_R1_5
 
-# GMX_WIFI_SYSTEMD_R1_9_BEGIN
-if [ -x /opt/gmx/app/deploy/rpi/APLICAR-GMX-WIFI-SYSTEMD-R1.9.sh ]; then
-  /opt/gmx/app/deploy/rpi/APLICAR-GMX-WIFI-SYSTEMD-R1.9.sh || true
+# GMX_WIFI_POLKIT_R2_0_BEGIN
+WIFI_POLKIT_PATCH="/opt/gmx/app/deploy/rpi/ACTUALIZAR-GMX-WIFI-POLKIT-R2.0.sh"
+if [ -f "$WIFI_POLKIT_PATCH" ]; then
+  sed -i 's/\r$//' "$WIFI_POLKIT_PATCH" || true
+  chmod +x "$WIFI_POLKIT_PATCH" || true
+  "$WIFI_POLKIT_PATCH" || echo "[GMX][WARN] Fallo WIFI POLKIT R2.0" >&2
 fi
-# GMX_WIFI_SYSTEMD_R1_9_END
+# GMX_WIFI_POLKIT_R2_0_END
