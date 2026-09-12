@@ -86,3 +86,6 @@ backend/uploads/products/*
 *.backup-*
 *.BACKUP
 *.BACKUP-*
+
+# Respaldos locales GMX
+BACKUP-AI-VISION-LAB-*/
