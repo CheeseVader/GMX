@@ -1,0 +1,86 @@
+﻿GMX RELEASE R42.5.1
+============================================================
+
+FECHA
+2026-09-15
+
+ESTADO
+RELEASE CANDIDATE VALIDADO
+
+TCG CATALOG / SYNC
+============================================================
+
+MAGIC
+R42.5.1 VALIDADO
+SETS            : 988 / 988
+CARTAS          : 108585
+ERRORES         : 0
+RESULTADO       : PASS
+
+ONE PIECE
+TOTAL CARTAS    : 4887
+RESULTADO       : PASS
+
+ONE PIECE - DON
+TOTAL           : 187
+SIN NUMBER      : 187
+ESTADO          : EXCEPCION VALIDA DEL PROVIDER
+EXTERNAL_ID     : PASS
+VARIANT_KEY     : PASS
+DUPLICADOS      : 0
+RESULTADO       : PASS
+
+ONE PIECE - PROMO
+TOTAL           : 1082
+EXTERNAL_ID     : PASS
+VARIANT_KEY     : PASS
+SIN NUMBER      : 0
+MULTIVARIANTE   : 235
+REMOTE IMAGE    : 944
+SIN IMAGEN      : 138
+RESULTADO       : PASS
+
+ONE PIECE PROMO PROVIDER
+OLD ENDPOINT    : allPromoCards = 0
+NEW ENDPOINT    : promos/filtered = 2
+SHA256          : BA58ECCB4536790EA1C821328AD3DA76EE409805419272C332B345DA238349FE
+RESULTADO       : PASS
+
+VALIDACION TECNICA R18
+============================================================
+
+PRODUCTIVOS     : 5 / 5
+BACKEND CHECK   : 4 / 4 PASS
+FRONTEND BUILD  : PASS
+
+ARCHIVOS PRODUCTIVOS
+============================================================
+
+backend/src/routes/tcgSync.js
+backend/src/tcgCatalogSyncService.js
+backend/src/tcgSpecializedProviders.js
+backend/src/tcgSyncJobService.js
+frontend/src/components/tcg/TCGAutoSyncPanel.jsx
+
+NOTAS
+============================================================
+
+- DON no debe recibir number/collector_number artificial.
+- PROMO conserva external_id y variant_key por variante.
+- No incluir _audit en commit.
+- No incluir .gmx-local-runtime en commit.
+- No incluir backend/_r42-tests en commit.
+- No incluir archivos BACKUP/PRE-FINAL en commit.
+- No incluir frontend/public/gmx-runtime automaticamente.
+- package.json backend/frontend conservan sus versiones npm actuales.
+- Este archivo registra la linea funcional GMX R42.5.1.
+
+GIT BASE
+============================================================
+
+BRANCH          : feature/pokemon-multitcg
+BASE HEAD       : 5d2a63e
+
+============================================================
+END GMX RELEASE R42.5.1
+============================================================

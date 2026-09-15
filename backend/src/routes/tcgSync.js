@@ -1,5 +1,6 @@
 import { brandText } from "../config/brand.js";import { Router } from 'express';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { ensureIntegritySchemaR42_2, auditCatalogIntegrityR42_2, providerStatusR42_2 } from '../tcgProviderIntegrityR42_2.js';
 import { startTcgAddJob, getTcgAddJob } from '../tcgSyncJobService.js';
 import {
   listSyncProviders, getSyncSets, updateSyncConfig, syncGameSets, syncSelectedCards,
@@ -39,7 +40,8 @@ router.post('/games/:gameCode/add-job', rateLimit({ keyPrefix: 'TCG_ADD_JOB', ma
     const data = startTcgAddJob(String(req.params.gameCode || '').toUpperCase(), {
       setCodes: Array.isArray(req.body?.setCodes) ? req.body.setCodes : [],
       downloadImages: req.body?.downloadImages === true,
-      syncPrices: req.body?.syncPrices !== false
+      syncPrices: req.body?.syncPrices !== false,
+      incremental: req.body?.incremental !== false
     });
     res.status(202).json({ success: true, data });
   } catch (e) {sendError(res, e);}
@@ -150,7 +152,8 @@ router.post('/games/:gameCode/sync-cards', rateLimit({ keyPrefix: 'TCG_SYNC_CARD
     const data = await syncSelectedCards(String(req.params.gameCode || '').toUpperCase(), {
       setCodes: Array.isArray(req.body?.setCodes) ? req.body.setCodes : [],
       downloadImages: req.body?.downloadImages === true,
-      syncPrices: req.body?.syncPrices !== false
+      syncPrices: req.body?.syncPrices !== false,
+      incremental: req.body?.incremental !== false
     });
     res.json({ success: true, data });
   } catch (e) {sendError(res, e);}
@@ -203,5 +206,31 @@ router.put('/games/:gameCode/fx',async(req,res)=>{
       :code;
     res.status(400).json({success:false,error:message,message});
   }
+});
+
+/* GMX_R42_2_INTEGRITY_ROUTES */
+router.get('/providers-r42/status', async (_req,res) => {
+  try {
+    const data = await providerStatusR42_2();
+    res.setHeader('Cache-Control','no-store');
+    res.json({success:true,data});
+  } catch (e) { sendError(res,e); }
+});
+
+router.post('/integrity/schema', rateLimit({keyPrefix:'TCG_INTEGRITY_SCHEMA',max:5}), async (_req,res) => {
+  try {
+    const data = await ensureIntegritySchemaR42_2();
+    res.json({success:true,data});
+  } catch (e) { sendError(res,e); }
+});
+
+router.post('/integrity/:gameCode/audit', rateLimit({keyPrefix:'TCG_INTEGRITY_AUDIT',max:10}), async (req,res) => {
+  try {
+    const data = await auditCatalogIntegrityR42_2(
+      String(req.params.gameCode||'').toUpperCase(),
+      {repairImages:req.body?.repairImages===true}
+    );
+    res.json({success:true,data});
+  } catch (e) { sendError(res,e); }
 });
 export default router;

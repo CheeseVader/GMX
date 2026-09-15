@@ -45,7 +45,7 @@ function progressFromPayload(payload = {}) {
   return Math.max(5, Math.min(84, Math.round(5 + blended * 79)));
 }
 
-export function startTcgAddJob(gameCode, { setCodes = [], downloadImages = false, syncPrices = true } = {}) {
+export function startTcgAddJob(gameCode, { setCodes = [], downloadImages = false, syncPrices = true, incremental = true } = {}) {
   cleanup();
   const id = randomUUID();
   const selected = [...new Set((setCodes || []).map((x) => String(x || '').trim()).filter(Boolean))];
@@ -66,7 +66,7 @@ export function startTcgAddJob(gameCode, { setCodes = [], downloadImages = false
         setCodes: selected,
         downloadImages,
         syncPrices,
-        incremental: true,
+        incremental: incremental !== false,
         onProgress: async (payload) => {
           setJob(id, {
             progress: progressFromPayload(payload),

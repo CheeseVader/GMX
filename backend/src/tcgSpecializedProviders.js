@@ -241,7 +241,7 @@ async function onePieceSets() {
     return true;
   });
   out.push(
-    { code: 'PROMO', name: 'Promotional Cards', releaseDate: '', total: 0, sourceUrl: `${OPTCG_BASE}/allPromoCards/` },
+    { code: 'PROMO', name: 'Promotional Cards', releaseDate: '', total: 0, sourceUrl: `${OPTCG_BASE}/promos/filtered/?set_name=One%20Piece%20Promotion%20Cards` },
     { code: 'DON', name: 'DON!! Cards', releaseDate: '', total: 0, sourceUrl: `${OPTCG_BASE}/allDonCards/` }
   );
   out._gmxSource = 'OPTCG API';
@@ -261,7 +261,7 @@ function opRowsForSet(rows, setCode) {
 async function onePieceRawCards(setCode) {
   const code = txt(setCode).toUpperCase();
   if (code === 'PROMO') {
-    return opFetchBulk('PROMO', `${OPTCG_BASE}/allPromoCards/`, 15 * 60 * 1000);
+    return opFetchBulk('PROMO', `${OPTCG_BASE}/promos/filtered/?set_name=One%20Piece%20Promotion%20Cards`, 15 * 60 * 1000);
   }
   if (code === 'DON') return opFetchBulk('DON', `${OPTCG_BASE}/allDonCards/`, 15 * 60 * 1000);
 

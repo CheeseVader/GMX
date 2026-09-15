@@ -1,4 +1,5 @@
 import { SPECIALIZED_REMOTE_PROVIDERS, SPECIALIZED_PROVIDER_ROWS, SPECIALIZED_SOURCE_REGISTRY } from './tcgSpecializedProviders.js';
+import { providerPreflightR42_2 } from './tcgProviderIntegrityR42_2.js';
 import { brandText } from "./config/brand.js";import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -171,21 +172,21 @@ async function ensureMasterRarity(client, gameCode, rarity) {
 }
 
 function canonicalCardKey(card) {
-  const parts = [
-  txt(card.gameCode).toLowerCase(),
-  txt(card.setCode).toLowerCase(),
-  txt(card.collectorNumber || card.number || '__NO_NUMBER__').toLowerCase(),
-  txt(card.name).toLowerCase(),
-  txt(card.language || 'en').toLowerCase()];
-  if (txt(card.variantKey)) parts.push(txt(card.variantKey).toLowerCase());
-  return parts.join('|');
+  return [
+    txt(card.gameCode).toLowerCase(),
+    txt(card.setCode).toLowerCase(),
+    txt(card.collectorNumber || card.number || '__NO_NUMBER__').toLowerCase(),
+    txt(card.name).toLowerCase(),
+    txt(card.language || 'en').toLowerCase(),
+    txt(card.variantKey || 'default').toLowerCase()
+  ].join('|');
 }
-
 async function upsertMasterCard(client, card, { incremental = false } = {}) {
   const comparable = {
     name: card.name || '', number: card.number || '', collectorNumber: card.collectorNumber || '',
     rarity: card.rarity || '', cardType: card.cardType || '', subtype: card.subtype || '',
     artist: card.artist || '', description: card.description || '', language: card.language || 'en',
+    variantKey: card.variantKey || 'default',
     imageSmall: card.imageSmall || '', imageLarge: card.imageLarge || '',
     purchaseUrl: card.purchaseUrl || '', sourceUrl: card.sourceUrl || '',
     metadata: card.metadata || {}
@@ -235,13 +236,15 @@ async function upsertMasterCard(client, card, { incremental = false } = {}) {
       last_synced_at=NOW(),
       metadata=CASE WHEN $18::jsonb='{}'::jsonb THEN metadata ELSE $18::jsonb END,
       source_hash=$19,
-      last_catalog_change_at=NOW()
+      last_catalog_change_at=NOW(),
+      variant_key=NULLIF($20,''),
+      source_updated_at=COALESCE($17,source_updated_at)
       WHERE row_id=$1
       RETURNING row_id`, [
     row.row_id, canonicalKey, providerRef, card.name, card.number || '', card.collectorNumber || '',
     card.rarity || '', card.cardType || '', card.subtype || '', card.artist || '', card.description || '',
     card.imageSmall || '', card.imageLarge || '', card.imageLocal || '', card.purchaseUrl || '',
-    card.sourceUrl || '', card.externalUpdatedAt || null, JSON.stringify(card.metadata || {}), sourceHash]
+    card.sourceUrl || '', card.externalUpdatedAt || null, JSON.stringify(card.metadata || {}), sourceHash, card.variantKey || 'default']
     );
 
     return { rowId: updated.rows[0].row_id, changed: true, inserted: false, sourceHash };
@@ -251,16 +254,16 @@ async function upsertMasterCard(client, card, { incremental = false } = {}) {
     game_code,provider_code,external_id,set_code,name,number,collector_number,rarity,
     card_type,subtype,artist,description,language,image_small_url,image_large_url,image_local_url,
     purchase_url,source_url,external_updated_at,last_synced_at,metadata,source_hash,
-    last_catalog_change_at,canonical_key,source_refs)
+    last_catalog_change_at,canonical_key,source_refs,variant_key,source_updated_at)
     VALUES($1,$2,$3,$4,$5,NULLIF($6,''),NULLIF($7,''),NULLIF($8,''),NULLIF($9,''),
       NULLIF($10,''),NULLIF($11,''),NULLIF($12,''),$13,NULLIF($14,''),NULLIF($15,''),NULLIF($16,''),
-      NULLIF($17,''),NULLIF($18,''),$19,NOW(),$20::jsonb,$21,NOW(),$22,$23::jsonb)
+      NULLIF($17,''),NULLIF($18,''),$19,NOW(),$20::jsonb,$21,NOW(),$22,$23::jsonb,NULLIF($24,''),$25)
     RETURNING row_id`, [
   card.gameCode, card.providerCode, card.externalId, card.setCode, card.name, card.number || '',
   card.collectorNumber || '', card.rarity || '', card.cardType || '', card.subtype || '', card.artist || '',
   card.description || '', card.language || 'en', card.imageSmall || '', card.imageLarge || '', card.imageLocal || '',
   card.purchaseUrl || '', card.sourceUrl || '', card.externalUpdatedAt || null, JSON.stringify(card.metadata || {}),
-  sourceHash, canonicalKey, providerRef]
+  sourceHash, canonicalKey, providerRef, card.variantKey || 'default', card.externalUpdatedAt || null]
   );
 
   return { rowId: r.rows[0].row_id, changed: true, inserted: true, sourceHash };
@@ -378,7 +381,7 @@ async function mapTcgdexSetId(setCode) {
     if (exact?.id) return exact.id;
   } catch {}
 
-  // If the primary Pokémon API and TCGdex use different IDs, map by the
+  // If the primary PokÃ©mon API and TCGdex use different IDs, map by the
   // master set name instead of guessing.
   const master = await query(`SELECT nombre FROM gmx.tcg_master_sets
     WHERE id_juego='POKEMON' AND codigo=$1 LIMIT 1`, [setCode]);
@@ -466,93 +469,90 @@ function ygoPrices(card, setEntry) {
 }
 
 async function pokemonSets() {
-  const headers = {};
-  if (process.env.SHINY_POKEMON_TCG_API_KEY) headers['X-Api-Key'] = process.env.SHINY_POKEMON_TCG_API_KEY;
-
   try {
-    let page = 1,all = [];
-    while (true) {
-      const j = await fetchJson(`https://api.pokemontcg.io/v2/sets?page=${page}&pageSize=250&orderBy=-releaseDate`, { headers });
-      all.push(...(j.data || []));
-      if (all.length >= Number(j.totalCount || all.length) || !(j.data || []).length) break;
-      page++;
-    }
-    const sets = all.map((x) => ({
-      code: x.id, name: x.name, releaseDate: txt(x.releaseDate).replaceAll('/', '-'),
-      total: Number(x.total || x.printedTotal || 0),
-      sourceUrl: `https://api.pokemontcg.io/v2/sets/${encodeURIComponent(x.id)}`
-    }));
-    sets._shinySource = 'Pokémon TCG API';
+    const all = await fetchJson('https://api.tcgdex.net/v2/en/sets', { timeout: 45000 });
+    const sets = (Array.isArray(all) ? all : []).map((x) => ({
+      code: txt(x.id), name: txt(x.name), releaseDate: '',
+      total: Number(x.cardCount?.total || x.cardCount?.official || 0),
+      sourceUrl: `https://api.tcgdex.net/v2/en/sets/${encodeURIComponent(x.id)}`
+    })).filter((x) => x.code && x.name);
+    sets._gmxSource = 'TCGdex';
     return sets;
   } catch (primaryError) {
-    // Fallback: TCGdex is an open Pokémon catalog API and does not require an API key.
+    const headers = {};
+    if (process.env.GMX_POKEMON_TCG_API_KEY) headers['X-Api-Key'] = process.env.GMX_POKEMON_TCG_API_KEY;
     try {
-      const all = await fetchJson('https://api.tcgdex.net/v2/en/sets', { timeout: 30000 });
-      const sets = (Array.isArray(all) ? all : []).map((x) => ({
-        code: txt(x.id), name: txt(x.name), releaseDate: '',
-        total: Number(x.cardCount?.total || x.cardCount?.official || 0),
-        sourceUrl: `https://api.tcgdex.net/v2/en/sets/${encodeURIComponent(x.id)}`
-      })).filter((x) => x.code && x.name);
-      sets._shinySource = 'TCGdex fallback';
-      sets._shinyPrimaryError = String(primaryError.message || primaryError);
+      let page = 1,all = [];
+      while (true) {
+        const j = await fetchJson(`https://api.pokemontcg.io/v2/sets?page=${page}&pageSize=250&orderBy=-releaseDate`, { headers });
+        all.push(...(j.data || []));
+        if (all.length >= Number(j.totalCount || all.length) || !(j.data || []).length) break;
+        page++;
+      }
+      const sets = all.map((x) => ({
+        code: x.id, name: x.name, releaseDate: txt(x.releaseDate).replaceAll('/', '-'),
+        total: Number(x.total || x.printedTotal || 0),
+        sourceUrl: `https://api.pokemontcg.io/v2/sets/${encodeURIComponent(x.id)}`
+      }));
+      sets._gmxSource = 'PokÃƒÂ©mon TCG API fallback';
+      sets._gmxPrimaryError = String(primaryError.message || primaryError);
       return sets;
     } catch (fallbackError) {
       throw new Error(
-        `POKEMON_SET_SYNC_UNAVAILABLE:primary=${String(primaryError.message || primaryError).slice(0, 260)};fallback=${String(fallbackError.message || fallbackError).slice(0, 260)}`
+        `POKEMON_SET_SYNC_UNAVAILABLE:primary=TCGDEX:${String(primaryError.message || primaryError).slice(0,220)};fallback=POKEMON_TCG_API:${String(fallbackError.message || fallbackError).slice(0,220)}`
       );
     }
   }
 }
 
 async function pokemonCards(setCode, { downloadImages = false, syncPrices = true } = {}) {
-  const headers = {};
-  if (process.env.SHINY_POKEMON_TCG_API_KEY) headers['X-Api-Key'] = process.env.SHINY_POKEMON_TCG_API_KEY;
-
   try {
-    let page = 1,all = [];
-    while (true) {
-      const q = encodeURIComponent(`set.id:${setCode}`);
-      const j = await fetchJson(`https://api.pokemontcg.io/v2/cards?q=${q}&page=${page}&pageSize=250`, { headers, timeout: 45000 });
-      all.push(...(j.data || []));
-      if (all.length >= Number(j.totalCount || all.length) || !(j.data || []).length) break;
-      page++;
-    }
-    if (!all.length) throw new Error(`POKEMON_API_SET_HAS_NO_CARDS:${setCode}`);
-
-    const cards = [];
-    for (const x of all) {
-      let local = '';
-      if (downloadImages && x.images?.large) {
-        try {local = await cacheImage('POKEMON', setCode, x.id, x.images.large);} catch {}
-      }
-      cards.push({
-        gameCode: 'POKEMON', providerCode: 'POKEMON_TCG_API', externalId: String(x.id),
-        setCode, name: x.name, number: x.number, collectorNumber: x.number, rarity: x.rarity,
-        cardType: x.supertype, subtype: (x.subtypes || []).join(' / '), artist: x.artist,
-        description: (x.rules || []).join('\n'), language: 'en',
-        imageSmall: x.images?.small, imageLarge: x.images?.large, imageLocal: local,
-        purchaseUrl: x.tcgplayer?.url || x.cardmarket?.url,
-        sourceUrl: `https://api.pokemontcg.io/v2/cards/${encodeURIComponent(x.id)}`,
-        externalUpdatedAt: x.updatedAt ? `${String(x.updatedAt).split(' ')[0].replaceAll('/', '-')}T00:00:00Z` : null,
-        prices: syncPrices ? pokemonPrices(x) : [],
-        metadata: { hp: x.hp, types: x.types, legalities: x.legalities, regulationMark: x.regulationMark }
-      });
-    }
-    cards._shinySource = 'Pokémon TCG API';
+    const cards = await tcgdexPokemonCards(setCode,{downloadImages,syncPrices});
+    cards._gmxSource = 'TCGdex';
     return cards;
   } catch (primaryError) {
+    const headers = {};
+    if (process.env.GMX_POKEMON_TCG_API_KEY) headers['X-Api-Key'] = process.env.GMX_POKEMON_TCG_API_KEY;
     try {
-      const cards = await tcgdexPokemonCards(setCode, { downloadImages, syncPrices });
-      cards._shinyPrimaryError = String(primaryError.message || primaryError);
+      let page = 1,all = [];
+      while (true) {
+        const q = encodeURIComponent(`set.id:${setCode}`);
+        const j = await fetchJson(`https://api.pokemontcg.io/v2/cards?q=${q}&page=${page}&pageSize=250`, { headers, timeout: 45000 });
+        all.push(...(j.data || []));
+        if (all.length >= Number(j.totalCount || all.length) || !(j.data || []).length) break;
+        page++;
+      }
+      if (!all.length) throw new Error(`POKEMON_API_SET_HAS_NO_CARDS:${setCode}`);
+      const cards = [];
+      for (const x of all) {
+        let local = '';
+        if (downloadImages && x.images?.large) {
+          try {local = await cacheImage('POKEMON',setCode,x.id,x.images.large);} catch {}
+        }
+        cards.push({
+          gameCode:'POKEMON',providerCode:'POKEMON_TCG_API',externalId:String(x.id),
+          setCode,name:x.name,number:x.number,collectorNumber:x.number,rarity:x.rarity,
+          cardType:x.supertype,subtype:(x.subtypes||[]).join(' / '),artist:x.artist,
+          description:(x.rules||[]).join('\n'),language:'en',
+          imageSmall:x.images?.small,imageLarge:x.images?.large,imageLocal:local,
+          purchaseUrl:x.tcgplayer?.url||x.cardmarket?.url,
+          sourceUrl:`https://api.pokemontcg.io/v2/cards/${encodeURIComponent(x.id)}`,
+          externalUpdatedAt:x.updatedAt?`${String(x.updatedAt).split(' ')[0].replaceAll('/','-')}T00:00:00Z`:null,
+          variantKey:'default',
+          prices:syncPrices?pokemonPrices(x):[],
+          metadata:{hp:x.hp,types:x.types,legalities:x.legalities,regulationMark:x.regulationMark}
+        });
+      }
+      cards._gmxSource='PokÃƒÂ©mon TCG API fallback';
+      cards._gmxPrimaryError=String(primaryError.message||primaryError);
       return cards;
     } catch (fallbackError) {
       throw new Error(
-        `POKEMON_CARD_SYNC_UNAVAILABLE:set=${setCode};primary=${String(primaryError.message || primaryError).slice(0, 260)};fallback=${String(fallbackError.message || fallbackError).slice(0, 260)}`
+        `POKEMON_CARD_SYNC_UNAVAILABLE:set=${setCode};primary=TCGDEX:${String(primaryError.message || primaryError).slice(0,220)};fallback=POKEMON_TCG_API:${String(fallbackError.message || fallbackError).slice(0,220)}`
       );
     }
   }
 }
-
 async function magicSets() {
   const j = await fetchJson('https://api.scryfall.com/sets');
   return (j.data || []).filter((x) => !x.digital).map((x) => ({
@@ -561,6 +561,121 @@ async function magicSets() {
   }));
 }
 
+/* GMX_R42_2_MAGIC_BULK */
+let gmxMagicBulkCache = null;
+let gmxMagicBulkFetchedAt = 0;
+
+async function magicBulkCards(setCode, { downloadImages = false, syncPrices = true } = {}) {
+  const maxAgeMs = 30 * 60 * 1000;
+  if (!gmxMagicBulkCache || (Date.now() - gmxMagicBulkFetchedAt) > maxAgeMs) {
+    const meta = await fetchJson('https://api.scryfall.com/bulk-data', { timeout: 45000 });
+    const row = (meta.data || []).find((x) => x.type === 'default_cards');
+
+    if (!row) {
+      throw new Error('SCRYFALL_BULK_DEFAULT_CARDS_NOT_FOUND');
+    }
+
+    /*
+     * GMX R42.5.1
+     * Scryfall migró Bulk Data de download_uri JSON
+     * a jsonl_download_uri .jsonl.gz.
+     *
+     * Conservamos compatibilidad con ambos formatos.
+     */
+    if (row.jsonl_download_uri) {
+      const { Readable } = await import('node:stream');
+      const { createGunzip } = await import('node:zlib');
+      const { createInterface } = await import('node:readline');
+
+      const response = await fetch(row.jsonl_download_uri, {
+        headers: {
+          'User-Agent': 'GMX-TCG-CORE/1.0',
+          'Accept': 'application/json;q=0.9,*/*;q=0.8'
+        },
+        signal: AbortSignal.timeout(240000)
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error(
+          `SCRYFALL_BULK_JSONL_HTTP_${response.status}`
+        );
+      }
+
+      const input = Readable
+        .fromWeb(response.body)
+        .pipe(createGunzip());
+
+      const rl = createInterface({
+        input,
+        crlfDelay: Infinity
+      });
+
+      const bulk = [];
+
+      for await (const line of rl) {
+        const s = String(line || '').trim();
+        if (!s) continue;
+
+        try {
+          bulk.push(JSON.parse(s));
+        } catch (e) {
+          throw new Error(
+            `SCRYFALL_BULK_JSONL_PARSE_ERROR:${String(e.message || e)}`
+          );
+        }
+      }
+
+      if (!bulk.length) {
+        throw new Error('SCRYFALL_BULK_JSONL_EMPTY');
+      }
+
+      gmxMagicBulkCache = bulk;
+
+    } else if (row.download_uri) {
+      // Compatibilidad con el formato anterior de Scryfall.
+      const bulk = await fetchJson(row.download_uri, { timeout: 240000 });
+
+      if (!Array.isArray(bulk)) {
+        throw new Error('SCRYFALL_BULK_INVALID');
+      }
+
+      gmxMagicBulkCache = bulk;
+
+    } else {
+      throw new Error('SCRYFALL_BULK_DOWNLOAD_URI_NOT_FOUND');
+    }
+
+    gmxMagicBulkFetchedAt = Date.now();
+  }
+
+  const all = gmxMagicBulkCache.filter((x) =>
+    String(x.set || '').toLowerCase() === String(setCode || '').toLowerCase() &&
+    !x.digital
+  );
+
+  const cards = [];
+  for (const x of all) {
+    const image = x.image_uris || x.card_faces?.[0]?.image_uris || {};
+    let local = '';
+    if (downloadImages && image.large) {
+      try {local = await cacheImage('MAGIC',setCode,x.id,image.large);} catch {}
+    }
+    cards.push({
+      gameCode:'MAGIC',providerCode:'SCRYFALL',externalId:String(x.id),
+      setCode,name:x.name,number:x.collector_number,collectorNumber:x.collector_number,
+      rarity:x.rarity?String(x.rarity).replace(/\b\w/g,(c)=>c.toUpperCase()):'',
+      cardType:x.type_line,subtype:'',artist:x.artist,
+      description:x.oracle_text||x.card_faces?.map((f)=>f.oracle_text).filter(Boolean).join('\n---\n')||'',
+      language:x.lang||'en',imageSmall:image.small,imageLarge:image.large,imageLocal:local,
+      purchaseUrl:x.purchase_uris?.tcgplayer||x.purchase_uris?.cardmarket||x.scryfall_uri,
+      sourceUrl:x.scryfall_uri||x.uri,externalUpdatedAt:null,variantKey:'default',
+      prices:syncPrices?scryfallPrices(x):[],
+      metadata:{mana_cost:x.mana_cost,colors:x.colors,finishes:x.finishes,frame_effects:x.frame_effects,bulk:true}
+    });
+  }
+  cards._gmxSource='Scryfall Bulk Data';
+  return cards;
+}
 async function magicCards(setCode, { downloadImages = false, syncPrices = true } = {}) {
   let url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`set:${setCode}`)}&unique=prints&order=set&dir=asc&include_extras=true`;
   const all = [];
@@ -616,45 +731,138 @@ async function yugiohSets() {
 }
 
 async function yugiohCards(setCode, { downloadImages = false, syncPrices = true } = {}) {
+  await providerPreflightR42_2('YUGIOH',{incremental:true});
   const master = await query(`SELECT * FROM gmx.tcg_master_sets WHERE id_juego='YUGIOH' AND codigo=$1 LIMIT 1`, [setCode]);
   if (!master.rowCount) throw new Error('SET_NOT_FOUND_IN_MASTER');
   const setName = master.rows[0].nombre;
-  const j = await fetchJson(`https://db.ygoprodeck.com/api/v7/cardinfo.php?cardset=${encodeURIComponent(setName)}`, { timeout: 60000 });
+
+  await new Promise((r)=>setTimeout(r,120));
+
+  let j;
+  try {
+    j = await fetchJson(
+      `https://db.ygoprodeck.com/api/v7/cardinfo.php?cardset=${encodeURIComponent(setName)}`,
+      { timeout: 60000 }
+    );
+  } catch (err) {
+    const errorText = String(err?.message || err || '');
+
+    /*
+     * R42.5.2
+     * YGOPRODeck puede publicar un set en cardsets.php pero responder
+     * HTTP 400 al consultar sus cartas:
+     *
+     *   "No card matching your query was found in the database."
+     *
+     * Esta firma significa que el set no tiene cartas recuperables
+     * actualmente en el proveedor.
+     *
+     * IMPORTANTE:
+     * - NO convierte cualquier HTTP 400 en set vacio.
+     * - NO convierte timeout/DNS/socket en set vacio.
+     * - NO convierte 429 en set vacio.
+     * - NO convierte 5xx en set vacio.
+     */
+    const isExplicitNoRemoteCards =
+      errorText.startsWith('REMOTE_HTTP_400:db.ygoprodeck.com:') &&
+      errorText.includes(
+        'No card matching your query was found in the database.'
+      );
+
+    if (!isExplicitNoRemoteCards) {
+      throw err;
+    }
+
+    const cards = [];
+    cards._gmxSource = 'YGOPRODeck API v7';
+    cards._gmxWarning = 'SKIPPED_NO_REMOTE_CARDS';
+    cards._gmxNoRemoteCards = true;
+    cards._gmxNoRemoteCardsReason =
+      'YGOPRODECK_HTTP_400_NO_CARD_MATCHING_QUERY';
+
+    return cards;
+  }
+
   const all = j.data || [];
   const cards = [];
+
   for (const x of all) {
-    const setEntry = (x.card_sets || []).find((s) => String(s.set_name).toLowerCase() === String(setName).toLowerCase()) || (x.card_sets || [])[0] || {};
-    const image = (x.card_images || [])[0] || {};
-    let local = '';
-    if (downloadImages && image.image_url) {
-      try {local = await cacheImage('YUGIOH', setCode, x.id, image.image_url);} catch {}
+    const setEntry = (x.card_sets || []).find((s) =>
+      String(s.set_name).toLowerCase() === String(setName).toLowerCase()
+    ) || (x.card_sets || [])[0] || {};
+
+    const artworks = (Array.isArray(x.card_images) && x.card_images.length)
+      ? x.card_images
+      : [{}];
+
+    for (let artIndex=0; artIndex<artworks.length; artIndex++) {
+      const image = artworks[artIndex] || {};
+      const variantKey = artworks.length > 1 ? `artwork-${artIndex+1}` : 'default';
+      let local = '';
+
+      if (image.image_url) {
+        try {
+          local = await cacheImage(
+            'YUGIOH',
+            setCode,
+            artworks.length > 1 ? `${x.id}-art${artIndex+1}` : x.id,
+            image.image_url
+          );
+        } catch {}
+      }
+
+      cards.push({
+        gameCode:'YUGIOH',
+        providerCode:'YGOPRODECK',
+        externalId:artworks.length > 1 ? `${x.id}#art${artIndex+1}` : String(x.id),
+        setCode,
+        name:x.name,
+        number:setEntry.set_code || String(x.id),
+        collectorNumber:setEntry.set_code || '',
+        rarity:setEntry.set_rarity || '',
+        cardType:x.type,
+        subtype:x.race || '',
+        artist:'',
+        description:x.desc || '',
+        language:'en',
+        imageSmall:image.image_url_small,
+        imageLarge:image.image_url,
+        imageLocal:local,
+        purchaseUrl:'',
+        sourceUrl:`https://db.ygoprodeck.com/api/v7/cardinfo.php?id=${encodeURIComponent(x.id)}`,
+        externalUpdatedAt:null,
+        variantKey,
+        prices:syncPrices ? ygoPrices(x,setEntry) : [],
+        metadata:{
+          base_external_id:String(x.id),
+          artwork_id:image.id || null,
+          artwork_index:artIndex,
+          artworks_total:artworks.length,
+          atk:x.atk,def:x.def,level:x.level,attribute:x.attribute,archetype:x.archetype
+        }
+      });
     }
-    cards.push({
-      gameCode: 'YUGIOH', providerCode: 'YGOPRODECK', externalId: String(x.id),
-      setCode, name: x.name, number: setEntry.set_code || String(x.id),
-      collectorNumber: setEntry.set_code || '', rarity: setEntry.set_rarity || '',
-      cardType: x.type, subtype: x.race || '', artist: '', description: x.desc || '', language: 'en',
-      imageSmall: image.image_url_small, imageLarge: image.image_url, imageLocal: local,
-      purchaseUrl: '', sourceUrl: `https://db.ygoprodeck.com/api/v7/cardinfo.php?id=${encodeURIComponent(x.id)}`,
-      prices: syncPrices ? ygoPrices(x, setEntry) : [],
-      metadata: { atk: x.atk, def: x.def, level: x.level, attribute: x.attribute, archetype: x.archetype }
-    });
   }
+  cards._gmxSource='YGOPRODeck API v7';
   return cards;
 }
 
-
 const SOURCE_REGISTRY = {
+  FAB: {
+    catalog: [{ code: 'GOAGAIN', name: 'goagain', description: 'API gratuita/open-source de Flesh and Blood' }],
+    images: [{ code: 'GOAGAIN', name: 'goagain' }],
+    prices: []
+  },
   ...SPECIALIZED_SOURCE_REGISTRY,
   POKEMON: {
     catalog: [
-    { code: 'AUTO', name: 'Automático', description: 'Pokémon TCG API con TCGdex como respaldo' },
-    { code: 'POKEMON_TCG_API', name: 'Pokémon TCG API', description: 'Forzar Pokémon TCG API' },
+    { code: 'AUTO', name: 'AutomÃ¡tico', description: 'PokÃ©mon TCG API con TCGdex como respaldo' },
+    { code: 'POKEMON_TCG_API', name: 'PokÃ©mon TCG API', description: 'Forzar PokÃ©mon TCG API' },
     { code: 'TCGDEX', name: 'TCGdex', description: 'Forzar TCGdex' }],
 
     images: [
-    { code: 'AUTO', name: 'Automático', description: 'Usar la imagen de la fuente de catálogo elegida' },
-    { code: 'CATALOG', name: 'Fuente de catálogo', description: 'Usar la imagen entregada por la fuente de catálogo' }],
+    { code: 'AUTO', name: 'AutomÃ¡tico', description: 'Usar la imagen de la fuente de catÃ¡logo elegida' },
+    { code: 'CATALOG', name: 'Fuente de catÃ¡logo', description: 'Usar la imagen entregada por la fuente de catÃ¡logo' }],
 
     prices: [
     { code: 'TCGPLAYER', name: 'TCGplayer' },
@@ -663,7 +871,7 @@ const SOURCE_REGISTRY = {
 
   },
   MAGIC: {
-    catalog: [{ code: 'SCRYFALL', name: 'Scryfall', description: 'Catálogo disponible para Magic' }],
+    catalog: [{ code: 'SCRYFALL', name: 'Scryfall', description: 'CatÃ¡logo disponible para Magic' }],
     images: [{ code: 'SCRYFALL', name: 'Scryfall' }],
     prices: [
     { code: 'SCRYFALL', name: 'Scryfall' },
@@ -671,7 +879,7 @@ const SOURCE_REGISTRY = {
 
   },
   YUGIOH: {
-    catalog: [{ code: 'YGOPRODECK', name: 'YGOPRODeck', description: 'Catálogo disponible para Yu-Gi-Oh!' }],
+    catalog: [{ code: 'YGOPRODECK', name: 'YGOPRODeck', description: 'CatÃ¡logo disponible para Yu-Gi-Oh!' }],
     images: [{ code: 'YGOPRODECK', name: 'YGOPRODeck' }],
     prices: [
     { code: 'TCGPLAYER', name: 'TCGplayer' },
@@ -758,7 +966,7 @@ async function pokemonSetsByPreference(prefs) {
       total: Number(x.total || x.printedTotal || 0),
       sourceUrl: `https://api.pokemontcg.io/v2/sets/${encodeURIComponent(x.id)}`
     }));
-    sets._shinySource = 'Pokémon TCG API';
+    sets._shinySource = 'PokÃ©mon TCG API';
     return sets;
   }
   return pokemonSets();
@@ -800,7 +1008,7 @@ async function pokemonCardsByPreference(setCode, opts, prefs) {
         metadata: { hp: x.hp, types: x.types, legalities: x.legalities, regulationMark: x.regulationMark }
       });
     }
-    cards._shinySource = 'Pokémon TCG API';
+    cards._shinySource = 'PokÃ©mon TCG API';
   } else {
     cards = await pokemonCards(setCode, opts);
   }
@@ -828,11 +1036,277 @@ export async function saveSourcePreferences(gameCode, input = {}) {
   return prefs;
 }
 
+/* GMX_R42_2_FAB_GOAGAIN */
+function fabSetDisplayNameR42_4(rawName, code) {
+  const name = txt(rawName);
+  const safeCode = txt(code).toUpperCase();
+
+  // No guardar placeholders del dataset como nombres reales.
+  // Ejemplos observados: "??? Set 20 ???", "Set 20", "Unknown".
+  const placeholder =
+    !name ||
+    /^\?{2,}/.test(name) ||
+    /\?{2,}/.test(name) ||
+    /^unknown\b/i.test(name) ||
+    /^unnamed\b/i.test(name) ||
+    /^set\s+\d+\s*$/i.test(name);
+
+  return placeholder ? (safeCode || name || 'FAB') : name;
+}
+async function fabSets() {
+  const normalizeSetRows = (payload) => {
+    if (Array.isArray(payload)) return payload;
+
+    const directCandidates = [
+      payload?.data,
+      payload?.sets,
+      payload?.results,
+      payload?.items,
+      payload?.rows
+    ];
+
+    for (const candidate of directCandidates) {
+      if (Array.isArray(candidate)) return candidate;
+
+      if (candidate && typeof candidate === 'object') {
+        if (Array.isArray(candidate.data)) return candidate.data;
+        if (Array.isArray(candidate.sets)) return candidate.sets;
+        if (Array.isArray(candidate.results)) return candidate.results;
+        if (Array.isArray(candidate.items)) return candidate.items;
+
+        const values = Object.values(candidate);
+        if (values.length && values.every((x) => x && typeof x === 'object')) return values;
+      }
+    }
+
+    if (payload && typeof payload === 'object') {
+      const values = Object.values(payload);
+      if (values.length && values.every((x) => x && typeof x === 'object')) return values;
+    }
+
+    return [];
+  };
+
+  const mapSet = (x) => {
+    const code = txt(
+      x?.id ??
+      x?.code ??
+      x?.set_id ??
+      x?.setId ??
+      x?.short_name ??
+      x?.shortName ??
+      x?.abbreviation
+    ).toUpperCase();
+
+    const rawName = txt(
+      x?.name ??
+      x?.display_name ??
+      x?.displayName ??
+      x?.title ??
+      code
+    );
+    const name = fabSetDisplayNameR42_4(rawName, code);
+
+    const releaseDate = txt(
+      x?.release_date ??
+      x?.releaseDate ??
+      x?.released_at ??
+      x?.releasedAt ??
+      ''
+    );
+
+    const total = Number(
+      x?.card_count ??
+      x?.cardCount ??
+      x?.cards_count ??
+      x?.cardsCount ??
+      x?.total_cards ??
+      x?.totalCards ??
+      (Array.isArray(x?.cards) ? x.cards.length : 0) ??
+      0
+    ) || 0;
+
+    return {
+      code,
+      name,
+      releaseDate,
+      total,
+      sourceUrl: code
+        ? `https://api.goagain.dev/v1/sets/${encodeURIComponent(code)}`
+        : 'https://api.goagain.dev/v1/sets'
+    };
+  };
+
+  // Fuente primaria: endpoint oficial de sets.
+  const j = await fetchJson('https://api.goagain.dev/v1/sets', { timeout: 45000 });
+  let raw = normalizeSetRows(j);
+  let sets = raw.map(mapSet).filter((x) => x.code && x.name);
+
+  // R42.3.5.1 fallback:
+  // Si /v1/sets cambia su envelope o no entrega filas utilizables,
+  // reconstruimos los sets desde printings[].set_id del catalogo real de cartas.
+  if (!sets.length) {
+    const setMap = new Map();
+    let offset = 0;
+    const limit = 100;
+
+    while (true) {
+      const page = await fetchJson(
+        `https://api.goagain.dev/v1/cards?limit=${limit}&offset=${offset}`,
+        { timeout: 45000 }
+      );
+
+      const cards = Array.isArray(page)
+        ? page
+        : Array.isArray(page?.data)
+          ? page.data
+          : Array.isArray(page?.cards)
+            ? page.cards
+            : [];
+
+      for (const card of cards) {
+        for (const printing of (Array.isArray(card?.printings) ? card.printings : [])) {
+          const code = txt(
+            printing?.set_id ??
+            printing?.setId ??
+            printing?.set_code ??
+            printing?.setCode
+          ).toUpperCase();
+
+          if (!code) continue;
+
+          if (!setMap.has(code)) {
+            setMap.set(code, {
+              code,
+              name: code,
+              releaseDate: '',
+              total: 0,
+              sourceUrl: `https://api.goagain.dev/v1/sets/${encodeURIComponent(code)}`
+            });
+          }
+          setMap.get(code).total++;
+        }
+      }
+
+      const total = Number(page?.total ?? cards.length);
+      if (!cards.length || cards.length < limit || offset + cards.length >= total) break;
+
+      offset += cards.length;
+      await new Promise((r) => setTimeout(r, 120));
+    }
+
+    sets = [...setMap.values()];
+
+    // Enriquecer nombres/fechas cuando el endpoint individual responda.
+    // Limita concurrencia de forma secuencial para respetar rate limits.
+    for (const set of sets) {
+      try {
+        const detail = await fetchJson(
+          `https://api.goagain.dev/v1/sets/${encodeURIComponent(set.code)}`,
+          { timeout: 30000 }
+        );
+        const d = detail?.data && !Array.isArray(detail.data) ? detail.data : detail;
+        const mapped = mapSet(d || {});
+        if (mapped.name && mapped.name !== mapped.code) set.name = fabSetDisplayNameR42_4(mapped.name, set.code);
+        if (mapped.releaseDate) set.releaseDate = mapped.releaseDate;
+        if (mapped.total) set.total = mapped.total;
+      } catch {
+        // El codigo derivado desde printings sigue siendo valido para /v1/cards?set=...
+      }
+      await new Promise((r) => setTimeout(r, 80));
+    }
+  }
+
+  // Deduplicar por codigo.
+  sets = [...new Map(sets.map((x) => [x.code, x])).values()]
+    .filter((x) => x.code && x.name);
+
+  if (!sets.length) {
+    throw new Error('FAB_GOAGAIN_NO_SETS_DISCOVERED');
+  }
+
+  sets._gmxSource = 'goagain';
+  return sets;
+}
+
+async function fabCards(setCode,{downloadImages=false,syncPrices=true}={}) {
+  const all=[];
+  let offset=0;
+  const limit=100;
+  while (true) {
+    const j=await fetchJson(
+      `https://api.goagain.dev/v1/cards?set=${encodeURIComponent(setCode)}&limit=${limit}&offset=${offset}`,
+      {timeout:45000}
+    );
+    const rows=Array.isArray(j)?j:(j.data||j.cards||[]);
+    all.push(...rows);
+    const total=Number(j.total ?? all.length);
+    if (!rows.length || all.length>=total || rows.length<limit) break;
+    offset+=rows.length;
+    await new Promise((r)=>setTimeout(r,120));
+  }
+
+  const cards=[];
+  for (const x of all) {
+    const printings=(Array.isArray(x.printings)&&x.printings.length)?x.printings:[{}];
+    const matching=printings.filter((p)=>
+      !p.set_id || String(p.set_id).toUpperCase()===String(setCode).toUpperCase()
+    );
+    const variants=matching.length?matching:printings;
+
+    for (let i=0;i<variants.length;i++) {
+      const pr=variants[i]||{};
+      const externalId=txt(pr.unique_id || pr.id || x.unique_id || x.id);
+      if (!externalId) continue;
+      const variantKey=[
+        txt(pr.edition||''),
+        txt(pr.foiling||''),
+        txt(pr.id||''),
+        `printing-${i+1}`
+      ].filter(Boolean).join('|') || 'default';
+
+      let local='';
+      if (downloadImages && pr.image_url) {
+        try {local=await cacheImage('FAB',setCode,externalId,pr.image_url);} catch {}
+      }
+
+      cards.push({
+        gameCode:'FAB',providerCode:'GOAGAIN',externalId,
+        setCode,
+        name:x.name,
+        number:txt(pr.id || externalId),
+        collectorNumber:txt(pr.id || ''),
+        rarity:txt(pr.rarity),
+        cardType:Array.isArray(x.types)?x.types.join(' / '):txt(x.type_text),
+        subtype:Array.isArray(x.traits)?x.traits.join(' / '):'',
+        artist:Array.isArray(pr.artists)?pr.artists.join(', '):txt(pr.artist),
+        description:txt(x.functional_text_plain || x.functional_text),
+        language:'en',
+        imageSmall:txt(pr.image_url),
+        imageLarge:txt(pr.image_url),
+        imageLocal:local,
+        purchaseUrl:txt(pr.tcgplayer_url),
+        sourceUrl:`https://api.goagain.dev/v1/cards/${encodeURIComponent(x.unique_id || x.id || x.name)}`,
+        externalUpdatedAt:null,
+        variantKey,
+        prices:[],
+        metadata:{
+          color:x.color||null,pitch:x.pitch||null,cost:x.cost||null,power:x.power||null,
+          defense:x.defense||null,health:x.health||null,intelligence:x.intelligence||null,
+          card_keywords:x.card_keywords||[],edition:pr.edition||null,foiling:pr.foiling||null
+        }
+      });
+    }
+  }
+  cards._gmxSource='goagain';
+  return cards;
+}
 const REMOTE_PROVIDERS = {
   ...SPECIALIZED_REMOTE_PROVIDERS,
   POKEMON: { sets: pokemonSets, cards: pokemonCards },
   MAGIC: { sets: magicSets, cards: magicCards },
-  YUGIOH: { sets: yugiohSets, cards: yugiohCards }
+  YUGIOH: { sets: yugiohSets, cards: yugiohCards },
+  FAB: { sets: fabSets, cards: fabCards }
 };
 
 export async function listSyncProviders() {
@@ -927,7 +1401,7 @@ export async function syncGameSets(gameCode) {
     await clearProviderError(gameCode);
     return {
       gameCode, mode: 'REMOTE_API', sets: sets.length, provider: provider.provider_name,
-      sourceUsed, warning: primaryError ? `Fuente principal no disponible; se utilizó ${sourceUsed}.` : null
+      sourceUsed, warning: primaryError ? `Fuente principal no disponible; se utilizÃ³ ${sourceUsed}.` : null
     };
   } catch (e) {
     await query(`UPDATE gmx.tcg_sync_providers SET last_error=$2,status='ERROR' WHERE game_code=$1`, [gameCode, String(e.message || e).slice(0, 500)]);
@@ -935,7 +1409,171 @@ export async function syncGameSets(gameCode) {
   }
 }
 
+/* ============================================================
+ * GMX R42.5.0
+ * Clasificacion comun Multi-TCG
+ * ============================================================ */
+
+function classifySetSyncErrorR42_5_0(gameCode, setCode, errorValue) {
+  const game = String(gameCode || '').trim().toUpperCase();
+  const set  = String(setCode || '').trim().toLowerCase();
+
+  const errorText =
+    String(errorValue?.message || errorValue || '').slice(0, 500);
+
+  const fatal = {
+    nonFatal: false,
+    status: 'FAIL',
+    warning: null,
+    errorText
+  };
+
+  // ----------------------------------------------------------
+  // POKEMON
+  // Solo excepciones comprobadas durante R42.4.x
+  // ----------------------------------------------------------
+
+  if (game === 'POKEMON') {
+    const knownNoRemoteSets = new Set([
+      'tk2a',
+      'tk1a',
+      'tk1b',
+      'jumbo',
+      'rc',
+      'sp',
+      'wp'
+    ]);
+
+    if (!knownNoRemoteSets.has(set)) {
+      return fatal;
+    }
+
+    const correctSignature =
+      errorText.startsWith(
+        'POKEMON_CARD_SYNC_UNAVAILABLE:set='
+      );
+
+    const explicitNoCards =
+      errorText.includes('TCGDEX_SET_HAS_NO_CARDS:') ||
+      errorText.includes('POKEMON_API_SET_HAS_NO_CARDS:');
+
+    const unavailableKnownSources =
+      errorText.includes(
+        'primary=TCGDEX:REMOTE_HTTP_404:'
+      ) &&
+      (
+        errorText.includes(
+          'fallback=POKEMON_TCG_API:REMOTE_HTTP_500:'
+        ) ||
+        errorText.includes(
+          'fallback=POKEMON_TCG_API:REMOTE_HTTP_502:'
+        )
+      );
+
+    if (
+      correctSignature &&
+      (
+        explicitNoCards ||
+        unavailableKnownSources
+      )
+    ) {
+      return {
+        nonFatal: true,
+        status: 'SKIPPED_NO_REMOTE_CARDS',
+        warning: 'SKIPPED_NO_REMOTE_CARDS',
+        errorText
+      };
+    }
+  }
+
+  return fatal;
+}
+
+
+/* ============================================================
+ * Clasificacion de RESPUESTAS VALIDAS pero vacias.
+ *
+ * Se usa cuando el proveedor NO lanza error pero devuelve []
+ * ============================================================ */
+
+function classifyEmptySetResultR42_5_0(gameCode, setCode, cards) {
+  const game = String(gameCode || '').trim().toUpperCase();
+  const set  = String(setCode || '').trim().toUpperCase();
+
+  if (!Array.isArray(cards) || cards.length !== 0) {
+    return {
+      nonFatal: false,
+      status: 'PASS',
+      warning: null
+    };
+  }
+
+  // ----------------------------------------------------------
+  // YUGIOH - R42.5.2
+  //
+  // NO clasifica cualquier respuesta [] como valida.
+  //
+  // yugiohCards() coloca _gmxNoRemoteCards=true solamente
+  // cuando YGOPRODeck responde HTTP 400 con la firma exacta:
+  //
+  // "No card matching your query was found in the database."
+  //
+  // Timeout, DNS, socket, 429, otros HTTP 400 y 5xx nunca
+  // llegan aqui con esta marca y permanecen como ERROR.
+  // ----------------------------------------------------------
+  if (
+    game === 'YUGIOH' &&
+    cards._gmxNoRemoteCards === true &&
+    cards._gmxWarning === 'SKIPPED_NO_REMOTE_CARDS' &&
+    cards._gmxNoRemoteCardsReason ===
+      'YGOPRODECK_HTTP_400_NO_CARD_MATCHING_QUERY'
+  ) {
+    return {
+      nonFatal: true,
+      status: 'SKIPPED_NO_REMOTE_CARDS',
+      warning: 'SKIPPED_NO_REMOTE_CARDS'
+    };
+  }
+
+  // ----------------------------------------------------------
+  // FAB
+  // Estos seis sets fueron comprobados en FULL R42.4:
+  // proveedor responde OK pero devuelve 0 cartas.
+  // ----------------------------------------------------------
+
+  if (game === 'FAB') {
+    const knownEmptySets = new Set([
+      '1HB',
+      '1HD',
+      '1HT',
+      '1HK',
+      '1HR',
+      '1HV'
+    ]);
+
+    if (knownEmptySets.has(set)) {
+      return {
+        nonFatal: true,
+        status: 'SKIPPED_NO_REMOTE_CARDS',
+        warning: 'SKIPPED_NO_REMOTE_CARDS'
+      };
+    }
+  }
+
+  // ----------------------------------------------------------
+  // Otros TCG:
+  // un set vacio desconocido NO se oculta.
+  // ----------------------------------------------------------
+
+  return {
+    nonFatal: false,
+    status: 'EMPTY_REMOTE_SET_UNCLASSIFIED',
+    warning: null
+  };
+}
+
 export async function syncSelectedCards(gameCode, { setCodes = [], downloadImages = false, syncPrices = true, onProgress = null, incremental = true } = {}) {
+  await providerPreflightR42_2(gameCode, { incremental });
   const provider = await providerRow(gameCode);
   const remote = REMOTE_PROVIDERS[gameCode];
   if (!remote?.cards) throw new Error('PROVIDER_CARDS_NOT_AVAILABLE');
@@ -965,7 +1603,7 @@ export async function syncSelectedCards(gameCode, { setCodes = [], downloadImage
         ...payload
       });} catch {}
   };
-  await notify({ phase: 'starting', setCode: null, message: 'Preparando sincronización de cartas…' });
+  await notify({ phase: 'starting', setCode: null, message: 'Preparando sincronizaciÃ³n de cartasâ€¦' });
   const invalid = selected.filter((x) => !valid.has(x));
   if (invalid.length) throw new Error(`UNKNOWN_SET:${invalid.join(',')}`);
 
@@ -979,7 +1617,7 @@ export async function syncSelectedCards(gameCode, { setCodes = [], downloadImage
         phase: 'fetching_set',
         setCode,
         setEstimatedCards: Number(estimatedBySet.get(setCode) || 0),
-        message: `Descargando ${setCode}…`
+        message: `Descargando ${setCode}â€¦`
       });
       const effectiveDownloadImages = gameCode === 'YUGIOH' ? true : downloadImages;
       let cards;
@@ -993,14 +1631,63 @@ export async function syncSelectedCards(gameCode, { setCodes = [], downloadImage
           for (const c of cards) c.prices = filterPricesByPreference(c.prices, prefs);
         }
       } else {
-        cards = await remote.cards(setCode, { downloadImages: effectiveDownloadImages, syncPrices });
+        if (gameCode === 'MAGIC' && incremental === false) {
+          cards = await magicBulkCards(setCode,{downloadImages:effectiveDownloadImages,syncPrices});
+        } else {
+          cards = await remote.cards(setCode, { downloadImages: effectiveDownloadImages, syncPrices });
+        }
         for (const c of cards) c.prices = filterPricesByPreference(c.prices, prefs);
+      }
+
+      const emptyClassificationR42_5_0 =
+        classifyEmptySetResultR42_5_0(
+          gameCode,
+          setCode,
+          cards
+        );
+
+      if (
+        Array.isArray(cards) &&
+        cards.length === 0 &&
+        emptyClassificationR42_5_0.nonFatal
+      ) {
+        processedSets++;
+
+        result.sets.push({
+          setCode,
+          cards: 0,
+          prices: 0,
+          sourceUsed: provider.provider_name,
+          status: emptyClassificationR42_5_0.status,
+          warning: emptyClassificationR42_5_0.warning
+        });
+
+        await notify({
+          phase: 'set_complete',
+          setCode,
+          setActualCards: 0,
+          message:
+            `${setCode}: ${emptyClassificationR42_5_0.status}`
+        });
+
+        continue;
+      }
+
+      if (
+        Array.isArray(cards) &&
+        cards.length === 0 &&
+        emptyClassificationR42_5_0.status ===
+          'EMPTY_REMOTE_SET_UNCLASSIFIED'
+      ) {
+        throw new Error(
+          `EMPTY_REMOTE_SET_UNCLASSIFIED:set=${setCode};game=${gameCode}`
+        );
       }
       await notify({
         phase: 'saving_cards',
         setCode,
         setActualCards: cards.length,
-        message: `Guardando ${cards.length} carta(s) de ${setCode}…`
+        message: `Guardando ${cards.length} carta(s) de ${setCode}â€¦`
       });
       const client = await pool.connect();
       let setCards = 0,setPrices = 0;
@@ -1046,11 +1733,44 @@ export async function syncSelectedCards(gameCode, { setCodes = [], downloadImage
       });
     } catch (e) {
       processedSets++;
-      result.errors.push({ setCode, error: String(e.message || e).slice(0, 500) });
-      await notify({
-        phase: 'set_error', setCode,
-        message: `${setCode}: ${String(e.message || e).slice(0, 220)}`
-      });
+
+      const classificationR42_5_0 =
+        classifySetSyncErrorR42_5_0(
+          gameCode,
+          setCode,
+          e
+        );
+
+      if (classificationR42_5_0.nonFatal) {
+        result.sets.push({
+          setCode,
+          cards: 0,
+          prices: 0,
+          sourceUsed: provider.provider_name,
+          status: classificationR42_5_0.status,
+          warning: classificationR42_5_0.warning
+        });
+
+        await notify({
+          phase: 'set_complete',
+          setCode,
+          setActualCards: 0,
+          message:
+            `${setCode}: ${classificationR42_5_0.status}`
+        });
+      } else {
+        result.errors.push({
+          setCode,
+          error: classificationR42_5_0.errorText
+        });
+
+        await notify({
+          phase: 'set_error',
+          setCode,
+          message:
+            `${setCode}: ${classificationR42_5_0.errorText.slice(0, 220)}`
+        });
+      }
     }
   }
 
@@ -1061,7 +1781,7 @@ export async function syncSelectedCards(gameCode, { setCodes = [], downloadImage
   await markProvider(gameCode, 'last_cards_sync_at', { error: result.errors.length ? JSON.stringify(result.errors.slice(0, 5)) : null });
   if (syncPrices) await markProvider(gameCode, 'last_prices_sync_at', { error: result.errors.length ? JSON.stringify(result.errors.slice(0, 5)) : null });
   if (!result.errors.length) await clearProviderError(gameCode);
-  await notify({ phase: 'sync_complete', message: 'Sincronización de cartas terminada.' });
+  await notify({ phase: 'sync_complete', message: 'SincronizaciÃ³n de cartas terminada.' });
   return result;
 }
 
@@ -1489,7 +2209,7 @@ export async function getTcgExchangeRate(gameCode){
     rate:rate?Number(rate):null,
     source:(Number.isFinite(configured)&&configured>0)?'SHINY_TCG_CONFIG':'SHINY_TCG_DEFAULT',
     rate_date:r.rows[0]?.updated_at||null,
-    message:rate?'':`Configura el TDC USD→MXN para ${code} en TCG → Auto Sync.`
+    message:rate?'':`Configura el TDC USDâ†’MXN para ${code} en TCG â†’ Auto Sync.`
   };
 }
 
@@ -1528,3 +2248,4 @@ export async function saveTcgExchangeRate(gameCode,input={}){
     rate_date:r.rows[0]?.updated_at||null
   };
 }
+

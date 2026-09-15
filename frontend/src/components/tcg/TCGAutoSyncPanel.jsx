@@ -1,7 +1,7 @@
 import { brandText } from "../../config/brand.js";import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../services/api.js';
 import SecureMedia from '../SecureMedia.jsx';
-import '../../tcg_autosync_approved_r41.css';
+import '../../tcg_autosync_approved_r42.css';
 function when(value) {
   if (!value) return 'Nunca';
   try {return new Date(value).toLocaleString('es-MX');} catch {return String(value);}
@@ -37,6 +37,9 @@ export default function TCGAutoSyncPanel() {
     try{return JSON.parse(localStorage.getItem('SHINY_AUTO_SYNC_SELECTED_GAMES')||'[]');}
     catch{return [];}
   });
+  const [syncMode,setSyncMode] = useState('INCREMENTAL');
+  const [multiSyncResults,setMultiSyncResults] = useState([]);
+
 
   const tcgIconSettingKey=(code)=>`tcg.icon.${String(code||'').replace(/[^a-zA-Z0-9_.-]/g,'_')}`;
 
@@ -319,97 +322,261 @@ export default function TCGAutoSyncPanel() {
     } catch (e) {setMessage(e.message);} finally {setBusy('');}
   }
 
+  async function waitForSyncJob(jobId, token, onProgress) {
+    let finalJob = null;
+    while (true) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const statusResponse = await fetch(`/api/v1/tcg-sync/jobs/${encodeURIComponent(jobId)}`, {
+        headers: { Authorization: `Bearer ${token}`, 'X-TCG-Store-Template-Progress': 'manual' },
+        cache: 'no-store'
+      });
+      const statusJson = await statusResponse.json().catch(() => ({}));
+      if (!statusResponse.ok) throw new Error(statusJson.message || statusJson.error || `HTTP ${statusResponse.status}`);
+      const job = statusJson.data || {};
+      finalJob = job;
+      onProgress?.(job);
+      if (job.status === 'completed') return finalJob;
+      if (job.status === 'failed') throw new Error(job.error || job.message || 'SYNC_JOB_FAILED');
+    }
+  }
+
+  async function resolveSetsForGame(code, provider) {
+    if (syncMode === 'FULL') {
+      await api(`/api/v1/tcg-sync/games/${encodeURIComponent(code)}/sync-sets`, {
+        method: 'POST',
+        body: '{}'
+      });
+      const r = await api(`/api/v1/tcg-sync/games/${encodeURIComponent(code)}/sets`);
+      return (r.data || []).map((x) => x.codigo).filter(Boolean);
+    }
+
+    if (code === gameCode && selected.length) return [...selected];
+    return Array.isArray(provider?.selected_sets) ? provider.selected_sets.filter(Boolean) : [];
+  }
+
+  async function waitForSyncJob(jobId, token, onProgress) {
+    let finalJob = null;
+    while (true) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const statusResponse = await fetch(`/api/v1/tcg-sync/jobs/${encodeURIComponent(jobId)}`, {
+        headers: { Authorization: `Bearer ${token}`, 'X-TCG-Store-Template-Progress': 'manual' },
+        cache: 'no-store'
+      });
+      const statusJson = await statusResponse.json().catch(() => ({}));
+      if (!statusResponse.ok) throw new Error(statusJson.message || statusJson.error || `HTTP ${statusResponse.status}`);
+      const job = statusJson.data || {};
+      finalJob = job;
+      onProgress?.(job);
+      if (job.status === 'completed') return finalJob;
+      if (job.status === 'failed') throw new Error(job.error || job.message || 'SYNC_JOB_FAILED');
+    }
+  }
+
+  async function resolveSetsForGame(code, provider) {
+    if (syncMode === 'FULL') {
+      await api(`/api/v1/tcg-sync/games/${encodeURIComponent(code)}/sync-sets`, {
+        method: 'POST',
+        body: '{}'
+      });
+      const r = await api(`/api/v1/tcg-sync/games/${encodeURIComponent(code)}/sets`);
+      return (r.data || []).map((x) => x.codigo).filter(Boolean);
+    }
+
+    if (code === gameCode && selected.length) return [...selected];
+    return Array.isArray(provider?.selected_sets) ? provider.selected_sets.filter(Boolean) : [];
+  }
+
   async function addSelectedToStore() {
-    if (!selected.length || !gameCode) return;
-    const ok = await window.shinyConfirm?.(brandText(
-      `Shiny revisará ${selected.length} expansión(es) de ${current?.game_name || gameCode}. Si ya existen, solo actualizará cambios y precios; no tocará stock ni costos. ¿Continuar?`),
-    { title: 'Agregar expansiones a mi tienda', confirmText: 'Agregar' }
-    );
+    const targets = selectedProviderRows;
+    if (!targets.length) {
+      setMessage('Selecciona al menos un TCG.');
+      return;
+    }
+
+    const plan = [];
+    for (const provider of targets) {
+      const setCodes = await resolveSetsForGame(provider.game_code, provider);
+      if (!setCodes.length) {
+        plan.push({
+          gameCode: provider.game_code,
+          gameName: provider.game_name || provider.game_code,
+          provider,
+          setCodes: [],
+          skip: true,
+          reason: syncMode === 'FULL' ? 'No se encontraron expansiones remotas.' : 'No tiene expansiones seleccionadas.'
+        });
+        continue;
+      }
+      plan.push({
+        gameCode: provider.game_code,
+        gameName: provider.game_name || provider.game_code,
+        provider,
+        setCodes,
+        skip: false
+      });
+    }
+
+    const executable = plan.filter((x) => !x.skip);
+    if (!executable.length) {
+      setMultiSyncResults(plan.map((x)=>({
+        gameCode:x.gameCode,gameName:x.gameName,status:'SKIPPED',message:x.reason
+      })));
+      setMessage('No hay expansiones disponibles para sincronizar.');
+      return;
+    }
+
+    const totalSets = executable.reduce((n,x)=>n+x.setCodes.length,0);
+    const ok = await window.gmxConfirm?.(brandText(
+      syncMode === 'FULL'
+        ? `FULL SYNC: GMX procesará ${executable.length} TCG y ${totalSets} expansión(es). Descargará/actualizará el catálogo disponible sin tocar stock ni costos. ¿Continuar?`
+        : `INCREMENTAL: GMX procesará ${executable.length} TCG y ${totalSets} expansión(es) seleccionadas. Solo actualizará cambios sin tocar stock ni costos. ¿Continuar?`
+    ), {
+      title: syncMode === 'FULL' ? 'Sincronización completa Multi-TCG' : 'Sincronización incremental Multi-TCG',
+      confirmText: 'Sincronizar'
+    });
     if (ok === false) return;
 
-    const op = window.shinyOperation?.start({
-      title: `Agregando ${selected.length} expansión(es)`,
-      detail: 'Preparando trabajo…',
+    const op = window.gmxOperation?.start({
+      title: `${syncMode === 'FULL' ? 'FULL' : 'Incremental'} · ${executable.length} TCG`,
+      detail: 'Preparando cola Multi-TCG…',
       progress: 1,
       etaSeconds: null,
-      meta: { setsDone: 0, setsTotal: selected.length, cardsDone: 0, cardsTotal: 0, currentSet: '' }
+      meta: { setsDone: 0, setsTotal: totalSets, cardsDone: 0, cardsTotal: 0, currentSet: '' }
     });
 
-    setBusy('add');setMessage('');setLastCardSyncResult(null);
+    setBusy('add');
+    setMessage('');
+    setLastCardSyncResult(null);
+    setMultiSyncResults([]);
+
+    const token = localStorage.getItem('GMX_AUTH_TOKEN') || '';
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      'X-TCG-Store-Template-Progress': 'manual'
+    };
+
+    const results = [];
+    let completedSetsBefore = 0;
+    let cardsBefore = 0;
 
     try {
-      const token = localStorage.getItem('SHINY_AUTH_TOKEN') || '';
-      const headers = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        'X-TCG-Store-Template-Progress': 'manual'
-      };
+      for (let index = 0; index < plan.length; index++) {
+        const item = plan[index];
 
-      const startResponse = await fetch(`/api/v1/tcg-sync/games/${encodeURIComponent(gameCode)}/add-job`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ setCodes: selected, downloadImages, syncPrices })
-      });
-      const startJson = await startResponse.json().catch(() => ({}));
-      if (!startResponse.ok) throw new Error(startJson.message || startJson.error || `HTTP ${startResponse.status}`);
+        if (item.skip) {
+          results.push({
+            gameCode:item.gameCode,
+            gameName:item.gameName,
+            status:'SKIPPED',
+            sets:0,cards:0,prices:0,
+            message:item.reason
+          });
+          setMultiSyncResults([...results]);
+          continue;
+        }
 
-      const jobId = startJson.data?.id;
-      if (!jobId) throw new Error('SYNC_JOB_ID_MISSING');
-
-      let finalJob = null;
-      while (true) {
-        await new Promise((r) => setTimeout(r, 1000));
-        const statusResponse = await fetch(`/api/v1/tcg-sync/jobs/${encodeURIComponent(jobId)}`, {
-          headers: { Authorization: `Bearer ${token}`, 'X-TCG-Store-Template-Progress': 'manual' },
-          cache: 'no-store'
-        });
-        const statusJson = await statusResponse.json().catch(() => ({}));
-        if (!statusResponse.ok) throw new Error(statusJson.message || statusJson.error || `HTTP ${statusResponse.status}`);
-
-        const job = statusJson.data || {};
-        finalJob = job;
-
-        window.shinyOperation?.update(op, {
-          progress: Number(job.progress || 0),
-          detail: job.message || 'Procesando…',
-          etaSeconds: job.etaSeconds,
+        window.gmxOperation?.update(op, {
+          detail: `${item.gameName}: iniciando ${item.setCodes.length} expansión(es)…`,
+          progress: Math.max(1, Math.round((completedSetsBefore / Math.max(1,totalSets))*100)),
           meta: {
-            setsDone: Number(job.processedSets || 0),
-            setsTotal: Number(job.selectedSets || selected.length),
-            cardsDone: Number(job.processedCards || 0),
-            cardsTotal: Number(job.estimatedCards || 0),
-            currentSet: job.currentSet || ''
+            setsDone: completedSetsBefore,
+            setsTotal: totalSets,
+            cardsDone: cardsBefore,
+            cardsTotal: 0,
+            currentSet: item.gameName
           }
         });
 
-        if (job.status === 'completed') break;
-        if (job.status === 'failed') throw new Error(job.error || job.message || 'SYNC_JOB_FAILED');
+        const itemDownloadImages =
+          item.gameCode === gameCode ? downloadImages : item.provider?.download_images === true;
+        const itemSyncPrices =
+          item.gameCode === gameCode ? syncPrices : item.provider?.sync_prices !== false;
+
+        const startResponse = await fetch(`/api/v1/tcg-sync/games/${encodeURIComponent(item.gameCode)}/add-job`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            setCodes: item.setCodes,
+            downloadImages: itemDownloadImages,
+            syncPrices: itemSyncPrices,
+            incremental: syncMode !== 'FULL'
+          })
+        });
+        const startJson = await startResponse.json().catch(() => ({}));
+        if (!startResponse.ok) {
+          throw new Error(`${item.gameName}: ${startJson.message || startJson.error || `HTTP ${startResponse.status}`}`);
+        }
+
+        const jobId = startJson.data?.id;
+        if (!jobId) throw new Error(`${item.gameName}: SYNC_JOB_ID_MISSING`);
+
+        const finalJob = await waitForSyncJob(jobId, token, (job) => {
+          const localDone = Number(job.processedSets || 0);
+          const localCards = Number(job.processedCards || 0);
+          const totalDone = completedSetsBefore + localDone;
+          window.gmxOperation?.update(op, {
+            progress: Math.min(99, Math.max(1, Math.round((totalDone / Math.max(1,totalSets))*100))),
+            detail: `${item.gameName}: ${job.message || 'Procesando…'}`,
+            etaSeconds: job.etaSeconds,
+            meta: {
+              setsDone: totalDone,
+              setsTotal: totalSets,
+              cardsDone: cardsBefore + localCards,
+              cardsTotal: Number(job.estimatedCards || 0),
+              currentSet: `${item.gameName}${job.currentSet ? ` · ${job.currentSet}` : ''}`
+            }
+          });
+        });
+
+        const syncResult = finalJob?.result?.sync || {};
+        const inc = finalJob?.result?.incrementalSummary || {};
+        const cards = Number(syncResult.cards || inc.insertedCards || 0) + Number(inc.updatedCards || 0);
+        const prices = Number(syncResult.prices || inc.updatedPrices || 0);
+
+        results.push({
+          gameCode:item.gameCode,
+          gameName:item.gameName,
+          status:'COMPLETED',
+          sets:item.setCodes.length,
+          cards,
+          prices,
+          inserted:Number(inc.insertedCards || 0),
+          updated:Number(inc.updatedCards || 0),
+          unchanged:Number(inc.unchangedCards || 0),
+          message:'OK'
+        });
+        setMultiSyncResults([...results]);
+
+        completedSetsBefore += item.setCodes.length;
+        cardsBefore += Number(finalJob?.processedCards || cards || 0);
       }
 
-      const syncResult = finalJob?.result?.sync || null;
-      const installResult = finalJob?.result?.install || {};
-      const inc = finalJob?.result?.incrementalSummary || {};
-      setLastCardSyncResult(syncResult);
+      const done = results.filter((x)=>x.status==='COMPLETED');
+      const skipped = results.filter((x)=>x.status==='SKIPPED');
+      const cards = done.reduce((n,x)=>n+Number(x.cards||0),0);
+      const prices = done.reduce((n,x)=>n+Number(x.prices||0),0);
+
       setMessage(
-        `Listo: ${inc.insertedCards || 0} carta(s) nuevas, ${inc.updatedCards || 0} carta(s) actualizadas, ${inc.updatedPrices || 0} precio(s) actualizado(s) y ${inc.unchangedCards || 0} carta(s) sin cambios.`
+        `Multi-TCG listo: ${done.length} TCG completado(s), ${completedSetsBefore} expansión(es), ${cards} carta(s) procesadas y ${prices} precio(s) actualizados.${skipped.length ? ` ${skipped.length} TCG omitido(s).` : ''}`
       );
 
       await loadProviders(gameCode);
-      await loadSets(gameCode);
+      if (gameCode) await loadSets(gameCode);
 
-      window.shinyOperation?.complete(op, {
-        title: 'Expansiones agregadas',
-        detail: 'El catálogo seleccionado ya está disponible en tu tienda.',
-        keepMs: 1400
+      window.gmxOperation?.complete(op, {
+        title: 'Auto Sync Multi-TCG completado',
+        detail: `${done.length} TCG procesado(s) correctamente.`,
+        keepMs: 1800
       });
     } catch (e) {
-      setMessage(`No fue posible agregar las expansiones: ${e.message}`);
-      window.shinyOperation?.fail(op, e);
+      setMessage(`Auto Sync Multi-TCG detenido: ${e.message}`);
+      window.gmxOperation?.fail(op, e);
+      throw e;
     } finally {
       setBusy('');
     }
   }
-
   async function findCards(e) {
     e?.preventDefault();
     if (!gameCode) return;
@@ -710,7 +877,26 @@ export default function TCGAutoSyncPanel() {
               </div>
             </div>
 
-            <div className="gas-review">
+                        <div className="gas-r42-sync-mode">
+              <button type="button" className={syncMode==='INCREMENTAL'?'active':''} onClick={()=>setSyncMode('INCREMENTAL')}>
+                <b>Incremental</b>
+                <small>Solo cambios y expansiones seleccionadas.</small>
+              </button>
+              <button type="button" className={syncMode==='FULL'?'active':''} onClick={()=>setSyncMode('FULL')}>
+                <b>Full Sync</b>
+                <small>Actualiza sets y procesa el catálogo completo disponible.</small>
+              </button>
+            </div>
+
+            <div className="gas-r42-selected-summary">
+              {selectedProviderRows.map((p)=>(
+                <article key={p.game_code}>
+                  <b>{p.game_name||p.game_code}</b>
+                  <span>{p.game_code===gameCode ? selected.length : (Array.isArray(p.selected_sets)?p.selected_sets.length:0)} expansión(es) configuradas</span>
+                </article>
+              ))}
+            </div>
+<div className="gas-review">
               <div><span>TCG</span><b>{current?.game_name||'—'}</b></div>
               <div><span>Expansiones</span><b>{selected.length}</b></div>
               <div><span>Precios</span><b>{syncPrices?'Sí':'No'}</b></div>
@@ -728,13 +914,24 @@ export default function TCGAutoSyncPanel() {
               </div>
             ) : null}
 
-            <div className="gas-bottom">
+                        {multiSyncResults.length ? (
+              <div className="gas-r42-results">
+                {multiSyncResults.map((r)=>(
+                  <article key={r.gameCode} className={String(r.status||'').toLowerCase()}>
+                    <div><b>{r.gameName}</b><small>{r.status}</small></div>
+                    <span>{r.sets||0} sets · {r.cards||0} cartas · {r.prices||0} precios</span>
+                    {r.message && r.message!=='OK' ? <p>{r.message}</p> : null}
+                  </article>
+                ))}
+              </div>
+            ) : null}
+<div className="gas-bottom">
               <button type="button" className="gas-outline" onClick={()=>setWizardStep(3)}>← Volver</button>
               <button
                 type="button"
                 className="gas-next"
                 onClick={addSelectedToStore}
-                disabled={!!busy||!selected.length}
+                disabled={!!busy||!selectedGames.length}
               >
                 {busy==='add'?'Sincronizando…':'Sincronizar ahora'}
               </button>
